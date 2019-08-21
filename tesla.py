@@ -11,6 +11,8 @@ import logging
 import requests
 from requests import HTTPError
 
+requests.packages.urllib3.disable_warnings()
+
 class Tesla(requests.Session):
     """ Implements a session manager to the Tesla API """
 
@@ -23,6 +25,7 @@ class Tesla(requests.Session):
         self.authorized = False
         self.endpoints = {}
         self.headers.update({'Content-Type': 'application/json'})
+        self.verify = False
         self._token_updater()  # Read token from cache
 
     def request(self, method, uri, data=None, **kwargs):

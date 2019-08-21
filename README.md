@@ -18,7 +18,7 @@ with tesla.Tesla(EMAIL, PASSWORD, CLIENT_ID, CLIENT_SECRET) as tsla:
 
 A more advanced example that shows more features of the module is *demo.py*. It requires credentials to authenticate with the Tesla Motors API and it depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address:
 
-![](media/menu.jpg)
+![](media/menu.png)
 
 ## Installation
 
