@@ -1,8 +1,9 @@
 from __future__ import print_function
-import tesla
-import logging
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
+import teslapy
+import logging
+import getpass
 
 raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
 
@@ -37,6 +38,8 @@ def show_vehicle_data(data):
                      cl['passenger_temp_setting']))
     fmt = 'Is Climate On: {:21} Fan Speed: {}'
     print(fmt.format(str(cl['is_climate_on']), cl['fan_status']))
+    fmt = 'Driver Seat Heater: {:16} Passenger Seat Heater: {}'
+    print(fmt.format(str(cl['seat_heater_left']), str(cl['seat_heater_right'])))
     print('-'*80)
     # Vehicle state
     fmt = 'Vehicle Name: {:22} Odometer: {:.1f} km'
@@ -79,8 +82,8 @@ def show_vehicle_data(data):
     fmt = 'Charging State: {:20} Time To Full Charge: {:02.0f}:{:02.0f}'
     print(fmt.format(ch['charging_state'],
                      *divmod(ch['time_to_full_charge'] * 60, 60)))
-    phases = 3 if ch['charger_phases'] == 2 else 1
-    fmt = 'Charger Voltage: {:19} Charger Actual Current: {:d} x {:d} A'
+    phases = '3 x ' if ch['charger_phases'] == 2 else ''
+    fmt = 'Charger Voltage: {:19} Charger Actual Current: {}{:d} A'
     print(fmt.format(str(ch['charger_voltage']) + ' V',
                      phases, ch['charger_actual_current']))
     fmt = 'Charger Power: {:21} Charge Rate: {:.1f} km/h'
@@ -123,19 +126,22 @@ def menu(vehicle):
     lst = ['Refresh', 'Wake up', 'Nearby charging sites', 'Honk horn',
            'Flash lights', 'Lock/unlock', 'Climate on/off', 'Set temperature',
            'Actuate frunk', 'Actuate trunk', 'Remote start drive',
-           'Set charge limit', 'Charge port open/close', 'Start/stop charge']
+           'Set charge limit', 'Charge port open/close', 'Start/stop charge',
+           'Seat heater request']
+    opt = 0
     while True:
-        # Show vehicle status
-        if vehicle['state'] == 'online':
-            if not vehicle.mobile_enabled():
-                print('Mobile access is not enabled for this vehicle')
-                print('-'*80)
-            try:
-                show_vehicle_data(vehicle.get_vehicle_data())
-            except tesla.HTTPError as e:
-                logging.error(e)
-        else:
-            print('Wake up vehicle to use remote functions/telemetry')
+        if opt != 3:
+            # Show vehicle status
+            if vehicle['state'] == 'online':
+                if not vehicle.mobile_enabled():
+                    print('Mobile access is not enabled for this vehicle')
+                    print('-'*80)
+                try:
+                    show_vehicle_data(vehicle.get_vehicle_data())
+                except teslapy.HTTPError as e:
+                    logging.error(e)
+            else:
+                print('Wake up vehicle to use remote functions/telemetry')
         print('-'*80)
         # Display 3 column menu
         for i, option in enumerate(lst, 1):
@@ -154,7 +160,7 @@ def menu(vehicle):
             print('Please wait...')
             try:
                 vehicle.sync_wake_up()
-            except (tesla.TimeoutError, tesla.HTTPError):
+            except (teslapy.TimeoutError, teslapy.HTTPError) as e:
                 logging.error(e)
             print('-'*80)
         elif opt == 3:
@@ -197,13 +203,21 @@ def menu(vehicle):
                 vehicle.api('STOP_CHARGE')
             else:
                 vehicle.api('START_CHARGE')
+        elif opt == 15:
+            heater = int(raw_input("Enter heater (0=Driver,1=Passenger,"
+                                   "2=Rear left,3=Rear center,4=Rear right): "))
+            level = int(raw_input("Enter level (0..3): "))
+            data = {'heater': heater, 'level': level}
+            vehicle.api('REMOTE_SEAT_HEATER_REQUEST', data=data)
 
 def main():
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s - %(levelname)s - %(message)s')
-    with tesla.Tesla(EMAIL, PASSWORD, CLIENT_ID, CLIENT_SECRET) as tsla:
-        tsla.fetch_token()
-        vehicles = tsla.vehicle_list()
+    email = raw_input('Enter email: ') if not EMAIL else EMAIL
+    password = getpass.getpass('Password: ') if not PASSWORD else PASSWORD
+    with teslapy.Tesla(email, password, CLIENT_ID, CLIENT_SECRET) as tesla:
+        tesla.fetch_token()
+        vehicles = tesla.vehicle_list()
         print('-'*80)
         fmt = '{:2} {:25} {:25} {:25}'
         print(fmt.format('ID', 'Display name', 'VIN', 'State'))
