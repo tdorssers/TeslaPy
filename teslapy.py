@@ -44,10 +44,10 @@ class Tesla(requests.Session):
         # Error message handling
         if 400 <= response.status_code < 600:
             try:
-                response.reason = ', '.join('%s: %s' % (k, v)
-                                            for k, v in response.json().items())
+                values = [v for v in response.json().values() if v]
+                response.reason = '; '.join(values)
             except ValueError:
-                response.reason = response.text
+                pass
         response.raise_for_status()  # Raise HTTPError, if one occurred
         # Deserialize response
         return response.json()
@@ -184,7 +184,7 @@ class Vehicle(dict):
                 self.update(self.api('VEHICLE_SUMMARY')['response'])
                 # Raise exception when task has timed out
                 if (start_time + timeout < time.time()):
-                    raise TimeoutError('%s not woken within %s seconds' %
+                    raise TimeoutError('%s not woken up within %s seconds' %
                                        (self['display_name'], timeout))
                 interval *= backoff
             logging.info('%s is %s' % (self['display_name'], self['state']))

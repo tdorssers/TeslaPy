@@ -1,10 +1,10 @@
 # TeslaPy
 
-A Python implementation of the client side interface to the Tesla Motors API based on [unofficial documentation](https://tesla-api.timdorr.com/). The REST API provides functionality to monitor and control the vehicle remotely.
+A Python implementation based on [unofficial documentation](https://tesla-api.timdorr.com/) of the client side interface to the Tesla Motors REST API, which provides functionality to monitor and control the vehicle remotely.
 
 ## Overview
 
-*teslapy.py* depends on Python [requests](https://pypi.org/project/requests/). The `Tesla` class extends `requests.Session` and inherits methods like get and post that can be used to perform API calls. It implements custom OAuth 2.0 Password Grant, since *email* instead of *username* is used by the Tesla Motors API to authenticate users. The authentication token is cached to disk for reuse and is refreshed automatically when needed. The class provides a convenience method `api` to use named endpoints listed in *endpoints.json*, instead of using inherited get and post methods. The `Vehicle` class extends `dict` and is used to store vehicle data returned by the API. It also implements a method to wake up the vehicle and a method to list known option codes.
+The single file module *teslapy.py* depends on Python [requests](https://pypi.org/project/requests/). The `Tesla` class extends `requests.Session` and inherits methods like get and post that can be used to perform API calls. The class implements a custom OAuth 2.0 Password Grant, since *email* instead of *username* is used to authenticate users. The authentication token is cached to disk for reuse and is refreshed automatically when needed. The class provides the convenience method `api` to use named endpoints listed in *endpoints.json*, so the class does not require changes if the API is updated. The `Vehicle` class extends `dict` and is used to request and store vehicle data returned by the API. Additionally, the class implements methods to perform API calls to named endpoints, to wake up the vehicle, to list known option codes and to check if mobile access is enabled.
 
 Basic usage of the module:
 
@@ -13,14 +13,15 @@ import teslapy
 with teslapy.Tesla(EMAIL, PASSWORD, CLIENT_ID, CLIENT_SECRET) as tesla:
 	tesla.fetch_token()
 	vehicles = tesla.vehicle_list()
+	vehicles[0].sync_wake_up()
 	vehicles[0].api('HONK_HORN')
 ```
 
-An advanced usage example that shows more features of the module is *menu.py*. It requires credentials to authenticate with the Tesla Motors API and it depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address:
+It requires credentials to authenticate with the Tesla Motors API. An advanced usage example that shows more features of the module is *menu.py*, which depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address:
 
 ![](media/menu.png)
 
-*gui.py* is a graphical interface version of the advanced usage example using `tkinter`:
+*gui.py* is a graphical interface version of the advanced usage example using `tkinter` and supports auto refreshing of the vehicle data:
 
 ![](media/gui.png)
 

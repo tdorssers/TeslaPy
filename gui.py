@@ -290,8 +290,8 @@ class Dashboard(Frame):
         ttfc = divmod(ch['time_to_full_charge'] * 60, 60)
         self.time_to_full.text('{:02.0f}:{:02.0f}'.format(*ttfc))
         self.charger_voltage.text('%d V' % ch['charger_voltage'])
-        phases = '3 x ' if ch['charger_phases'] == 2 else ''
-        self.charger_current.text('%s%d A' % (phases, ch['charger_actual_current']))
+        ph = '3 x ' if ch['charger_phases'] == 2 else ''
+        self.charger_current.text('%s%d A' % (ph, ch['charger_actual_current']))
         self.charger_power.text('%d kW' % ch['charger_power'])
         self.charge_rate.text('%.1f km/h' % (ch['charge_rate'] / 0.62137119))
         self.battery_level.text('%d %%' % ch['battery_level'])
@@ -323,7 +323,7 @@ class App(Tk):
     def __init__(self, **kwargs):
         Tk.__init__(self, **kwargs)
         self.title('Tesla')
-        self.protocol("WM_DELETE_WINDOW", self.quit)
+        self.protocol('WM_DELETE_WINDOW', self.quit)
         # Add menu bar
         menu = Menu(self)
         app_menu = Menu(menu, tearoff=0)
@@ -342,9 +342,9 @@ class App(Tk):
         self.cmd_menu.add_command(label='Nearby charging sites', state=DISABLED,
                                    command=self.charging_sites)
         self.cmd_menu.add_command(label='Honk horn', state=DISABLED,
-                                  command=lambda: self.vehicle.api('HONK_HORN'))
+                                  command=lambda: self.api('HONK_HORN'))
         self.cmd_menu.add_command(label='Flash lights', state=DISABLED,
-                                  command=lambda: self.vehicle.api('FLASH_LIGHTS'))
+                                  command=lambda: self.api('FLASH_LIGHTS'))
         self.cmd_menu.add_command(label='Lock/unlock', state=DISABLED,
                                   command=self.lock_unlock)
         self.cmd_menu.add_command(label='Climate on/off', state=DISABLED,
@@ -392,8 +392,11 @@ class App(Tk):
             self.status.text('Fetching vehicles...')
             try:
                 self.vehicles = tesla.vehicle_list()
-            except (teslapy.TimeoutError, teslapy.HTTPError):
-                self.status.text('Error fetching vehicles')
+            except teslapy.HTTPError as e:
+                self.status.text(e.response.reason)
+                return
+            except ValueError as e:
+                self.status.text(e)
                 return
             # Remove vehicles from menu
             self.vehicle_menu.delete(2, END)
@@ -435,12 +438,12 @@ class App(Tk):
             self.after(100, self.process_update)
         else:
             # Handle errors
-            if isinstance(self.update_thread.exception, GeocoderTimedOut):
-                self.status.text('Timeout resolving location')
-            elif self.update_thread.exception is not None:
-                self.status.text('Error getting vehicle data')
+            if isinstance(self.update_thread.exception, teslapy.HTTPError):
+                self.status.text(self.update_thread.exception.response.reason)
                 self.auto_refresh.set(FALSE)
                 return
+            elif self.update_thread.exception is not None:
+                self.status.text(self.update_thread.exception)
             # Show time stamp
             timestamp_ms = self.vehicle['vehicle_state']['timestamp']
             self.status.status(time.ctime(timestamp_ms / 1000))
@@ -458,13 +461,15 @@ class App(Tk):
         self.after(100, self.process_wake_up)
 
     def process_wake_up(self):
-        """ Waits for thread to finish and run update """
+        """ Waits for thread to finish and update dashboard """
         if self.wake_up_thread.is_alive():
             self.after(100, self.process_wake_up)
         elif self.wake_up_thread.exception is None:
             self.update_dashboard()
+        elif isinstance(self.wake_up_thread.exception, teslapy.HTTPError):
+            self.status.text(self.wake_up_thread.exception.response.reason)
         else:
-            self.status.text('Error waking up vehicle')
+            self.status.text(self.wake_up_thread.exception)
 
     def about(self):
         LabelGridDialog(self, 'About',
@@ -476,40 +481,56 @@ class App(Tk):
                         [dict(text=opt, sticky=W) for opt in codes])
 
     def charging_sites(self):
-        sites = self.vehicle.get_nearby_charging_sites()
+        try:
+            sites = self.vehicle.get_nearby_charging_sites()
+        except teslapy.HTTPError as e:
+            self.status.text(e.response.reason)
+            return
+        except ValueError as e:
+            self.status.text(e)
+            return
         table = [dict(text='Destination Charging:', columnspan=2)]
         r = 1
         for site in sites['destination_charging']:
             table.append(dict(text=site['name'], row=r, sticky=W))
-            table.append(dict(text='%.1f km' % (site['distance_miles'] / 0.62137119),
-                              row=r, column=1, sticky=W))
+            dist = site['distance_miles'] / 0.62137119
+            table.append(dict(text='%.1f km' % dist, row=r, column=1, sticky=W))
             r += 1
         table.append(dict(text='Superchargers:', row=r, columnspan=2))
         r += 1
         for site in sites['superchargers']:
             table.append(dict(text=site['name'], row=r, sticky=W))
-            table.append(dict(text='%.1f km' % (site['distance_miles'] / 0.62137119),
-                              row=r, column=1, sticky=W))
-            table.append(dict(text='%d/%d free stalls' % (site['available_stalls'],
-                                                          site['total_stalls']),
-                              row=r, column=2, sticky=W))
+            dist = site['distance_miles'] / 0.62137119
+            table.append(dict(text='%.1f km' % dist, row=r, column=1, sticky=W))
+            text = '%d/%d free stalls' % (site['available_stalls'],
+                                          site['total_stalls'])
+            table.append(dict(text=text, row=r, column=2, sticky=W))
             r += 1
         LabelGridDialog(self, 'Nearby Charging Sites', table)
 
+    def api(self, name, **kwargs):
+        """ Wrapper around Vehicle.api() to catch exceptions """
+        try:
+            return self.vehicle.api(name, **kwargs)
+        except teslapy.HTTPError as e:
+            self.status.text(e.response.reason)
+        except ValueError as e:
+            self.status.text(e)
+
     def lock_unlock(self):
         if self.vehicle['vehicle_state']['locked']:
-            self.vehicle.api('UNLOCK')
+            self.api('UNLOCK')
         else:
-            self.vehicle.api('LOCK')
+            self.api('LOCK')
         # Update dashboard after 1 second if auto refresh is disabled
         if not self.auto_refresh.get():
             self.after(1000, self.update_dashboard)
                 
     def climate_on_off(self):
         if self.vehicle['climate_state']['is_climate_on']:
-            self.vehicle.api('CLIMATE_OFF')
+            self.api('CLIMATE_OFF')
         else:
-            self.vehicle.api('CLIMATE_ON')
+            self.api('CLIMATE_ON')
         if not self.auto_refresh.get():
             self.after(1000, self.update_dashboard)
 
@@ -518,40 +539,40 @@ class App(Tk):
         temp = askfloat('Set', 'Temperature')
         if temp:
             data = {'driver_temp': temp, 'passenger_temp': temp}
-            self.vehicle.api('CHANGE_CLIMATE_TEMPERATURE_SETTING', data=data)
+            self.api('CHANGE_CLIMATE_TEMPERATURE_SETTING', data=data)
             if not self.auto_refresh.get():
                 self.after(1000, self.update_dashboard)
 
     def actuate_trunk(self, which_trunk):
-        self.vehicle.api('ACTUATE_TRUNK', data={'which_trunk': which_trunk})
+        self.api('ACTUATE_TRUNK', data={'which_trunk': which_trunk})
         if not self.auto_refresh.get():
             self.after(1000, self.update_dashboard)
 
     def remote_start_drive(self):
-        self.vehicle.api('REMOTE_START', data={'password': self.password})
+        self.api('REMOTE_START', data={'password': self.password})
         if not self.auto_refresh.get():
             self.after(1000, self.update_dashboard)
 
     def set_charge_limit(self):
         limit = askinteger('Set', 'Charge Limit')
         if limit:
-            self.vehicle.api('CHANGE_CHARGE_LIMIT', data={'percent': limit})
+            self.api('CHANGE_CHARGE_LIMIT', data={'percent': limit})
             if not self.auto_refresh.get():
                 self.after(1000, self.update_dashboard)
 
     def charge_port_open_close(self):
         if self.vehicle['charge_state']['charge_port_door_open']:
-            self.vehicle.api('CHARGE_PORT_DOOR_CLOSE')
+            self.api('CHARGE_PORT_DOOR_CLOSE')
         else:
-            self.vehicle.api('CHARGE_PORT_DOOR_OPEN')
+            self.api('CHARGE_PORT_DOOR_OPEN')
         if not self.auto_refresh.get():
             self.after(1000, self.update_dashboard)
 
     def start_stop_charge(self):
         if self.vehicle['charge_state']['charging_state'].lower() == 'charging':
-            self.vehicle.api('STOP_CHARGE')
+            self.api('STOP_CHARGE')
         else:
-            self.vehicle.api('START_CHARGE')
+            self.api('START_CHARGE')
         if not self.auto_refresh.get():
             self.after(1000, self.update_dashboard)
 
@@ -559,7 +580,7 @@ class App(Tk):
         dlg = SeatHeaterDialog(self)
         if dlg.result:
             data = {'heater': dlg.result[0], 'level': dlg.result[1]}
-            self.vehicle.api('REMOTE_SEAT_HEATER_REQUEST', data=data)
+            self.api('REMOTE_SEAT_HEATER_REQUEST', data=data)
             if not self.auto_refresh.get():
                 self.after(1000, self.update_dashboard)
 
