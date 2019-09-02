@@ -21,7 +21,7 @@ It requires credentials to authenticate with the Tesla Motors API. An advanced u
 
 ![](media/menu.png)
 
-*gui.py* is a graphical interface version of the advanced usage example using `tkinter` and supports auto refreshing of the vehicle data:
+*gui.py* is a graphical interface version of the advanced usage example using `tkinter` and supports auto refreshing of the vehicle data. The GUI displays a composed vehicle image and depends on [pillow](https://pypi.org/project/Pillow/), if the Tcl/Tk GUI toolkit version of your Python installation is 8.5. Python 3.4+ should include Tcl/Tk 8.6.
 
 ![](media/gui.png)
 

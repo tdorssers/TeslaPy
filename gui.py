@@ -91,7 +91,7 @@ class StatusBar(Frame):
         self.right_label.pack(fill=X, side=RIGHT, expand=1)
 
     def text(self, text):
-        self.text_value.set(text)
+        self.text_value.set(str(text)[:120])
         self.update_idletasks()
 
     def status(self, status):
@@ -115,9 +115,15 @@ class Dashboard(Frame):
 
     def __init__(self, master, **kwargs):
         Frame.__init__(self, master, **kwargs)
+        left = Frame(self)
+        left.pack(side=LEFT, padx=5)
+        right = Frame(self)
+        right.pack(side=RIGHT, padx=5)
+        self.vehicle_image = Label(right)
+        self.vehicle_image.pack()
         # Climate state
-        group = LabelFrame(self, text='Climate State', padx=5, pady=5)
-        group.pack(padx=10, pady=5, fill=X)
+        group = LabelFrame(left, text='Climate State', padx=5, pady=5)
+        group.pack(padx=5, pady=5, fill=X)
         Label(group, text='Outside Temperature:').grid(row=0, sticky=E)
         self.outside_temp = LabelVarGrid(group, row=0, column=1, sticky=W)
         Label(group, text='Inside Temperature:').grid(row=0, column=2, sticky=E)
@@ -135,8 +141,8 @@ class Dashboard(Frame):
         Label(group, text='Passenger Seat Heater:').grid(row=3, column=2, sticky=E)
         self.passenger_heater = LabelVarGrid(group, row=3, column=3, sticky=W)
         # Vehicle state
-        group = LabelFrame(self, text='Vehicle State', padx=5, pady=5)
-        group.pack(padx=10, pady=5, fill=X)
+        group = LabelFrame(left, text='Vehicle State', padx=5, pady=5)
+        group.pack(padx=5, pady=5, fill=X)
         Label(group, text='Vehicle Name:').grid(row=0, sticky=E)
         self.vehicle_name = LabelVarGrid(group, row=0, column=1, sticky=W)
         Label(group, text='Odometer:').grid(row=0, column=2, sticky=E)
@@ -178,8 +184,8 @@ class Dashboard(Frame):
         Label(group, text='Remote Start:').grid(row=9, column=2, sticky=E)
         self.remote_start = LabelVarGrid(group, row=9, column=3, sticky=W)
         # Drive state
-        group = LabelFrame(self, text='Drive State', padx=5, pady=5)
-        group.pack(padx=10, pady=5, fill=X)
+        group = LabelFrame(right, text='Drive State', padx=5, pady=5)
+        group.pack(padx=5, pady=5, fill=X)
         Label(group, text='Power:').grid(row=0, sticky=E)
         self.power = LabelVarGrid(group, row=0, column=1, sticky=W)
         Label(group, text='Speed:').grid(row=0, column=2, sticky=E)
@@ -191,8 +197,8 @@ class Dashboard(Frame):
         Label(group, text='GPS:').grid(row=2, sticky=E)
         self.gps = LabelVarGrid(group, row=2, column=1, columnspan=3, sticky=W)
         # Charging state
-        group = LabelFrame(self, text='Charging State', padx=5, pady=5)
-        group.pack(padx=10, pady=5, fill=X)
+        group = LabelFrame(right, text='Charging State', padx=5, pady=5)
+        group.pack(padx=5, pady=5, fill=X)
         Label(group, text='Charging State:').grid(row=0, sticky=E)
         self.charging_state = LabelVarGrid(group, row=0, column=1, sticky=W)
         Label(group, text='Time To Full Charge:').grid(row=0, column=2, sticky=E)
@@ -222,8 +228,8 @@ class Dashboard(Frame):
         Label(group, text='Charge Port Latch:').grid(row=6, column=2, sticky=E)
         self.charge_port_latch = LabelVarGrid(group, row=6, column=3, sticky=W)
         # Vehicle config
-        group = LabelFrame(self, text='Vehicle Config', padx=5, pady=5)
-        group.pack(padx=10, pady=5, fill=X)
+        group = LabelFrame(left, text='Vehicle Config', padx=5, pady=5)
+        group.pack(padx=5, pady=5, fill=X)
         Label(group, text='Car Type:').grid(row=0, sticky=E)
         self.car_type = LabelVarGrid(group, row=0, column=1, sticky=W)
         Label(group, text='Exterior Color:').grid(row=0, column=2, sticky=E)
@@ -395,7 +401,7 @@ class App(Tk):
             except teslapy.HTTPError as e:
                 self.status.text(e.response.reason)
                 return
-            except ValueError as e:
+            except (teslapy.RequestException, ValueError) as e:
                 self.status.text(e)
                 return
             # Remove vehicles from menu
@@ -416,6 +422,24 @@ class App(Tk):
     def select(self):
         self.vehicle = self.vehicles[self.selected.get()]
         self.update_dashboard()
+        # Get vehicle image
+        self.photo = None
+        try:
+            response = self.vehicle.compose_image(size=300)
+        except teslapy.HTTPError as e:
+            self.status.text(e.response.reason)
+        except teslapy.RequestException as e:
+            self.status.text(e)
+        else:
+            # Tk 8.6 has native PNG support, older Tk require PIL
+            try:
+                import base64
+                self.photo = PhotoImage(data=base64.b64encode(response))
+            except TclError:
+                from PIL import Image, ImageTk
+                import io
+                self.photo = ImageTk.PhotoImage(Image.open(io.BytesIO(response)))
+        self.dashboard.vehicle_image.config(image=self.photo)
 
     def update_dashboard(self):
         """ Create new thread to get vehicle data """
@@ -473,7 +497,8 @@ class App(Tk):
 
     def about(self):
         LabelGridDialog(self, 'About',
-                        ['Tesla API Python GUI', 'by Tim Dorssers'])
+                        ['Tesla API Python GUI by Tim Dorssers',
+                         'Tcl/Tk toolkit ' + str(TkVersion)])
 
     def option_codes(self):
         codes = self.vehicle.option_code_list()
@@ -486,9 +511,10 @@ class App(Tk):
         except teslapy.HTTPError as e:
             self.status.text(e.response.reason)
             return
-        except ValueError as e:
+        except (teslapy.RequestException, ValueError) as e:
             self.status.text(e)
             return
+        # Prepare list of label and grid attributes to display in a dialog box
         table = [dict(text='Destination Charging:', columnspan=2)]
         r = 1
         for site in sites['destination_charging']:
@@ -514,7 +540,7 @@ class App(Tk):
             return self.vehicle.api(name, **kwargs)
         except teslapy.HTTPError as e:
             self.status.text(e.response.reason)
-        except ValueError as e:
+        except (teslapy.RequestException, ValueError) as e:
             self.status.text(e)
 
     def lock_unlock(self):
@@ -595,7 +621,7 @@ class UpdateThread(threading.Thread):
     def run(self):
         try:
             self.vehicle.get_vehicle_data()
-        except teslapy.HTTPError as e:
+        except teslapy.RequestException as e:
             self.exception = e
         else:
             # Lookup address at coordinates
@@ -617,7 +643,7 @@ class WakeUpThread(threading.Thread):
     def run(self):
         try:
             self.vehicle.sync_wake_up()
-        except (teslapy.TimeoutError, teslapy.HTTPError) as e:
+        except (teslapy.TimeoutError, teslapy.RequestException) as e:
             self.exception = e
 
 if __name__ == "__main__":

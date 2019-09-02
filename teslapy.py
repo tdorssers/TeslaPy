@@ -9,7 +9,7 @@ import json
 import time
 import logging
 import requests
-from requests import HTTPError
+from requests.exceptions import *
 
 requests.packages.urllib3.disable_warnings()
 
@@ -217,3 +217,15 @@ class Vehicle(dict):
         # Construct URL and send request
         uri = 'api/1/vehicles/%s/mobile_enabled' % self['id']
         return self.tesla.get(uri)['response']
+
+    def compose_image(self, view='STUD_3QTR', size=640):
+        """ Returns a PNG formatted composed vehicle image. Valid views are:
+        STUD_3QTR, STUD_SEAT, STUD_SIDE, STUD_REAR and STUD_WHEEL """
+        # Derive model from VIN and other properties from option codes
+        params = {'model': 'm' + self['vin'][3].lower(), 'bkba_opt': 1,
+                  'view': view, 'size': size, 'options': self['option_codes']}
+        # Retrieve image from compositor
+        url = 'https://static-assets.tesla.com/v1/compositor/'
+        response = requests.get(url, params=params, verify=False)
+        response.raise_for_status()  # Raise HTTPError, if one occurred
+        return response.content
