@@ -44,8 +44,8 @@ class Tesla(requests.Session):
         # Error message handling
         if 400 <= response.status_code < 600:
             try:
-                values = [v for v in response.json().values() if v]
-                response.reason = '; '.join(values)
+                lst = [str(v).strip('.') for v in response.json().values() if v]
+                response.reason = '. '.join(lst)
             except ValueError:
                 pass
         response.raise_for_status()  # Raise HTTPError, if one occurred
