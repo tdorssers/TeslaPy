@@ -17,11 +17,35 @@ with teslapy.Tesla(EMAIL, PASSWORD, CLIENT_ID, CLIENT_SECRET) as tesla:
 	vehicles[0].api('HONK_HORN')
 ```
 
-It requires credentials to authenticate with the Tesla Motors API. An advanced usage example that shows more features of the module is *menu.py*, which depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address:
+Credentials are required to use the Tesla Motors API. Only `vehicle_list()` and `option_code_list()` are available if a vehicle is asleep or offline. *cli.py* is a basic implementation of a CLI application that can use almost all functionality of the TeslaPy module. If there is more than one vehicle associated to your acoount, the filter option allows you to select a vehicle:
+
+```
+usage: cli.py [-h] -e EMAIL [-p PASSWORD] [-f FILTER] [-a API] [-k KEYVALUE]
+              [-l] [-o] [-w] [-g] [-n] [-m] [-d]
+
+Tesla API CLI
+
+optional arguments:
+  -h, --help    show this help message and exit
+  -e EMAIL      login email
+  -p PASSWORD   login password
+  -f FILTER     filter on id, vin, etc.
+  -a API        API call endpoint name
+  -k KEYVALUE   API parameter (key=value)
+  -l, --list    list all selected vehicles
+  -o, --option  list vehicle option codes
+  -w, --wake    wake up selected vehicle(s)
+  -g, --get     get rollup of all vehicle data
+  -n, --nearby  list nearby charging sites
+  -m, --mobile  get mobile enabled state
+  -d, --debug   set logging level to debug
+```
+
+*menu.py* is a menu-based console application that displays vehicle data in a tabular format and converts miles into kilometers. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address:
 
 ![](media/menu.png)
 
-*gui.py* is a graphical interface version of the advanced usage example using `tkinter` and supports auto refreshing of the vehicle data. The GUI displays a composed vehicle image and depends on [pillow](https://pypi.org/project/Pillow/), if the Tcl/Tk GUI toolkit version of your Python installation is 8.5. Python 3.4+ should include Tcl/Tk 8.6.
+*gui.py* is a graphical interface using `tkinter`. It also supports auto refreshing of the vehicle data. The GUI displays a composed vehicle image and the application depends on [pillow](https://pypi.org/project/Pillow/), if the Tcl/Tk GUI toolkit version of your Python installation is 8.5. Python 3.4+ should include Tcl/Tk 8.6.
 
 ![](media/gui.png)
 

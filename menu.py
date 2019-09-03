@@ -1,3 +1,7 @@
+""" Tesla API menu-based console application using TeslaPy module """
+
+# Author: Tim Dorssers
+
 from __future__ import print_function
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut

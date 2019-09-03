@@ -1,3 +1,7 @@
+""" Tesla API GUI application using TeslaPy module """
+
+# Author: Tim Dorssers
+
 from __future__ import print_function
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
@@ -398,9 +402,6 @@ class App(Tk):
             self.status.text('Fetching vehicles...')
             try:
                 self.vehicles = tesla.vehicle_list()
-            except teslapy.HTTPError as e:
-                self.status.text(e.response.reason)
-                return
             except (teslapy.RequestException, ValueError) as e:
                 self.status.text(e)
                 return
@@ -426,8 +427,6 @@ class App(Tk):
         self.photo = None
         try:
             response = self.vehicle.compose_image(size=300)
-        except teslapy.HTTPError as e:
-            self.status.text(e.response.reason)
         except teslapy.RequestException as e:
             self.status.text(e)
         else:
@@ -460,14 +459,11 @@ class App(Tk):
         if self.update_thread.is_alive():
             # Check again after 100 ms
             self.after(100, self.process_update)
-        else:
+        elif self.update_thread.exception:
             # Handle errors
-            if isinstance(self.update_thread.exception, teslapy.HTTPError):
-                self.status.text(self.update_thread.exception.response.reason)
-                self.auto_refresh.set(FALSE)
-                return
-            elif self.update_thread.exception is not None:
-                self.status.text(self.update_thread.exception)
+            self.status.text(self.update_thread.exception)
+            self.auto_refresh.set(FALSE)
+        else:
             # Show time stamp
             timestamp_ms = self.vehicle['vehicle_state']['timestamp']
             self.status.status(time.ctime(timestamp_ms / 1000))
@@ -488,12 +484,10 @@ class App(Tk):
         """ Waits for thread to finish and update dashboard """
         if self.wake_up_thread.is_alive():
             self.after(100, self.process_wake_up)
-        elif self.wake_up_thread.exception is None:
-            self.update_dashboard()
-        elif isinstance(self.wake_up_thread.exception, teslapy.HTTPError):
-            self.status.text(self.wake_up_thread.exception.response.reason)
-        else:
+        elif self.wake_up_thread.exception:
             self.status.text(self.wake_up_thread.exception)
+        else:
+            self.update_dashboard()
 
     def about(self):
         LabelGridDialog(self, 'About',
@@ -508,9 +502,6 @@ class App(Tk):
     def charging_sites(self):
         try:
             sites = self.vehicle.get_nearby_charging_sites()
-        except teslapy.HTTPError as e:
-            self.status.text(e.response.reason)
-            return
         except (teslapy.RequestException, ValueError) as e:
             self.status.text(e)
             return
@@ -538,8 +529,6 @@ class App(Tk):
         """ Wrapper around Vehicle.api() to catch exceptions """
         try:
             return self.vehicle.api(name, **kwargs)
-        except teslapy.HTTPError as e:
-            self.status.text(e.response.reason)
         except (teslapy.RequestException, ValueError) as e:
             self.status.text(e)
 
