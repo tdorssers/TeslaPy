@@ -16,7 +16,7 @@ requests.packages.urllib3.disable_warnings()
 class Tesla(requests.Session):
     """ Implements a session manager to the Tesla API """
 
-    def __init__(self, email, password, client_id, client_secret):
+    def __init__(self, email, password, client_id, client_secret, proxy=None):
         super(Tesla, self).__init__()
         self.email = email
         self.password = password
@@ -24,8 +24,12 @@ class Tesla(requests.Session):
         self.client_secret = client_secret
         self.authorized = False
         self.endpoints = {}
+        # Set Session properties
         self.headers.update({'Content-Type': 'application/json'})
         self.verify = False
+        if proxy:
+            self.trust_env = False
+            self.proxies.update({'https': proxy})
         self._token_updater()  # Read token from cache
 
     def request(self, method, uri, data=None, **kwargs):
@@ -122,9 +126,9 @@ class Tesla(requests.Session):
                 self._token_updater()  # Update cache
 
     def api(self, name, path_vars={}, **kwargs):
-        """ Convenience method to perform API request for given endpoint name.
-        Substitutes path variables in URI using given dict. Raises ValueError
-        if endpoint name is not found. """
+        """ Convenience method to perform API request for given endpoint name,
+        with keyword arguments as parameters. Substitutes path variables in URI
+        using path_vars. Raises ValueError if endpoint name is not found. """
         # Load API endpoints once
         if not self.endpoints:
             try:
@@ -135,17 +139,25 @@ class Tesla(requests.Session):
                 logging.error('No endpoints loaded')
         # Lookup endpoint name
         try:
-            ep = self.endpoints[name]
+            endpoint = self.endpoints[name]
         except KeyError:
             raise ValueError('Unknown endpoint name ' + name)
         # Only JSON is supported
-        if ep.get('CONTENT', 'JSON') != 'JSON':
+        if endpoint.get('CONTENT', 'JSON') != 'JSON':
             raise NotImplementedError('Endpoint %s not implemented' % name)
         # Fetch token if not authorized and API requires authorization
-        if ep['AUTH'] and not self.authorized:
+        if endpoint['AUTH'] and not self.authorized:
             self.fetch_token()
-        # Perform request using given parameters
-        return self.request(ep['TYPE'], ep['URI'].format(**path_vars), **kwargs)
+        # Substitute path variables in URI
+        uri = endpoint['URI']
+        try:
+            uri = uri.format(**path_vars)
+        except KeyError as e:
+            raise ValueError('%s requires path variable %s' % (name, e))
+        # Perform request using given keyword arguments as parameters
+        if kwargs:
+            logging.debug('%s: %s' % (name, json.dumps(kwargs)))
+        return self.request(endpoint['TYPE'], uri, data=kwargs)
 
     def vehicle_list(self):
         """ Returns a list of Vehicle objects """
@@ -171,6 +183,11 @@ class Vehicle(dict):
         """ Endpoint request with vehicle_id path variable """
         return self.tesla.api(name, {'vehicle_id': self['id']}, **kwargs)
 
+    def get_vehicle_summary(self):
+        """ Determine the state of the vehicle's various sub-systems """
+        self.update(self.api('VEHICLE_SUMMARY')['response'])
+        return self
+
     def sync_wake_up(self, timeout=60, interval=2, backoff=1.15):
         """ Wakes up vehicle if needed and waits for it to come online """
         logging.info('%s is %s' % (self['display_name'], self['state']))
@@ -181,7 +198,7 @@ class Vehicle(dict):
                 logging.debug('Waiting for %d seconds' % interval)
                 time.sleep(int(interval))
                 # Get vehicle status
-                self.update(self.api('VEHICLE_SUMMARY')['response'])
+                self.get_vehicle_summary()
                 # Raise exception when task has timed out
                 if (start_time + timeout < time.time()):
                     raise TimeoutError('%s not woken up within %s seconds' %
@@ -202,7 +219,7 @@ class Vehicle(dict):
         # Make list of known option code titles
         return [self.codes[c] for c in self['option_codes'].split(',')
                 if self.codes.get(c) is not None]
-
+        
     def get_vehicle_data(self):
         """ A rollup of all the data request endpoints plus vehicle config """
         self.update(self.api('VEHICLE_DATA')['response'])
@@ -226,6 +243,53 @@ class Vehicle(dict):
                   'view': view, 'size': size, 'options': self['option_codes']}
         # Retrieve image from compositor
         url = 'https://static-assets.tesla.com/v1/compositor/'
-        response = requests.get(url, params=params, verify=False)
+        response = requests.get(url, params=params, verify=False,
+                                proxies=self.tesla.proxies)
         response.raise_for_status()  # Raise HTTPError, if one occurred
         return response.content
+
+    def dist_units(self, miles, speed=False):
+        """ Format and convert distance or speed to GUI setting units """
+        if 'km' in self['gui_settings']['gui_distance_units']:
+            return '%.1f %s' % (miles * 1.609344, 'km/h' if speed else 'km')
+        else:
+            return '%.1f %s' % (miles, 'mph' if speed else 'mi')
+
+    def temp_units(self, celcius):
+        """ Format and convert temperature to GUI setting units """
+        if 'F' in self['gui_settings']['gui_temperature_units']:
+            return '%.1f F' % (celcius * 1.8 + 32)
+        else:
+            return '%.1f C' % celcius
+
+    def decode_vin(self):
+        """ Returns a VIN object """
+        return VIN(self['vin'])
+
+class VIN(dict):
+    """ VIN decode class with dictionary access """
+
+    _body_types = {'A': 'Hatchback 5 Dr / LHD', 'B': 'Hatchback 5 Dr / RHD',
+                   'C': 'MPV / 5 Dr / LHD', 'D': 'MPV / 5 Dr / RHD',
+                   'E': 'Sedan 4 Dr / LHD', 'F': 'Sedan 4 Dr / RHD'}
+    _battery_types = {'E': 'Electric', 'H': 'High Capacity',
+                      'S': 'Standard Capacity', 'V': 'Ultra Capacity'}
+    _drive_units = {'1': 'Single Motor', '2': 'Dual Motor',
+                    '3': 'Performance Single Motor', 'C': 'Base, Tier 2',
+                    '4': 'Performance Dual Motor', 'P': 'Performance, Tier 7',
+                    'A': 'Single Motor', 'B': 'Dual Motor',
+                    'G': 'Base, Tier 4', 'N': 'Base, Tier 7'}
+    _years = '9ABCDEFGHJKLMNPRSTVWXY12345678'
+    _plants = {'F': 'Fremont, CA, USA', 'P': 'Palo Alto, CA, USA'}
+
+    def __init__(self, vin):
+        super(VIN, self).__init__()
+        self.vin = vin.upper()
+        if not self.vin.startswith('5YJ') or len(vin) < 11:
+            raise ValueError('Cannot decode VIN ' + vin)
+        self['manufacturer'] = 'Tesla Motors, Inc.'
+        self['make'] = 'Model ' + self.vin[3]
+        self['battery_type'] = self._battery_types.get(self.vin[6], 'Unknown')
+        self['drive_unit'] = self._drive_units.get(self.vin[7], 'Unknown')
+        self['model_year'] = str(2009 + self._years.index(self.vin[9]))
+        self['plant_code'] = self._plants.get(self.vin[10], 'Unknown')

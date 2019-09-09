@@ -24,6 +24,8 @@ def main():
                         help='list all selected vehicles')
     parser.add_argument('-o', '--option', action='store_true',
                         help='list vehicle option codes')
+    parser.add_argument('-v', '--vin', action='store_true',
+                        help='vehicle identification number decode')
     parser.add_argument('-w', '--wake', action='store_true',
                         help='wake up selected vehicle(s)')
     parser.add_argument('-g', '--get', action='store_true',
@@ -49,6 +51,8 @@ def main():
                 print(vehicle)
             if args.option:
                 print(', '.join(vehicle.option_code_list()))
+            if args.vin:
+                print(json.dumps(vehicle.decode_vin(), indent=4))
             if args.wake:
                 vehicle.sync_wake_up()
             if args.get:
@@ -58,9 +62,8 @@ def main():
             if args.mobile:
                 print(vehicle.mobile_enabled())
             if args.api:
-                data = dict(args.keyvalue) if args.keyvalue else None
-                logging.debug('API parameters: ' + json.dumps(data))
-                print(json.dumps(vehicle.api(args.api, data=data), indent=4))
+                data = dict(args.keyvalue) if args.keyvalue else {}
+                print(json.dumps(vehicle.api(args.api, **data), indent=4))
 
 if __name__ == "__main__":
     main()
