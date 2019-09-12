@@ -7,7 +7,6 @@ import argparse
 import teslapy
 import logging
 import getpass
-import json
 
 CLIENT_ID='e4a9949fcfa04068f59abb5a658f2bac0a3428e4652315490b659d5ab3f35a9e'
 CLIENT_SECRET='c75f14bbadc8bee3a7594412c31416f8300256d7668ea7e6e7f06727bfb9d220'
@@ -52,18 +51,18 @@ def main():
             if args.option:
                 print(', '.join(vehicle.option_code_list()))
             if args.vin:
-                print(json.dumps(vehicle.decode_vin(), indent=4))
+                print(vehicle.decode_vin())
             if args.wake:
                 vehicle.sync_wake_up()
             if args.get:
                 print(vehicle.get_vehicle_data())
             if args.nearby:
-                print(json.dumps(vehicle.get_nearby_charging_sites(), indent=4))
+                print(vehicle.get_nearby_charging_sites())
             if args.mobile:
                 print(vehicle.mobile_enabled())
             if args.api:
                 data = dict(args.keyvalue) if args.keyvalue else {}
-                print(json.dumps(vehicle.api(args.api, **data), indent=4))
+                print(vehicle.api(args.api, **data))
 
 if __name__ == "__main__":
     main()

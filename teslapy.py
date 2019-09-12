@@ -54,7 +54,7 @@ class Tesla(requests.Session):
                 pass
         response.raise_for_status()  # Raise HTTPError, if one occurred
         # Deserialize response
-        return response.json()
+        return response.json(object_hook=JsonDict)
         
     def fetch_token(self):
         """ Requests a new bearer token using password grant """
@@ -167,17 +167,20 @@ class TimeoutError(Exception):
     """ Custom exception raised when a wake up task has timed out """
     pass
 
-class Vehicle(dict):
+class JsonDict(dict):
+    """ Dictionary for pretty printing """
+
+    def __str__(self):
+        """ Serialize dict to JSON formatted string with indents """
+        return json.dumps(self, indent=4)
+
+class Vehicle(JsonDict):
     """ Vehicle class with dictionary access and API request support """
 
     def __init__(self, vehicle, tesla):
         super(Vehicle, self).__init__(vehicle)
         self.tesla = tesla
         self.codes = {}
-
-    def __str__(self):
-        """ Serialize dict to JSON formatted string with indents """
-        return json.dumps(self, indent=4)
 
     def api(self, name, **kwargs):
         """ Endpoint request with vehicle_id path variable """
@@ -250,6 +253,9 @@ class Vehicle(dict):
 
     def dist_units(self, miles, speed=False):
         """ Format and convert distance or speed to GUI setting units """
+        if not 'gui_settings' in self:
+            self.get_vehicle_data()
+        # Lookup GUI settings of the vehicle
         if 'km' in self['gui_settings']['gui_distance_units']:
             return '%.1f %s' % (miles * 1.609344, 'km/h' if speed else 'km')
         else:
@@ -257,39 +263,31 @@ class Vehicle(dict):
 
     def temp_units(self, celcius):
         """ Format and convert temperature to GUI setting units """
+        if not 'gui_settings' in self:
+            self.get_vehicle_data()
+        # Lookup GUI settings of the vehicle
         if 'F' in self['gui_settings']['gui_temperature_units']:
             return '%.1f F' % (celcius * 1.8 + 32)
         else:
             return '%.1f C' % celcius
 
     def decode_vin(self):
-        """ Returns a VIN object """
-        return VIN(self['vin'])
-
-class VIN(dict):
-    """ VIN decode class with dictionary access """
-
-    _body_types = {'A': 'Hatchback 5 Dr / LHD', 'B': 'Hatchback 5 Dr / RHD',
-                   'C': 'MPV / 5 Dr / LHD', 'D': 'MPV / 5 Dr / RHD',
-                   'E': 'Sedan 4 Dr / LHD', 'F': 'Sedan 4 Dr / RHD'}
-    _battery_types = {'E': 'Electric', 'H': 'High Capacity',
-                      'S': 'Standard Capacity', 'V': 'Ultra Capacity'}
-    _drive_units = {'1': 'Single Motor', '2': 'Dual Motor',
-                    '3': 'Performance Single Motor', 'C': 'Base, Tier 2',
-                    '4': 'Performance Dual Motor', 'P': 'Performance, Tier 7',
-                    'A': 'Single Motor', 'B': 'Dual Motor',
-                    'G': 'Base, Tier 4', 'N': 'Base, Tier 7'}
-    _years = '9ABCDEFGHJKLMNPRSTVWXY12345678'
-    _plants = {'F': 'Fremont, CA, USA', 'P': 'Palo Alto, CA, USA'}
-
-    def __init__(self, vin):
-        super(VIN, self).__init__()
-        self.vin = vin.upper()
-        if not self.vin.startswith('5YJ') or len(vin) < 11:
-            raise ValueError('Cannot decode VIN ' + vin)
-        self['manufacturer'] = 'Tesla Motors, Inc.'
-        self['make'] = 'Model ' + self.vin[3]
-        self['battery_type'] = self._battery_types.get(self.vin[6], 'Unknown')
-        self['drive_unit'] = self._drive_units.get(self.vin[7], 'Unknown')
-        self['model_year'] = str(2009 + self._years.index(self.vin[9]))
-        self['plant_code'] = self._plants.get(self.vin[10], 'Unknown')
+        """ Returns decoded VIN as dict """
+        make = 'Model ' + self['vin'][3]
+        body = {'A': 'Hatchback 5 Dr / LHD', 'B': 'Hatchback 5 Dr / RHD',
+                'C': 'MPV / 5 Dr / LHD', 'D': 'MPV / 5 Dr / RHD',
+                'E': 'Sedan 4 Dr / LHD',
+                'F': 'Sedan 4 Dr / RHD'}.get(self['vin'][4], 'Unknown')
+        batt = {'E': 'Electric', 'H': 'High Capacity', 'S': 'Standard Capacity',
+                'V': 'Ultra Capacity'}.get(self['vin'][6], 'Unknown')
+        drive = {'1': 'Single Motor', '2': 'Dual Motor',
+                 '3': 'Performance Single Motor', 'C': 'Base, Tier 2',
+                 '4': 'Performance Dual Motor', 'P': 'Performance, Tier 7',
+                 'A': 'Single Motor', 'B': 'Dual Motor', 'G': 'Base, Tier 4',
+                 'N': 'Base, Tier 7'}.get(self['vin'][7], 'Unknown')
+        year = 2009 + '9ABCDEFGHJKLMNPRSTVWXY12345678'.index(self['vin'][9])
+        plant = {'F': 'Fremont, CA, USA',
+                 'P': 'Palo Alto, CA, USA'}.get(self['vin'][10], 'Unknown')
+        return JsonDict(manufacturer='Tesla Motors, Inc.',
+                        make=make, body_type=body, battery_type=batt,
+                        drive_unit=drive, year=str(year), plant_code=plant)

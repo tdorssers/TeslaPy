@@ -107,6 +107,8 @@ class StatusBar(Frame):
               textvariable=self.status_value).pack(fill=X, side=LEFT, expand=1)
         self.indicator_label = Label(self, bd=1, relief=SUNKEN, width=1)
         self.indicator_label.pack(side=LEFT)
+        # Save default background color
+        self.no_color = self.indicator_label.cget('bg')
 
     def text(self, text):
         self.text_value.set(str(text)[:120])
@@ -115,7 +117,7 @@ class StatusBar(Frame):
         self.status_value.set(status)
 
     def indicator(self, color):
-        self.indicator_label.config(bg=color)
+        self.indicator_label.config(bg=color if color else self.no_color)
         self.update_idletasks()
 
 class LabelVarGrid(Label):
@@ -334,6 +336,8 @@ class App(Tk):
         self.vehicle_menu = Menu(menu, tearoff=0)
         self.vehicle_menu.add_command(label='Show option codes', state=DISABLED,
                                       command=self.option_codes)
+        self.vehicle_menu.add_command(label='Decode VIN', state=DISABLED,
+                                      command=self.decode_vin)
         self.vehicle_menu.add_separator()
         menu.add_cascade(label='Vehicle', menu=self.vehicle_menu)
         self.cmd_menu = Menu(menu, tearoff=0)
@@ -406,7 +410,7 @@ class App(Tk):
             self.status.text(self.login_thread.exception)
         else:
             # Remove vehicles from menu
-            self.vehicle_menu.delete(2, END)
+            self.vehicle_menu.delete(3, END)
             # Add to menu and select first vehicle
             self.selected = IntVar(value=0)
             for i, vehicle in enumerate(self.login_thread.vehicles):
@@ -416,7 +420,8 @@ class App(Tk):
                                                   command=self.select)
             if len(self.login_thread.vehicles):
                 # Enable show option codes and wake up command
-                self.vehicle_menu.entryconfig(0, state=NORMAL)
+                for i in range(0, 2):
+                    self.vehicle_menu.entryconfig(i, state=NORMAL)
                 self.cmd_menu.entryconfig(0, state=NORMAL)
                 self.select()
 
@@ -450,7 +455,8 @@ class App(Tk):
         # Enable/disable commands
         state = NORMAL if self.vehicle['state'] == 'online' else DISABLED
         for i in range(1, self.cmd_menu.index(END) + 1):
-            self.cmd_menu.entryconfig(i, state=state)
+            if self.cmd_menu.entrycget(i, 'state') != state:
+                self.cmd_menu.entryconfig(i, state=state)
 
     def update_status(self):
         """ Creates a new thread to get vehicle summary """
@@ -463,8 +469,10 @@ class App(Tk):
         if self.status_thread.is_alive():
             self.after(100, self.process_status)
         else:
-            # Run thread again afer 1 minute (even on error) and show status
-            self.after(60000, self.update_status)
+            # Reduce status polling rate if vehicle is not online
+            delay = 60000 if self.vehicle['state'] == 'online' else 240000
+            # Run thread again and show status
+            self.after(delay, self.update_status)
             if self.status_thread.exception:
                 self.status.text(self.status_thread.exception)
             else:
@@ -478,7 +486,6 @@ class App(Tk):
         if hasattr(self, 'vehicle'):
             self.show_status()
             if self.vehicle['state'] == 'online':
-                self.status.indicator('green')
                 self.update_thread = UpdateThread(self.vehicle)
                 self.update_thread.start()
                 self.after(100, self.process_update_dashboard)
@@ -487,22 +494,28 @@ class App(Tk):
         """ Waits for thread to finish and updates dashboard data """
         if self.update_thread.is_alive():
             self.after(100, self.process_update_dashboard)
-        elif self.update_thread.exception:
-            self.status.text(self.update_thread.exception)
-            self.status.indicator('red')
-            # Disable auto refresh on error
-            self.auto_refresh.set(FALSE)
         else:
-            # Show time stamp
-            timestamp_ms = self.vehicle['vehicle_state']['timestamp']
-            self.status.status(time.ctime(timestamp_ms / 1000))
-            # Run update again afer 1 second if auto refresh is enabled
-            if self.auto_refresh.get():
-                self.after(1000, self.update_dashboard)
-            else:
+            delay = 4000  # Default update polling rate
+            if self.update_thread.exception:
+                self.status.text(self.update_thread.exception)
                 self.status.indicator('red')
-            # Update dashboard with new vehicle data
-            self.dashboard.update_widgets(self)
+            else:
+                # Show time stamp
+                timestamp_ms = self.vehicle['vehicle_state']['timestamp']
+                self.status.status(time.ctime(timestamp_ms / 1000))
+                self.status.indicator('green')
+                # Update dashboard with new vehicle data
+                self.dashboard.update_widgets(self)
+                # Increase polling rate if charging or user present
+                if (self.vehicle['charge_state']['charging_state'] == 'Charging'
+                    or self.vehicle['vehicle_state']['is_user_present']):
+                        delay = 1000
+            # Run again if fail threshold is not exceeded and auto refresh is on
+            if self.auto_refresh.get() and self.update_thread.fail_cnt < 10:
+                self.after(delay, self.update_dashboard)
+            else:
+                self.auto_refresh.set(FALSE)
+                self.status.indicator(None)
 
     def wake_up(self):
         """ Creates a new thread to wake up vehicle """
@@ -534,6 +547,13 @@ class App(Tk):
         codes = self.vehicle.option_code_list()
         LabelGridDialog(self, 'Option codes',
                         [dict(text=opt, sticky=W) for opt in codes])
+
+    def decode_vin(self):
+        table = []
+        for i, item in enumerate(self.vehicle.decode_vin().items()):
+            table.append(dict(text=item[0] + ':', row=i, sticky=E))
+            table.append(dict(text=item[1], row=i, column=1, sticky=W))
+        LabelGridDialog(self, 'Decode VIN', table)
 
     def charging_sites(self):
         """ Creates a new thread to get nearby charging sites """
@@ -642,8 +662,11 @@ class App(Tk):
             self.api('CHANGE_SUNROOF_STATE', state=dlg.result)
 
 class UpdateThread(threading.Thread):
+    """ Retrieves vehicle data and looks up address if coordinates change """
+
     _coords = None
     location = None
+    fail_cnt = 0
 
     def __init__(self, vehicle):
         threading.Thread.__init__(self)
@@ -654,8 +677,11 @@ class UpdateThread(threading.Thread):
         try:
             self.vehicle.get_vehicle_data()
         except (teslapy.RequestException, ValueError) as e:
+            # Increase class variable for consecutive errors
+            UpdateThread.fail_cnt += 1
             self.exception = e
         else:
+            UpdateThread.fail_cnt = 0
             coords = '%s, %s' % (self.vehicle['drive_state']['latitude'],
                                  self.vehicle['drive_state']['longitude'])
             # Have coordinates changed over previous instance?
@@ -673,7 +699,7 @@ class UpdateThread(threading.Thread):
                 except GeopyError as e:
                     self.exception = e
                 finally:
-                    # Set class variable to new location
+                    # Save location in class variable
                     UpdateThread.location = self.location
 
 class WakeUpThread(threading.Thread):
