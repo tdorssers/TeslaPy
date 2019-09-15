@@ -193,7 +193,7 @@ def menu(vehicle):
         elif opt == 10:
             vehicle.api('ACTUATE_TRUNK', which_trunk='rear')
         elif opt == 11:
-            vehicle.api('REMOTE_START', password=PASSWORD)
+            vehicle.remote_start_drive()
         elif opt == 12:
             limit = int(raw_input("Enter charge limit: "))
             vehicle.api('CHANGE_CHARGE_LIMIT', percent=limit)

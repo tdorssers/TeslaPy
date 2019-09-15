@@ -59,6 +59,8 @@ class Tesla(requests.Session):
     def fetch_token(self):
         """ Requests a new bearer token using password grant """
         if not self.authorized:
+            if not self.password:
+                raise ValueError('Password required')
             data = {'grant_type': 'password',
                     'client_id': self.client_id,
                     'client_secret': self.client_secret,
@@ -184,7 +186,7 @@ class Vehicle(JsonDict):
 
     def api(self, name, **kwargs):
         """ Endpoint request with vehicle_id path variable """
-        return self.tesla.api(name, {'vehicle_id': self['id']}, **kwargs)
+        return self.tesla.api(name, {'vehicle_id': self['id_s']}, **kwargs)
 
     def get_vehicle_summary(self):
         """ Determine the state of the vehicle's various sub-systems """
@@ -235,7 +237,7 @@ class Vehicle(JsonDict):
     def mobile_enabled(self):
         """ Checks if the Mobile Access setting is enabled in the car """
         # Construct URL and send request
-        uri = 'api/1/vehicles/%s/mobile_enabled' % self['id']
+        uri = 'api/1/vehicles/%s/mobile_enabled' % self['id_s']
         return self.tesla.get(uri)['response']
 
     def compose_image(self, view='STUD_3QTR', size=640):
@@ -291,3 +293,9 @@ class Vehicle(JsonDict):
         return JsonDict(manufacturer='Tesla Motors, Inc.',
                         make=make, body_type=body, battery_type=batt,
                         drive_unit=drive, year=str(year), plant_code=plant)
+
+    def remote_start_drive(self):
+        """ Enables keyless driving for two minutes """
+        if not self.tesla.password:
+            raise ValueError('Password required')
+        return self.api('REMOTE_START', password=self.tesla.password)

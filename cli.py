@@ -14,7 +14,8 @@ CLIENT_SECRET='c75f14bbadc8bee3a7594412c31416f8300256d7668ea7e6e7f06727bfb9d220'
 def main():
     parser = argparse.ArgumentParser(description='Tesla API CLI')
     parser.add_argument('-e', dest='email', help='login email', required=True)
-    parser.add_argument('-p', dest='password', help='login password')
+    parser.add_argument('-p', dest='password', nargs='?', const='',
+                        help='prompt/specify login password')
     parser.add_argument('-f', dest='filter', help='filter on id, vin, etc.')
     parser.add_argument('-a', dest='api', help='API call endpoint name')
     parser.add_argument('-k', dest='keyvalue', help='API parameter (key=value)',
@@ -33,12 +34,17 @@ def main():
                         help='list nearby charging sites')
     parser.add_argument('-m', '--mobile', action='store_true',
                         help='get mobile enabled state')
+    parser.add_argument('-s', '--start', action='store_true',
+                        help='remote start drive')
     parser.add_argument('-d', '--debug', action='store_true',
                         help='set logging level to debug')
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s')
-    password = args.password if args.password else getpass.getpass('Password: ')
+    if args.password == '':
+        password = getpass.getpass('Password: ')
+    else:
+        password = args.password
     with teslapy.Tesla(args.email, password, CLIENT_ID, CLIENT_SECRET) as tesla:
         tesla.fetch_token()
         selected = cars = tesla.vehicle_list()
@@ -60,6 +66,8 @@ def main():
                 print(vehicle.get_nearby_charging_sites())
             if args.mobile:
                 print(vehicle.mobile_enabled())
+            if args.start:
+                print(vehicle.remote_start_drive())
             if args.api:
                 data = dict(args.keyvalue) if args.keyvalue else {}
                 print(vehicle.api(args.api, **data))

@@ -8,11 +8,14 @@ from geopy.exc import *
 try:
     from Tkinter import *
     from tkSimpleDialog import *
+    from ConfigParser import *
 except ImportError:
     from tkinter import *
     from tkinter.simpledialog import *
+    from configparser import *
 import time
 import teslapy
+import logging
 import threading
 
 CLIENT_ID='e4a9949fcfa04068f59abb5a658f2bac0a3428e4652315490b659d5ab3f35a9e'
@@ -29,6 +32,9 @@ class LoginDialog(Dialog):
         Label(master, text="Password:").grid(row=1, sticky=W)
         self.email = Entry(master)
         self.email.grid(row=0, column=1)
+        # Set previously entered email as default value
+        if hasattr(self.master, 'email'):
+            self.email.insert(0, self.master.email)
         self.password = Entry(master, show='*')
         self.password.grid(row=1, column=1)
         return self.email
@@ -325,13 +331,13 @@ class App(Tk):
     def __init__(self, **kwargs):
         Tk.__init__(self, **kwargs)
         self.title('Tesla')
-        self.protocol('WM_DELETE_WINDOW', self.quit)
+        self.protocol('WM_DELETE_WINDOW', self.save_and_quit)
         # Add menu bar
         menu = Menu(self)
         app_menu = Menu(menu, tearoff=0)
         app_menu.add_command(label='Login', command=self.login)
         app_menu.add_separator()
-        app_menu.add_command(label='Exit', command=self.quit)
+        app_menu.add_command(label='Exit', command=self.save_and_quit)
         menu.add_cascade(label='App', menu=app_menu)
         self.vehicle_menu = Menu(menu, tearoff=0)
         self.vehicle_menu.add_command(label='Show option codes', state=DISABLED,
@@ -377,6 +383,9 @@ class App(Tk):
         display_menu.add_checkbutton(label='Auto refresh',
                                      variable=self.auto_refresh,
                                      command=self.update_dashboard)
+        self.debug = BooleanVar()
+        display_menu.add_checkbutton(label='Console debugging',
+                                     variable=self.debug, command=self.set_log)
         menu.add_cascade(label='Display', menu=display_menu)
         help_menu = Menu(menu, tearoff=0)
         help_menu.add_command(label='About', command=self.about)
@@ -388,6 +397,18 @@ class App(Tk):
         self.status = StatusBar(self)
         self.status.pack(side=BOTTOM, fill=X)
         self.status.text('Not logged in')
+        # Read config
+        config = RawConfigParser()
+        try:
+            config.read('gui.ini')
+            self.email = config.get('app', 'email')
+            self.auto_refresh.set(config.get('display', 'auto_refresh'))
+            self.debug.set(config.get('display', 'debug'))
+        except (NoSectionError, NoOptionError, ParsingError):
+            pass
+        # Initialize logging
+        logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
+        self.set_log()
 
     def login(self):
         """ Display login dialog and start new thread to get vehicle list """
@@ -631,7 +652,10 @@ class App(Tk):
         self.api('ACTUATE_TRUNK', which_trunk=which_trunk)
 
     def remote_start_drive(self):
-        self.api('REMOTE_START', password=self.password)
+        if self.password:
+            self.api('REMOTE_START', password=self.password)
+        else:
+            self.status.text('Password required')
 
     def set_charge_limit(self):
         limit = askinteger('Set', 'Charge Limit')
@@ -661,6 +685,26 @@ class App(Tk):
         if dlg.result:
             self.api('CHANGE_SUNROOF_STATE', state=dlg.result)
 
+    def set_log(self):
+        level = logging.DEBUG if self.debug.get() else logging.WARNING
+        logging.getLogger().setLevel(level)
+
+    def save_and_quit(self):
+        config = RawConfigParser()
+        config.add_section('app')
+        config.add_section('display')
+        if hasattr(self, 'email'):
+            config.set('app', 'email', self.email)
+        config.set('display', 'auto_refresh', self.auto_refresh.get())
+        config.set('display', 'debug', self.debug.get())
+        try:
+            with open('gui.ini', 'w') as configfile:
+                config.write(configfile)
+        except IOError:
+            pass
+        finally:
+            self.quit()
+        
 class UpdateThread(threading.Thread):
     """ Retrieves vehicle data and looks up address if coordinates change """
 
