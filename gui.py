@@ -173,12 +173,13 @@ class Dashboard(Frame):
         # Vehicle state on left frame
         group = LabelFrame(left, text='Vehicle State', padx=5, pady=5)
         group.pack(padx=5, pady=5, fill=X)
-        lst =['Vehicle Name:', 'Odometer:', 'Car Version:', 'Locked:',
-              'Driver Front Door:', 'Passenger Front Door:',
-              'Driver Rear Door:', 'Passenger Rear Door:', 'Front Trunk:',
-              'Rear Trunk:', 'Remote Start:', 'Sun Roof Percent Open:',
-              'Speed Limit Mode:', 'Current Limit:', 'Speed Limit Pin Set:',
-              'Sentry Mode:', 'Valet Mode:', 'Valet Pin Set:']
+        lst = ['Vehicle Name:', 'Odometer:', 'Car Version:', 'Locked:',
+               'Driver Front Door:', 'Passenger Front Door:',
+               'Driver Rear Door:', 'Passenger Rear Door:', 'Front Trunk:',
+               'Rear Trunk:', 'Remote Start:', 'Sun Roof Percent Open:',
+               'Speed Limit Mode:', 'Current Limit:', 'Speed Limit Pin Set:',
+               'Sentry Mode:', 'Valet Mode:', 'Valet Pin Set:',
+               'Software Update:', 'Expected duration:']
         for i, t in enumerate(lst):
             Label(group, text=t).grid(row=i // 2, column=i % 2 * 2, sticky=E)
         self.vehicle_name = LabelVarGrid(group, row=0, column=1, sticky=W)
@@ -199,10 +200,12 @@ class Dashboard(Frame):
         self.sentry_mode = LabelVarGrid(group, row=7, column=3, sticky=W)
         self.valet_mode = LabelVarGrid(group, row=8, column=1, sticky=W)
         self.valet_pin = LabelVarGrid(group, row=8, column=3, sticky=W)
+        self.sw_update = LabelVarGrid(group, row=9, column=1, sticky=W)
+        self.sw_duration = LabelVarGrid(group, row=9, column=3, sticky=W)
         # Drive state on right frame
         group = LabelFrame(right, text='Drive State', padx=5, pady=5)
         group.pack(padx=5, pady=5, fill=X)
-        lst =['Power:', 'Speed:', 'Shift State:', 'Heading:', 'GPS:']
+        lst = ['Power:', 'Speed:', 'Shift State:', 'Heading:', 'GPS:']
         for i, t in enumerate(lst):
             Label(group, text=t).grid(row=i // 2, column=i % 2 * 2, sticky=E)
         self.power = LabelVarGrid(group, row=0, column=1, sticky=W)
@@ -288,6 +291,13 @@ class Dashboard(Frame):
         self.sentry_mode.text(str(ve['sentry_mode']))
         self.valet_mode.text(str(ve['valet_mode']))
         self.valet_pin.text(str(not 'valet_pin_needed' in ve))
+        status = ve['software_update']['status'] or 'unavailable'
+        if 'warning_time_remaining_ms' in ve['software_update']:
+            time_rem = ve['software_update']['warning_time_remaining_ms'] / 1000
+            status += ' in {:02.0f}:{:02.0f}'.format(*divmod(time_rem, 60))
+        self.sw_update.text(status)
+        sueds = divmod(ve['software_update']['expected_duration_sec'] / 60, 60)
+        self.sw_duration.text('{:02.0f}:{:02.0f}'.format(*sueds))
         # Drive state
         self.power.text('%d kW' % dr['power'])
         speed = 0 if dr['speed'] is None else dr['speed']
@@ -350,11 +360,11 @@ class App(Tk):
         self.cmd_menu.add_command(label='Wake up', state=DISABLED,
                                   command=self.wake_up)
         self.cmd_menu.add_command(label='Nearby charging sites', state=DISABLED,
-                                   command=self.charging_sites)
+                                  command=self.charging_sites)
         self.cmd_menu.add_command(label='Honk horn', state=DISABLED,
-                                  command=lambda: self.api('HONK_HORN'))
+                                  command=lambda: self.cmd('HONK_HORN'))
         self.cmd_menu.add_command(label='Flash lights', state=DISABLED,
-                                  command=lambda: self.api('FLASH_LIGHTS'))
+                                  command=lambda: self.cmd('FLASH_LIGHTS'))
         self.cmd_menu.add_command(label='Lock/unlock', state=DISABLED,
                                   command=self.lock_unlock)
         self.cmd_menu.add_command(label='Climate on/off', state=DISABLED,
@@ -375,8 +385,14 @@ class App(Tk):
                                   command=self.start_stop_charge)
         self.cmd_menu.add_command(label='Seat heater request', state=DISABLED,
                                   command=self.seat_heater)
-        self.cmd_menu.add_command(label='Vent/close sun roof', state=DISABLED,
+        self.cmd_menu.add_command(label='Control sun roof', state=DISABLED,
                                   command=self.vent_close_sun_roof)
+        self.cmd_menu.add_command(label='Toggle media playback', state=DISABLED,
+                                  command=lambda: self.cmd('MEDIA_TOGGLE_PLAYBACK'))
+        self.cmd_menu.add_command(label='Schedule sw update', state=DISABLED,
+                                  command=self.schedule_sw_update)
+        self.cmd_menu.add_command(label='Cancel software update', state=DISABLED,
+                                  command=lambda: self.cmd('CANCEL_SOFTWARE_UPDATE'))
         menu.add_cascade(label='Command', menu=self.cmd_menu)
         display_menu = Menu(menu, tearoff=0)
         self.auto_refresh = BooleanVar()
@@ -391,6 +407,7 @@ class App(Tk):
         help_menu.add_command(label='About', command=self.about)
         menu.add_cascade(label='Help', menu=help_menu)
         self.config(menu=menu)
+        self.update_scheduled = 0
         # Add widgets
         self.dashboard = Dashboard(self)
         self.dashboard.pack(pady=5, fill=X)
@@ -445,6 +462,8 @@ class App(Tk):
                     self.vehicle_menu.entryconfig(i, state=NORMAL)
                 self.cmd_menu.entryconfig(0, state=NORMAL)
                 self.select()
+            else:
+                self.status.text('No vehicles')
 
     def select(self):
         """ Select vehicle and start new thread to get vehicle image """
@@ -482,7 +501,9 @@ class App(Tk):
     def update_status(self):
         """ Creates a new thread to get vehicle summary """
         self.status_thread = StatusThread(self.vehicle)
-        self.status_thread.start()
+        # Don't start if auto refresh is enabled
+        if not self.auto_refresh.get():
+            self.status_thread.start()
         self.after(100, self.process_status)
 
     def process_status(self):
@@ -490,7 +511,7 @@ class App(Tk):
         if self.status_thread.is_alive():
             self.after(100, self.process_status)
         else:
-            # Reduce status polling rate if vehicle is not online
+            # Increase status polling rate if vehicle is online
             delay = 60000 if self.vehicle['state'] == 'online' else 240000
             # Run thread again and show status
             self.after(delay, self.update_status)
@@ -499,44 +520,52 @@ class App(Tk):
             else:
                 self.show_status()
 
-    def update_dashboard(self):
+    def update_dashboard(self, scheduled=False):
         """ Create new thread to get vehicle data """
-        # Make sure only one instance is running
+        if scheduled:
+            self.update_scheduled = False
+        if hasattr(self, 'vehicle') and self.vehicle['state'] != 'online':
+            return
         if hasattr(self, 'update_thread') and self.update_thread.is_alive():
             return
-        if hasattr(self, 'vehicle'):
+        if not self.update_scheduled:
             self.show_status()
-            if self.vehicle['state'] == 'online':
-                self.update_thread = UpdateThread(self.vehicle)
-                self.update_thread.start()
-                self.after(100, self.process_update_dashboard)
+            self.update_thread = UpdateThread(self.vehicle)
+            self.update_thread.start()
+            self.after(100, self.process_update_dashboard)
 
     def process_update_dashboard(self):
         """ Waits for thread to finish and updates dashboard data """
         if self.update_thread.is_alive():
             self.after(100, self.process_update_dashboard)
-        else:
+            return
+        try:
             delay = 4000  # Default update polling rate
             if self.update_thread.exception:
                 self.status.text(self.update_thread.exception)
                 self.status.indicator('red')
             else:
-                # Show time stamp
                 timestamp_ms = self.vehicle['vehicle_state']['timestamp']
                 self.status.status(time.ctime(timestamp_ms / 1000))
                 self.status.indicator('green')
-                # Update dashboard with new vehicle data
                 self.dashboard.update_widgets(self)
                 # Increase polling rate if charging or user present
                 if (self.vehicle['charge_state']['charging_state'] == 'Charging'
                     or self.vehicle['vehicle_state']['is_user_present']):
                         delay = 1000
-            # Run again if fail threshold is not exceeded and auto refresh is on
+            # Run again if auto refresh is on and fail threshold is not exceeded
             if self.auto_refresh.get() and self.update_thread.fail_cnt < 10:
-                self.after(delay, self.update_dashboard)
+                self.after(delay, self.update_dashboard, True)
+                self.update_scheduled = True
             else:
                 self.auto_refresh.set(FALSE)
                 self.status.indicator(None)
+        except Exception as e:
+            # On error turn off auto refresh and re-raise
+            self.status.text(e)
+            self.auto_refresh.set(FALSE)
+            self.status.indicator(None)
+            raise
 
     def wake_up(self):
         """ Creates a new thread to wake up vehicle """
@@ -611,19 +640,19 @@ class App(Tk):
                 r += 1
             LabelGridDialog(self, 'Nearby Charging Sites', table)
 
-    def api(self, name, **kwargs):
-        """ Creates a new thread to perform API call """
+    def cmd(self, name, **kwargs):
+        """ Creates a new thread to command vehicle """
         self.status.text('Please wait...')
-        self.api_thread = ApiThread(self.vehicle, name, **kwargs)
-        self.api_thread.start()
-        self.after(100, self.process_api)
+        self.command_thread = CommandThread(self.vehicle, name, **kwargs)
+        self.command_thread.start()
+        self.after(100, self.process_cmd)
 
-    def process_api(self):
+    def process_cmd(self):
         """ Waits for thread to finish and update widgets """
-        if self.api_thread.is_alive():
-            self.after(100, self.process_api)
-        elif self.api_thread.exception:
-            self.status.text(self.api_thread.exception)
+        if self.command_thread.is_alive():
+            self.after(100, self.process_cmd)
+        elif self.command_thread.exception:
+            self.status.text(self.command_thread.exception)
         else:
             # Update dashboard after 1 second if auto refresh is disabled
             if not self.auto_refresh.get():
@@ -631,59 +660,62 @@ class App(Tk):
 
     def lock_unlock(self):
         if self.vehicle['vehicle_state']['locked']:
-            self.api('UNLOCK')
+            self.cmd('UNLOCK')
         else:
-            self.api('LOCK')
+            self.cmd('LOCK')
                 
     def climate_on_off(self):
         if self.vehicle['climate_state']['is_climate_on']:
-            self.api('CLIMATE_OFF')
+            self.cmd('CLIMATE_OFF')
         else:
-            self.api('CLIMATE_ON')
+            self.cmd('CLIMATE_ON')
 
     def set_temperature(self):
         # Get user input using a simple dialog box
         temp = askfloat('Set', 'Temperature')
         if temp:
-            self.api('CHANGE_CLIMATE_TEMPERATURE_SETTING', driver_temp=temp,
+            self.cmd('CHANGE_CLIMATE_TEMPERATURE_SETTING', driver_temp=temp,
                      passenger_temp=temp)
 
     def actuate_trunk(self, which_trunk):
-        self.api('ACTUATE_TRUNK', which_trunk=which_trunk)
+        self.cmd('ACTUATE_TRUNK', which_trunk=which_trunk)
 
     def remote_start_drive(self):
         if self.password:
-            self.api('REMOTE_START', password=self.password)
+            self.cmd('REMOTE_START', password=self.password)
         else:
             self.status.text('Password required')
 
     def set_charge_limit(self):
         limit = askinteger('Set', 'Charge Limit')
         if limit:
-            self.api('CHANGE_CHARGE_LIMIT', percent=limit)
+            self.cmd('CHANGE_CHARGE_LIMIT', percent=limit)
 
     def open_close_charge_port(self):
         if self.vehicle['charge_state']['charge_port_door_open']:
-            self.api('CHARGE_PORT_DOOR_CLOSE')
+            self.cmd('CHARGE_PORT_DOOR_CLOSE')
         else:
-            self.api('CHARGE_PORT_DOOR_OPEN')
+            self.cmd('CHARGE_PORT_DOOR_OPEN')
 
     def start_stop_charge(self):
         if self.vehicle['charge_state']['charging_state'].lower() == 'charging':
-            self.api('STOP_CHARGE')
+            self.cmd('STOP_CHARGE')
         else:
-            self.api('START_CHARGE')
+            self.cmd('START_CHARGE')
 
     def seat_heater(self):
         dlg = SeatHeaterDialog(self)
         if dlg.result:
-            self.api('REMOTE_SEAT_HEATER_REQUEST', heater=dlg.result[0],
+            self.cmd('REMOTE_SEAT_HEATER_REQUEST', heater=dlg.result[0],
                      level=dlg.result[1])
 
     def vent_close_sun_roof(self):
         dlg = SunRoofDialog(self)
         if dlg.result:
-            self.api('CHANGE_SUNROOF_STATE', state=dlg.result)
+            self.cmd('CHANGE_SUNROOF_STATE', state=dlg.result)
+
+    def schedule_sw_update(self):
+        self.cmd('SCHEDULE_SOFTWARE_UPDATE', offset_sec=120)
 
     def set_log(self):
         level = logging.DEBUG if self.debug.get() else logging.WARNING
@@ -756,7 +788,7 @@ class WakeUpThread(threading.Thread):
     def run(self):
         try:
             self.vehicle.sync_wake_up()
-        except (teslapy.TimeoutError, teslapy.RequestException) as e:
+        except (teslapy.VehicleError, teslapy.RequestException) as e:
             self.exception = e
 
 class ImageThread(threading.Thread):
@@ -810,7 +842,7 @@ class StatusThread(threading.Thread):
         except (teslapy.RequestException, ValueError) as e:
             self.exception = e
 
-class ApiThread(threading.Thread):
+class CommandThread(threading.Thread):
 
     def __init__(self, vehicle, name, **kwargs):
         threading.Thread.__init__(self)
@@ -821,8 +853,8 @@ class ApiThread(threading.Thread):
 
     def run(self):
         try:
-            self.vehicle.api(self.name, **self.data)
-        except (teslapy.RequestException, ValueError) as e:
+            self.vehicle.command(self.name, **self.data)
+        except (teslapy.VehicleError, teslapy.RequestException, ValueError) as e:
             self.exception = e
 
 class NearbySitesThread(threading.Thread):

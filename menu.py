@@ -78,7 +78,7 @@ def show_vehicle_data(vehicle):
     print(fmt.format(str(dr['power']) + ' kW', vehicle.dist_units(speed, True)))
     fmt = 'Shift State: {:23} Heading: {}'
     print(fmt.format(str(dr['shift_state']), heading_to_str(dr['heading'])))
-    print('GPS: {:.75}'.format(location))
+    print('GPS: {:.75}'.format(str(location)))
     print('-'*80)
     # Charging state
     fmt = 'Charging State: {:20} Time To Full Charge: {:02.0f}:{:02.0f}'
@@ -132,7 +132,7 @@ def menu(vehicle):
            'Flash lights', 'Lock/unlock', 'Climate on/off', 'Set temperature',
            'Actuate frunk', 'Actuate trunk', 'Remote start drive',
            'Set charge limit', 'Open/close charge port', 'Start/stop charge',
-           'Seat heater request', 'Vent/close sun roof']
+           'Seat heater request', 'Sun roof control', 'Toggle media playback']
     opt = 0
     while True:
         # Display vehicle info, except after nearby charging sites
@@ -171,51 +171,53 @@ def menu(vehicle):
         elif opt == 3:
             show_charging_sites(vehicle)
         elif opt == 4:
-            vehicle.api('HONK_HORN')
+            vehicle.command('HONK_HORN')
         elif opt == 5:
-            vehicle.api('FLASH_LIGHTS')
+            vehicle.command('FLASH_LIGHTS')
         elif opt == 6:
             if vehicle['vehicle_state']['locked']:
-                vehicle.api('UNLOCK')
+                vehicle.command('UNLOCK')
             else:
-                vehicle.api('LOCK')
+                vehicle.command('LOCK')
         elif opt == 7:
             if vehicle['climate_state']['is_climate_on']:
-                vehicle.api('CLIMATE_OFF')
+                vehicle.command('CLIMATE_OFF')
             else:
-                vehicle.api('CLIMATE_ON')
+                vehicle.command('CLIMATE_ON')
         elif opt == 8:
             temp = float(raw_input("Enter temperature: "))
-            vehicle.api('CHANGE_CLIMATE_TEMPERATURE_SETTING', driver_temp=temp,
+            vehicle.command('CHANGE_CLIMATE_TEMPERATURE_SETTING', driver_temp=temp,
                         passenger_temp=temp)
         elif opt == 9:
-            vehicle.api('ACTUATE_TRUNK', which_trunk='front')
+            vehicle.command('ACTUATE_TRUNK', which_trunk='front')
         elif opt == 10:
-            vehicle.api('ACTUATE_TRUNK', which_trunk='rear')
+            vehicle.command('ACTUATE_TRUNK', which_trunk='rear')
         elif opt == 11:
             vehicle.remote_start_drive()
         elif opt == 12:
             limit = int(raw_input("Enter charge limit: "))
-            vehicle.api('CHANGE_CHARGE_LIMIT', percent=limit)
+            vehicle.command('CHANGE_CHARGE_LIMIT', percent=limit)
         elif opt == 13:
             if vehicle['charge_state']['charge_port_door_open']:
-                vehicle.api('CHARGE_PORT_DOOR_CLOSE')
+                vehicle.command('CHARGE_PORT_DOOR_CLOSE')
             else:
-                vehicle.api('CHARGE_PORT_DOOR_OPEN')
+                vehicle.command('CHARGE_PORT_DOOR_OPEN')
         elif opt == 14:
             if vehicle['charge_state']['charging_state'].lower() == 'charging':
-                vehicle.api('STOP_CHARGE')
+                vehicle.command('STOP_CHARGE')
             else:
-                vehicle.api('START_CHARGE')
+                vehicle.command('START_CHARGE')
         elif opt == 15:
             heater = int(raw_input("Enter heater (0=Driver,1=Passenger,"
                                    "2=Rear left,3=Rear center,4=Rear right): "))
             level = int(raw_input("Enter level (0..3): "))
-            vehicle.api('REMOTE_SEAT_HEATER_REQUEST', heater=heater,
-                        level=level)
+            vehicle.command('REMOTE_SEAT_HEATER_REQUEST', heater=heater,
+                            level=level)
         elif opt == 16:
             state = raw_input("Enter state (close/vent):")
-            vehicle.api('CHANGE_SUNROOF_STATE', state=state)
+            vehicle.command('CHANGE_SUNROOF_STATE', state=state)
+        elif opt == 17:
+            vehicle.command('MEDIA_TOGGLE_PLAYBACK')
 
 def main():
     logging.basicConfig(level=logging.DEBUG,

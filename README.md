@@ -28,6 +28,7 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the API. 
 | temp_units () | convert temperature units to GUI setting of the car |
 | decode_vin() | decode the vehicle identification number |
 | remote_start_drive() | enable keyless drive (requires password to be set) |
+| command() | vehicle command request with error handling |
 
 Only `vehicle_list()`, `get_vehicle_summary()`, `option_code_list()`, `compose_image()` and `decode_vin()` are available when the vehicle is asleep or offline. Other methods and API calls require the vehicle to be brought online by using `sync_wake_up()`.
 
@@ -41,7 +42,7 @@ with teslapy.Tesla(EMAIL, PASSWORD, CLIENT_ID, CLIENT_SECRET) as tesla:
 	tesla.fetch_token()
 	vehicles = tesla.vehicle_list()
 	vehicles[0].sync_wake_up()
-	vehicles[0].api('ACTUATE_TRUNK', which_trunk='front')
+	vehicles[0].command('ACTUATE_TRUNK', which_trunk='front')
 ```
 
 These are the major endpoints:
@@ -85,12 +86,12 @@ Basic exception handling:
 
 ```python
     try:
-        vehicles[0].api('HONK_HORN')
-    except (teslapy.HTTPError) as e:
+        vehicles[0].command('HONK_HORN')
+    except teslapy.HTTPError as e:
         print(e)
 ```
 
-All `requests.exceptions` classes are imported by the module. When the vehicle is asleep or offline and the vehicle needs to be online for the API endpoint to be executed, the following exception is raised: `requests.exceptions.HTTPError: 408 Client Error: vehicle unavailable`. The exception can be caught as `teslapy.HTTPError`. Additionally, `sync_wake_up()` raises `teslapy.TimeoutError` when the vehicle does not come online within the specified timeout.
+All `requests.exceptions` classes are imported by the module. When the vehicle is asleep or offline and the vehicle needs to be online for the API endpoint to be executed, the following exception is raised: `requests.exceptions.HTTPError: 408 Client Error: vehicle unavailable`. The exception can be caught as `teslapy.HTTPError`. Additionally, `sync_wake_up()` raises `teslapy.VehicleError` when the vehicle does not come online within the specified timeout. And `command()` also raises `teslapy.VehicleError` when the API response result is false. If one of the media endpoints is called and there is no user in the vehicle, the following exception is raised: `VehicleError: user_not_present`.
 
 ## Applications
 

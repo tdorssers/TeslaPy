@@ -61,12 +61,11 @@ class Tesla(requests.Session):
         if not self.authorized:
             if not self.password:
                 raise ValueError('Password required')
-            data = {'grant_type': 'password',
-                    'client_id': self.client_id,
-                    'client_secret': self.client_secret,
-                    'email': self.email, 'password': self.password}
             # Request new token
-            response = self.api('AUTHENTICATE', data=data)
+            response = self.api('AUTHENTICATE', grant_type='password',
+                                client_id=self.client_id,
+                                client_secret=self.client_secret,
+                                email=self.email, password=self.password)
             if 'access_token' in response:
                 self.token = response
                 self.expires_at = (self.token['created_at']
@@ -113,12 +112,11 @@ class Tesla(requests.Session):
         """ Requests a new token using a refresh token """
         if self.authorized:
             self.expires_at = 0
-            data = {'grant_type': 'refresh_token',
-                    'client_id': self.client_id,
-                    'client_secret': self.client_secret,
-                    'refresh_token': self.token['refresh_token']}
             # Request new token
-            response = self.api('AUTHENTICATE', data=data)
+            response = self.api('AUTHENTICATE', grant_type='refresh_token',
+                                client_id=self.client_id,
+                                client_secret=self.client_secret,
+                                refresh_token=self.token['refresh_token'])
             if 'access_token' in response:
                 self.token = response
                 self.expires_at = (self.token['created_at']
@@ -165,8 +163,8 @@ class Tesla(requests.Session):
         """ Returns a list of Vehicle objects """
         return [Vehicle(v, self) for v in self.api('VEHICLE_LIST')['response']]
 
-class TimeoutError(Exception):
-    """ Custom exception raised when a wake up task has timed out """
+class VehicleError(Exception):
+    """ Vehicle exception class """
     pass
 
 class JsonDict(dict):
@@ -179,10 +177,11 @@ class JsonDict(dict):
 class Vehicle(JsonDict):
     """ Vehicle class with dictionary access and API request support """
 
+    codes = None  # Vehicle option codes class variable
+
     def __init__(self, vehicle, tesla):
         super(Vehicle, self).__init__(vehicle)
         self.tesla = tesla
-        self.codes = {}
 
     def api(self, name, **kwargs):
         """ Endpoint request with vehicle_id path variable """
@@ -206,20 +205,21 @@ class Vehicle(JsonDict):
                 self.get_vehicle_summary()
                 # Raise exception when task has timed out
                 if (start_time + timeout < time.time()):
-                    raise TimeoutError('%s not woken up within %s seconds' %
-                                       (self['display_name'], timeout))
+                    raise VehicleError('%s not woken up within %s seconds'
+                                       % (self['display_name'], timeout))
                 interval *= backoff
             logging.info('%s is %s' % (self['display_name'], self['state']))
 
     def option_code_list(self):
         """ Returns a list of known option code titles """
         # Load option codes once
-        if not self.codes:
+        if Vehicle.codes is None:
             try:
                 with open('option_codes.json') as infile:
-                    self.codes = json.load(infile)
-                    logging.debug('%d option codes loaded' % len(self.codes))
+                    Vehicle.codes = json.load(infile)
+                    logging.debug('%d option codes loaded' % len(Vehicle.codes))
             except (IOError, ValueError):
+                Vehicle.codes = {}
                 logging.error('No option codes loaded')
         # Make list of known option code titles
         return [self.codes[c] for c in self['option_codes'].split(',')
@@ -255,6 +255,8 @@ class Vehicle(JsonDict):
 
     def dist_units(self, miles, speed=False):
         """ Format and convert distance or speed to GUI setting units """
+        if miles is None:
+            return None
         if not 'gui_settings' in self:
             self.get_vehicle_data()
         # Lookup GUI settings of the vehicle
@@ -265,6 +267,8 @@ class Vehicle(JsonDict):
 
     def temp_units(self, celcius):
         """ Format and convert temperature to GUI setting units """
+        if celcius is None:
+            return None
         if not 'gui_settings' in self:
             self.get_vehicle_data()
         # Lookup GUI settings of the vehicle
@@ -298,4 +302,11 @@ class Vehicle(JsonDict):
         """ Enables keyless driving for two minutes """
         if not self.tesla.password:
             raise ValueError('Password required')
-        return self.api('REMOTE_START', password=self.tesla.password)
+        return self.command('REMOTE_START', password=self.tesla.password)
+
+    def command(self, name, **kwargs):
+        """ Vehicle command request with error handling """
+        response = self.api(name, **kwargs)['response']
+        if not response['result']:
+            raise VehicleError(response['reason'])
+        return response['result']
