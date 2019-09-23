@@ -154,9 +154,11 @@ class Tesla(requests.Session):
             uri = uri.format(**path_vars)
         except KeyError as e:
             raise ValueError('%s requires path variable %s' % (name, e))
+        # Hide password in debug logging parameters
+        log = {k: v if k != 'password' else '***' for k, v in kwargs.items()}
+        if log:
+            logging.debug('%s: %s' % (name, json.dumps(log)))
         # Perform request using given keyword arguments as parameters
-        if kwargs:
-            logging.debug('%s: %s' % (name, json.dumps(kwargs)))
         return self.request(endpoint['TYPE'], uri, data=kwargs)
 
     def vehicle_list(self):
