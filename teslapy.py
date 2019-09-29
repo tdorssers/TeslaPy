@@ -1,6 +1,7 @@
-""" This module provides access the Tesla Motors API and handles OAuth 2.0
-password granting and bearer tokens. Tokens are saved to disk for reuse. It
-requires a login and password to teslamotors.com and a client ID and secret.
+""" This module provides access the Tesla Motors Owner API and handles OAuth 2.0
+password granting and bearer token renewal. Tokens are saved to disk for reuse.
+API endpoints are loaded from 'endpoints.json'. Credentials to teslamotors.com
+and client ID and secret are required.
 """
 
 # Author: Tim Dorssers
@@ -143,7 +144,7 @@ class Tesla(requests.Session):
         except KeyError:
             raise ValueError('Unknown endpoint name ' + name)
         # Only JSON is supported
-        if endpoint.get('CONTENT', 'JSON') != 'JSON':
+        if endpoint.get('CONTENT', 'JSON') != 'JSON' or name == 'STATUS':
             raise NotImplementedError('Endpoint %s not implemented' % name)
         # Fetch token if not authorized and API requires authorization
         if endpoint['AUTH'] and not self.authorized:
@@ -307,7 +308,7 @@ class Vehicle(JsonDict):
         return self.command('REMOTE_START', password=self.tesla.password)
 
     def command(self, name, **kwargs):
-        """ Vehicle command request with error handling """
+        """ Wrapper method for vehicle command response error handling """
         response = self.api(name, **kwargs)['response']
         if not response['result']:
             raise VehicleError(response['reason'])

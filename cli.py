@@ -1,4 +1,4 @@
-""" Tesla API CLI application using TeslaPy module """
+""" Tesla Owner API CLI application using TeslaPy module """
 
 # Author: Tim Dorssers
 
@@ -12,7 +12,7 @@ CLIENT_ID='e4a9949fcfa04068f59abb5a658f2bac0a3428e4652315490b659d5ab3f35a9e'
 CLIENT_SECRET='c75f14bbadc8bee3a7594412c31416f8300256d7668ea7e6e7f06727bfb9d220'
 
 def main():
-    parser = argparse.ArgumentParser(description='Tesla API CLI')
+    parser = argparse.ArgumentParser(description='Tesla Owner API CLI')
     parser.add_argument('-e', dest='email', help='login email', required=True)
     parser.add_argument('-p', dest='password', nargs='?', const='',
                         help='prompt/specify login password')
@@ -20,6 +20,7 @@ def main():
     parser.add_argument('-a', dest='api', help='API call endpoint name')
     parser.add_argument('-k', dest='keyvalue', help='API parameter (key=value)',
                         action='append', type=lambda kv: kv.split('=', 1))
+    parser.add_argument('-c', dest='command', help='vehicle command endpoint')
     parser.add_argument('-l', '--list', action='store_true',
                         help='list all selected vehicles')
     parser.add_argument('-o', '--option', action='store_true',
@@ -51,7 +52,8 @@ def main():
         if args.filter:
             selected = [c for c in cars for v in c.values() if v == args.filter]
         logging.info('%d vehicle(s), %d selected' % (len(cars), len(selected)))
-        for vehicle in selected:
+        for i, vehicle in enumerate(selected):
+            print('Vehicle %d:' % i)
             if args.list:
                 print(vehicle)
             if args.option:

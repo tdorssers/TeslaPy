@@ -1,4 +1,4 @@
-""" Tesla API GUI application using TeslaPy module """
+""" Tesla Owner API GUI application using TeslaPy module """
 
 # Author: Tim Dorssers
 
@@ -43,7 +43,7 @@ class LoginDialog(Dialog):
         self.result = (self.email.get(), self.password.get())
 
 class LabelGridDialog(Dialog):
-    """ Display dialog box with label table and single button """
+    """ Display dialog box with table without cancel button """
 
     def __init__(self, master, title=None, table=[]):
         self.table = table
@@ -51,11 +51,8 @@ class LabelGridDialog(Dialog):
         Dialog.__init__(self, master, title)
 
     def body(self, master):
-        for label in self.table:
-            if isinstance(label, dict):
-                Label(master, text=label.pop('text')).grid(label)
-            else:
-                Label(master, text=label).grid()
+        for args in self.table:
+            Label(master, text=args.pop('text')).grid(args)
 
     def buttonbox(self):
         box = Frame(self)
@@ -127,7 +124,7 @@ class StatusBar(Frame):
         self.update_idletasks()
 
 class LabelVarGrid(Label):
-    """ Label widget with textvariable and grid positioning """
+    """ Label widget with updatable textvariable and grid positioning """
 
     def __init__(self, master, **kwargs):
         Label.__init__(self, master)
@@ -213,7 +210,7 @@ class Dashboard(Frame):
         self.shift_state = LabelVarGrid(group, row=1, column=1, sticky=W)
         self.heading= LabelVarGrid(group, row=1, column=3, sticky=W)
         self.gps = LabelVarGrid(group, row=2, column=1, columnspan=3, sticky=W)
-        self.gps.config(wraplength=350, justify=LEFT)
+        self.gps.config(wraplength=330, justify=LEFT)
         # Charging state on right frame
         group = LabelFrame(right, text='Charging State', padx=5, pady=5)
         group.pack(padx=5, pady=5, fill=X)
@@ -590,13 +587,14 @@ class App(Tk):
 
     def about(self):
         LabelGridDialog(self, 'About',
-                        ['Tesla API Python GUI by Tim Dorssers',
-                         'Tcl/Tk toolkit ' + str(TkVersion)])
+                        [{'text': 'Tesla Owner API Python GUI by Tim Dorssers'},
+                         {'text': 'Tcl/Tk toolkit version %s' % TkVersion}])
 
     def option_codes(self):
-        codes = self.vehicle.option_code_list()
-        LabelGridDialog(self, 'Option codes',
-                        [dict(text=opt, sticky=W) for opt in codes])
+        table = []
+        for i, item in enumerate(self.vehicle.option_code_list()):
+            table.append(dict(text=item, row=i // 2, column=i % 2, sticky=W))
+        LabelGridDialog(self, 'Option codes', table)
 
     def decode_vin(self):
         table = []
@@ -753,16 +751,13 @@ class UpdateThread(threading.Thread):
         try:
             self.vehicle.get_vehicle_data()
         except (teslapy.RequestException, ValueError) as e:
-            # Increase class variable for consecutive errors
-            UpdateThread.fail_cnt += 1
+            UpdateThread.fail_cnt += 1  # Increase for consecutive errors
             self.exception = e
         else:
-            UpdateThread.fail_cnt = 0
             coords = '%s, %s' % (self.vehicle['drive_state']['latitude'],
                                  self.vehicle['drive_state']['longitude'])
             # Have coordinates changed over previous instance?
             if self._coords != coords:
-                # Set class variable to new coordinates
                 UpdateThread._coords = coords
                 # Fallback to coordinates if lookup fails
                 self.location = coords
@@ -771,12 +766,14 @@ class UpdateThread(threading.Thread):
                     osm = Nominatim(user_agent='TeslaPy')
                     self.location = osm.reverse(coords)
                 except GeocoderTimedOut:
-                    pass
+                    UpdateThread._coords = None  # Force lookup
                 except GeopyError as e:
+                    UpdateThread._coords = None
+                    UpdateThread.fail_cnt += 1
                     self.exception = e
                 finally:
-                    # Save location in class variable
-                    UpdateThread.location = self.location
+                    UpdateThread.location = self.location  # Save location
+            UpdateThread.fail_cnt = 0
 
 class WakeUpThread(threading.Thread):
 
