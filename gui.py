@@ -81,11 +81,11 @@ class SeatHeaterDialog(Dialog):
         # Only return heater ID and level
         self.result = (int(self.heater.get()[0]), self.level.get())
 
-class SunRoofDialog(Dialog):
-    """ Display dialog box with radio buttons to select sun roof state """
+class ControlDialog(Dialog):
+    """ Display dialog box with radio buttons to select sunroof/window state """
 
-    def __init__(self, master):
-        Dialog.__init__(self, master, title='Sun Roof')
+    def __init__(self, master, title=None):
+        Dialog.__init__(self, master, title)
 
     def body(self, master):
         self.state = StringVar(value='vent')
@@ -172,8 +172,10 @@ class Dashboard(Frame):
         group.pack(padx=5, pady=5, fill=X)
         lst = ['Vehicle Name:', 'Odometer:', 'Car Version:', 'Locked:',
                'Driver Front Door:', 'Passenger Front Door:',
-               'Driver Rear Door:', 'Passenger Rear Door:', 'Front Trunk:',
-               'Rear Trunk:', 'Remote Start:', 'Sun Roof Percent Open:',
+               'Driver Rear Door:', 'Passenger Rear Door:',
+               'Driver Front Window:', 'Passenger Front Window:',
+               'Driver Rear Window:', 'Passenger Rear Window:', 'Front Trunk:',
+               'Rear Trunk:', 'Remote Start:', 'Is User Present:',
                'Speed Limit Mode:', 'Current Limit:', 'Speed Limit Pin Set:',
                'Sentry Mode:', 'Valet Mode:', 'Valet Pin Set:',
                'Software Update:', 'Expected duration:']
@@ -187,18 +189,22 @@ class Dashboard(Frame):
         self.pf = LabelVarGrid(group, row=2, column=3, sticky=W)
         self.dr = LabelVarGrid(group, row=3, column=1, sticky=W)
         self.pr = LabelVarGrid(group, row=3, column=3, sticky=W)
-        self.ft = LabelVarGrid(group, row=4, column=1, sticky=W)
-        self.rt = LabelVarGrid(group, row=4, column=3, sticky=W)
-        self.remote_start = LabelVarGrid(group, row=5, column=1, sticky=W)
-        self.sun_roof = LabelVarGrid(group, row=5, column=3, sticky=W)
-        self.speed_limit = LabelVarGrid(group, row=6, column=1, sticky=W)
-        self.current_limit = LabelVarGrid(group, row=6, column=3, sticky=W)
-        self.speed_limit_pin = LabelVarGrid(group, row=7, column=1, sticky=W)
-        self.sentry_mode = LabelVarGrid(group, row=7, column=3, sticky=W)
-        self.valet_mode = LabelVarGrid(group, row=8, column=1, sticky=W)
-        self.valet_pin = LabelVarGrid(group, row=8, column=3, sticky=W)
-        self.sw_update = LabelVarGrid(group, row=9, column=1, sticky=W)
-        self.sw_duration = LabelVarGrid(group, row=9, column=3, sticky=W)
+        self.fd = LabelVarGrid(group, row=4, column=1, sticky=W)
+        self.fp = LabelVarGrid(group, row=4, column=3, sticky=W)
+        self.rd = LabelVarGrid(group, row=5, column=1, sticky=W)
+        self.rp = LabelVarGrid(group, row=5, column=3, sticky=W)
+        self.ft = LabelVarGrid(group, row=6, column=1, sticky=W)
+        self.rt = LabelVarGrid(group, row=6, column=3, sticky=W)
+        self.remote_start = LabelVarGrid(group, row=7, column=1, sticky=W)
+        self.user_present = LabelVarGrid(group, row=7, column=3, sticky=W)
+        self.speed_limit = LabelVarGrid(group, row=8, column=1, sticky=W)
+        self.current_limit = LabelVarGrid(group, row=8, column=3, sticky=W)
+        self.speed_limit_pin = LabelVarGrid(group, row=9, column=1, sticky=W)
+        self.sentry_mode = LabelVarGrid(group, row=9, column=3, sticky=W)
+        self.valet_mode = LabelVarGrid(group, row=10, column=1, sticky=W)
+        self.valet_pin = LabelVarGrid(group, row=10, column=3, sticky=W)
+        self.sw_update = LabelVarGrid(group, row=11, column=1, sticky=W)
+        self.sw_duration = LabelVarGrid(group, row=11, column=3, sticky=W)
         # Drive state on right frame
         group = LabelFrame(right, text='Drive State', padx=5, pady=5)
         group.pack(padx=5, pady=5, fill=X)
@@ -208,7 +214,7 @@ class Dashboard(Frame):
         self.power = LabelVarGrid(group, row=0, column=1, sticky=W)
         self.speed = LabelVarGrid(group, row=0, column=3, sticky=W)
         self.shift_state = LabelVarGrid(group, row=1, column=1, sticky=W)
-        self.heading= LabelVarGrid(group, row=1, column=3, sticky=W)
+        self.heading = LabelVarGrid(group, row=1, column=3, sticky=W)
         self.gps = LabelVarGrid(group, row=2, column=1, columnspan=3, sticky=W)
         self.gps.config(wraplength=330, justify=LEFT)
         # Charging state on right frame
@@ -219,7 +225,8 @@ class Dashboard(Frame):
                'Battery Level:', 'Battery Range:', 'Charge Energy Added:',
                'Charge Range Added:', 'Charge Limit SOC:',
                'Estimated Battery Range:', 'Charge Port Door Open:',
-               'Charge Port Latch:']
+               'Charge Port Latch:', 'Fast Charger:', 'Trip Charging:',
+               'Scheduled Charging:', 'Charging Start Time:']
         for i, t in enumerate(lst):
             Label(group, text=t).grid(row=i // 2, column=i % 2 * 2, sticky=E)
         self.charging_state = LabelVarGrid(group, row=0, column=1, sticky=W)
@@ -236,6 +243,10 @@ class Dashboard(Frame):
         self.est_battery_range = LabelVarGrid(group, row=5, column=3, sticky=W)
         self.charge_port_door = LabelVarGrid(group, row=6, column=1, sticky=W)
         self.charge_port_latch = LabelVarGrid(group, row=6, column=3, sticky=W)
+        self.fast_charger = LabelVarGrid(group, row=7, column=1, sticky=W)
+        self.trip_charging = LabelVarGrid(group, row=7, column=3, sticky=W)
+        self.charging_pending = LabelVarGrid(group, row=8, column=1, sticky=W)
+        self.charging_start = LabelVarGrid(group, row=8, column=3, sticky=W)
         # Vehicle config on left frame
         group = LabelFrame(left, text='Vehicle Config', padx=5, pady=5)
         group.pack(padx=5, pady=5, fill=X)
@@ -273,14 +284,19 @@ class Dashboard(Frame):
         self.car_version.text(ve['car_version'])
         self.locked.text(str(ve['locked']))
         door = ['Closed', 'Open']
-        self.df.text(door[ve['df']])
-        self.pf.text(door[ve['pf']])
-        self.dr.text(door[ve['dr']])
-        self.pr.text(door[ve['pr']])
+        self.df.text(door[bool(ve['df'])])
+        self.pf.text(door[bool(ve['pf'])])
+        self.dr.text(door[bool(ve['dr'])])
+        self.pr.text(door[bool(ve['pr'])])
+        window = {0: 'Closed', 1: 'Venting', 2: 'Open'}
+        self.fd.text(window.get(ve.get('fd_window')))
+        self.fp.text(window.get(ve.get('fp_window')))
+        self.rd.text(window.get(ve.get('rd_window')))
+        self.rp.text(window.get(ve.get('rp_window')))
         self.ft.text(door[ve['ft']])
         self.rt.text(door[ve['rt']])
         self.remote_start.text(str(ve['remote_start']))
-        self.sun_roof.text(ve['sun_roof_percent_open'])
+        self.user_present.text(str(ve['is_user_present']))
         self.speed_limit.text(str(ve['speed_limit_mode']['active']))
         limit = ve['speed_limit_mode']['current_limit_mph']
         self.current_limit.text(app.vehicle.dist_units(limit, True))
@@ -314,11 +330,19 @@ class Dashboard(Frame):
         self.battery_level.text('%d %%' % ch['battery_level'])
         self.battery_range.text(app.vehicle.dist_units(ch['battery_range']))
         self.energy_added.text('%.1f kWh' % ch['charge_energy_added'])
-        self.range_added.text(app.vehicle.dist_units(ch['charge_miles_added_ideal']))
+        self.range_added.text(app.vehicle.dist_units(ch['charge_miles_added_rated']))
         self.charge_limit_soc.text('%d %%' % ch['charge_limit_soc'])
         self.est_battery_range.text(app.vehicle.dist_units(ch['est_battery_range']))
         self.charge_port_door.text(str(ch['charge_port_door_open']))
         self.charge_port_latch.text(str(ch['charge_port_latch']))
+        self.fast_charger.text(str(ch['fast_charger_present']))
+        self.trip_charging.text(str(ch['trip_charging']))
+        self.charging_pending.text(str(ch['scheduled_charging_pending']))
+        if ch['scheduled_charging_start_time']:
+            st = time.localtime(ch['scheduled_charging_start_time'])
+            self.charging_start.text(time.strftime('%X', st))
+        else:
+            self.charging_start.text(None)
         # Vehicle config
         self.car_type.text(co['car_type'])
         self.exterior_color.text(co['exterior_color'])
@@ -358,10 +382,8 @@ class App(Tk):
                                   command=self.wake_up)
         self.cmd_menu.add_command(label='Nearby charging sites', state=DISABLED,
                                   command=self.charging_sites)
-        self.cmd_menu.add_command(label='Honk horn', state=DISABLED,
-                                  command=lambda: self.cmd('HONK_HORN'))
-        self.cmd_menu.add_command(label='Flash lights', state=DISABLED,
-                                  command=lambda: self.cmd('FLASH_LIGHTS'))
+        self.cmd_menu.add_command(self.add_cmd_args('HONK_HORN'))
+        self.cmd_menu.add_command(self.add_cmd_args('FLASH_LIGHTS'))
         self.cmd_menu.add_command(label='Lock/unlock', state=DISABLED,
                                   command=self.lock_unlock)
         self.cmd_menu.add_command(label='Climate on/off', state=DISABLED,
@@ -384,12 +406,21 @@ class App(Tk):
                                   command=self.seat_heater)
         self.cmd_menu.add_command(label='Control sun roof', state=DISABLED,
                                   command=self.vent_close_sun_roof)
-        self.cmd_menu.add_command(label='Toggle media playback', state=DISABLED,
-                                  command=lambda: self.cmd('MEDIA_TOGGLE_PLAYBACK'))
+        self.media_menu = Menu(menu, tearoff=0)
+        self.cmd_menu.add_cascade(label='Media', state=DISABLED,
+                                  menu=self.media_menu)
+        for endpoint in ['MEDIA_TOGGLE_PLAYBACK', 'MEDIA_NEXT_TRACK',
+                         'MEDIA_PREVIOUS_TRACK', 'MEDIA_NEXT_FAVORITE',
+                         'MEDIA_PREVIOUS_FAVORITE', 'MEDIA_VOLUME_UP',
+                         'MEDIA_VOLUME_DOWN']:
+            self.media_menu.add_command(self.add_cmd_args(endpoint))
         self.cmd_menu.add_command(label='Schedule sw update', state=DISABLED,
                                   command=self.schedule_sw_update)
-        self.cmd_menu.add_command(label='Cancel software update', state=DISABLED,
-                                  command=lambda: self.cmd('CANCEL_SOFTWARE_UPDATE'))
+        self.cmd_menu.add_command(self.add_cmd_args('CANCEL_SOFTWARE_UPDATE'))
+        self.cmd_menu.add_command(label='Control windows', state=DISABLED,
+                                  command=self.window_control)
+        self.cmd_menu.add_command(label='Max defrost', state=DISABLED,
+                                  command=self.max_defrost)
         menu.add_cascade(label='Command', menu=self.cmd_menu)
         display_menu = Menu(menu, tearoff=0)
         self.auto_refresh = BooleanVar()
@@ -423,6 +454,11 @@ class App(Tk):
         # Initialize logging
         logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
         self.set_log()
+
+    def add_cmd_args(self, endpoint):
+        """ Return add_command arguments for given named endpoint """
+        return {'label': endpoint.capitalize().replace('_', ' '),
+                'state': DISABLED, 'command': lambda: self.cmd(endpoint)}
 
     def login(self):
         """ Display login dialog and start new thread to get vehicle list """
@@ -494,12 +530,15 @@ class App(Tk):
         for i in range(1, self.cmd_menu.index(END) + 1):
             if self.cmd_menu.entrycget(i, 'state') != state:
                 self.cmd_menu.entryconfig(i, state=state)
+        for i in range(0, self.media_menu.index(END) + 1):
+            if self.media_menu.entrycget(i, 'state') != state:
+                self.media_menu.entryconfig(i, state=state)
 
     def update_status(self):
         """ Creates a new thread to get vehicle summary """
         self.status_thread = StatusThread(self.vehicle)
         # Don't start if auto refresh is enabled
-        if not self.auto_refresh.get():
+        if not self.auto_refresh.get() or self.vehicle['state'] != 'online':
             self.status_thread.start()
         self.after(100, self.process_status)
 
@@ -525,7 +564,7 @@ class App(Tk):
             return
         if hasattr(self, 'update_thread') and self.update_thread.is_alive():
             return
-        if not self.update_scheduled:
+        if hasattr(self, 'vehicle') and not self.update_scheduled:
             self.show_status()
             self.update_thread = UpdateThread(self.vehicle)
             self.update_thread.start()
@@ -559,7 +598,8 @@ class App(Tk):
                 self.status.indicator(None)
         except Exception as e:
             # On error turn off auto refresh and re-raise
-            self.status.text(e)
+            import sys
+            self.status.text('{}: {}'.format(*sys.exc_info()[:2]))
             self.auto_refresh.set(FALSE)
             self.status.indicator(None)
             raise
@@ -708,12 +748,26 @@ class App(Tk):
                      level=dlg.result[1])
 
     def vent_close_sun_roof(self):
-        dlg = SunRoofDialog(self)
+        dlg = ControlDialog(self, 'Sun Roof')
         if dlg.result:
             self.cmd('CHANGE_SUNROOF_STATE', state=dlg.result)
 
     def schedule_sw_update(self):
         self.cmd('SCHEDULE_SOFTWARE_UPDATE', offset_sec=120)
+
+    def window_control(self):
+        dlg = ControlDialog(self, 'Windows')
+        if dlg.result:
+            self.cmd('WINDOW_CONTROL', command=dlg.result, lat=0, lon=0)
+
+    def max_defrost(self):
+        try:
+            if self.vehicle['climate_state']['defrost_mode']:
+                self.cmd('MAX_DEFROST', on=False)
+            else:
+                self.cmd('MAX_DEFROST', on=True)
+        except KeyError:
+            pass
 
     def set_log(self):
         level = logging.DEBUG if self.debug.get() else logging.WARNING
@@ -725,12 +779,12 @@ class App(Tk):
         config.add_section('display')
         if hasattr(self, 'email'):
             config.set('app', 'email', self.email)
-        config.set('display', 'auto_refresh', self.auto_refresh.get())
-        config.set('display', 'debug', self.debug.get())
         try:
+            config.set('display', 'auto_refresh', self.auto_refresh.get())
+            config.set('display', 'debug', self.debug.get())
             with open('gui.ini', 'w') as configfile:
                 config.write(configfile)
-        except IOError:
+        except (IOError, AttributeError):
             pass
         finally:
             self.quit()

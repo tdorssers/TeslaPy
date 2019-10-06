@@ -36,80 +36,86 @@ def show_vehicle_data(vehicle):
         logging.error(e)
         location = coords
     # Climate state
-    fmt = 'Outside Temperature: {:15} Inside Temperature: {}'
+    fmt = 'Outside Temperature: {:17} Inside Temperature: {}'
     print(fmt.format(vehicle.temp_units(cl['outside_temp']),
                      vehicle.temp_units(cl['inside_temp'])))
-    fmt = 'Driver Temperature Setting: {:8} Passenger Temperature Setting: {}'
+    fmt = 'Driver Temperature Setting: {:10} Passenger Temperature Setting: {}'
     print(fmt.format(vehicle.temp_units(cl['driver_temp_setting']),
                      vehicle.temp_units(cl['passenger_temp_setting'])))
-    fmt = 'Is Climate On: {:21} Fan Speed: {}'
+    fmt = 'Is Climate On: {:23} Fan Speed: {}'
     print(fmt.format(str(cl['is_climate_on']), cl['fan_status']))
-    fmt = 'Driver Seat Heater: {:16} Passenger Seat Heater: {}'
+    fmt = 'Driver Seat Heater: {:18} Passenger Seat Heater: {}'
     print(fmt.format(str(cl['seat_heater_left']), str(cl['seat_heater_right'])))
-    fmt = 'Is Front Defroster On: {:13} Is Rear Defroster On: {}'
-    print(fmt.format(str(cl['is_front_defroster_on']), str(cl['is_rear_defroster_on'])))
+    fmt = 'Is Front Defroster On: {:15} Is Rear Defroster On: {}'
+    print(fmt.format(str(cl['is_front_defroster_on']),
+                     str(cl['is_rear_defroster_on'])))
     print('-'*80)
     # Vehicle state
-    fmt = 'Vehicle Name: {:22} Odometer: {}'
+    fmt = 'Vehicle Name: {:24} Odometer: {}'
     print(fmt.format(ve['vehicle_name'], vehicle.dist_units(ve['odometer'])))
-    fmt = 'Car Version: {:23} Locked: {}'
+    fmt = 'Car Version: {:25} Locked: {}'
     print(fmt.format(ve['car_version'], ve['locked']))
     door = ['Closed', 'Open']
-    fmt = 'Driver Front Door: {:17} Passenger Front Door: {}'
-    print(fmt.format(door[ve['df']], door[ve['pf']]))
-    fmt = 'Driver Rear Door: {:18} Passenger Rear Door: {}'
-    print(fmt.format(door[ve['dr']], door[ve['pr']]))
-    fmt = 'Front Trunk: {:23} Rear Trunk: {}'
+    fmt = 'Driver/Pass Front Door: {:14} Driver/Pass Rear Door: {}/{}'
+    print(fmt.format('%s/%s' % (door[bool(ve['df'])], door[bool(ve['pf'])]),
+                     door[bool(ve['dr'])], door[bool(ve['pr'])]))
+    window = {0: 'Closed', 1: 'Venting', 2: 'Open'}
+    fmt = 'Drvr/Pass Front Window: {:14} Driver/Pass Rear Window: {}/{}'
+    print(fmt.format('%s/%s' % (window.get(ve.get('fd_window')),
+                                window.get(ve.get('fp_window'))),
+                     window.get(ve.get('rd_window')),
+                     window.get(ve.get('rp_window'))))
+    fmt = 'Front Trunk: {:25} Rear Trunk: {}'
     print(fmt.format(door[ve['ft']], door[ve['rt']]))
-    fmt = 'Remote Start: {:22} Sun Roof Percent Open: {}'
-    print(fmt.format(str(ve['remote_start']), ve['sun_roof_percent_open']))
-    fmt = 'Speed Limit Mode: {:18} Current Limit: {}'
+    fmt = 'Remote Start: {:24} Is User Present: {}'
+    print(fmt.format(str(ve['remote_start']), str(ve['is_user_present'])))
+    fmt = 'Speed Limit Mode: {:20} Current Limit: {}'
     limit = vehicle.dist_units(ve['speed_limit_mode']['current_limit_mph'], True)
     print(fmt.format(str(ve['speed_limit_mode']['active']), limit))
-    fmt = 'Speed Limit Pin Set: {:15} Sentry Mode: {}'
+    fmt = 'Speed Limit Pin Set: {:17} Sentry Mode: {}'
     print(fmt.format(str(ve['speed_limit_mode']['pin_code_set']),
                      str(ve['sentry_mode'])))
-    fmt = 'Valet Mode: {:24} Valet Pin Set: {}'
+    fmt = 'Valet Mode: {:26} Valet Pin Set: {}'
     print(fmt.format(str(ve['valet_mode']), str(not 'valet_pin_needed' in ve)))
     print('-'*80)
     # Drive state
     speed = 0 if dr['speed'] is None else dr['speed']
-    fmt = 'Power: {:29} Speed: {}'
+    fmt = 'Power: {:31} Speed: {}'
     print(fmt.format(str(dr['power']) + ' kW', vehicle.dist_units(speed, True)))
-    fmt = 'Shift State: {:23} Heading: {}'
+    fmt = 'Shift State: {:25} Heading: {}'
     print(fmt.format(str(dr['shift_state']), heading_to_str(dr['heading'])))
     print('GPS: {:.75}'.format(str(location)))
     print('-'*80)
     # Charging state
-    fmt = 'Charging State: {:20} Time To Full Charge: {:02.0f}:{:02.0f}'
+    fmt = 'Charging State: {:22} Time To Full Charge: {:02.0f}:{:02.0f}'
     print(fmt.format(ch['charging_state'],
                      *divmod(ch['time_to_full_charge'] * 60, 60)))
     phases = '3 x ' if ch['charger_phases'] == 2 else ''
-    fmt = 'Charger Voltage: {:19} Charger Actual Current: {}{:d} A'
+    fmt = 'Charger Voltage: {:21} Charger Actual Current: {}{:d} A'
     print(fmt.format(str(ch['charger_voltage']) + ' V',
                      phases, ch['charger_actual_current']))
-    fmt = 'Charger Power: {:21} Charge Rate: {}'
+    fmt = 'Charger Power: {:23} Charge Rate: {}'
     print(fmt.format(str(ch['charger_power']) + ' kW',
                      vehicle.dist_units(ch['charge_rate'], True)))
-    fmt = 'Battery Level: {:21} Battery Range: {}'
+    fmt = 'Battery Level: {:23} Battery Range: {}'
     print(fmt.format(str(ch['battery_level']) + ' %',
                      vehicle.dist_units(ch['battery_range'])))
-    fmt = 'Charge Energy Added: {:15} Charge Range Added: {}'
+    fmt = 'Charge Energy Added: {:17} Charge Range Added: {}'
     print(fmt.format(str(ch['charge_energy_added']) + ' kWh',
-                     vehicle.dist_units(ch['charge_miles_added_ideal'])))
-    fmt = 'Charge Limit SOC: {:18} Estimated Battery Range: {}'
+                     vehicle.dist_units(ch['charge_miles_added_rated'])))
+    fmt = 'Charge Limit SOC: {:20} Estimated Battery Range: {}'
     print(fmt.format(str(ch['charge_limit_soc']) + ' %',
                      vehicle.dist_units(ch['est_battery_range'])))
-    fmt = 'Charge Port Door Open: {:13} Charge Port Latch: {}'
+    fmt = 'Charge Port Door Open: {:15} Charge Port Latch: {}'
     print(fmt.format(str(ch['charge_port_door_open']),
                      str(ch['charge_port_latch'])))
     print('-'*80)
     # Vehicle config
-    fmt = 'Car Type: {:26} Exterior Color: {}'
+    fmt = 'Car Type: {:28} Exterior Color: {}'
     print(fmt.format(co['car_type'], co['exterior_color']))
-    fmt = 'Wheel Type: {:24} Spoiler Type: {}'
+    fmt = 'Wheel Type: {:26} Spoiler Type: {}'
     print(fmt.format(co['wheel_type'], co['spoiler_type']))
-    fmt = 'Roof Color: {:24} Charge Port Type: {}'
+    fmt = 'Roof Color: {:26} Charge Port Type: {}'
     print(fmt.format(co['roof_color'], co['charge_port_type']))
 
 def show_charging_sites(vehicle):
@@ -130,9 +136,10 @@ def show_charging_sites(vehicle):
 def menu(vehicle):
     lst = ['Refresh', 'Wake up', 'Nearby charging sites', 'Honk horn',
            'Flash lights', 'Lock/unlock', 'Climate on/off', 'Set temperature',
-           'Actuate frunk', 'Actuate trunk', 'Remote start drive',
+           'Actuate frunk/trunk', 'Remote start drive',
            'Set charge limit', 'Open/close charge port', 'Start/stop charge',
-           'Seat heater request', 'Sun roof control', 'Toggle media playback']
+           'Seat heater request', 'Toggle media playback', 'Window control',
+           'Max defrost']
     opt = 0
     while True:
         # Display vehicle info, except after nearby charging sites
@@ -189,35 +196,42 @@ def menu(vehicle):
             vehicle.command('CHANGE_CLIMATE_TEMPERATURE_SETTING', driver_temp=temp,
                         passenger_temp=temp)
         elif opt == 9:
-            vehicle.command('ACTUATE_TRUNK', which_trunk='front')
+            which_trunk = raw_input("Which trunk (front/rear):")
+            vehicle.command('ACTUATE_TRUNK', which_trunk=which_trunk)
         elif opt == 10:
-            vehicle.command('ACTUATE_TRUNK', which_trunk='rear')
-        elif opt == 11:
             vehicle.remote_start_drive()
-        elif opt == 12:
+        elif opt == 11:
             limit = int(raw_input("Enter charge limit: "))
             vehicle.command('CHANGE_CHARGE_LIMIT', percent=limit)
-        elif opt == 13:
+        elif opt == 12:
             if vehicle['charge_state']['charge_port_door_open']:
                 vehicle.command('CHARGE_PORT_DOOR_CLOSE')
             else:
                 vehicle.command('CHARGE_PORT_DOOR_OPEN')
-        elif opt == 14:
+        elif opt == 13:
             if vehicle['charge_state']['charging_state'].lower() == 'charging':
                 vehicle.command('STOP_CHARGE')
             else:
                 vehicle.command('START_CHARGE')
-        elif opt == 15:
+        elif opt == 14:
             heater = int(raw_input("Enter heater (0=Driver,1=Passenger,"
                                    "2=Rear left,3=Rear center,4=Rear right): "))
             level = int(raw_input("Enter level (0..3): "))
             vehicle.command('REMOTE_SEAT_HEATER_REQUEST', heater=heater,
                             level=level)
-        elif opt == 16:
-            state = raw_input("Enter state (close/vent):")
-            vehicle.command('CHANGE_SUNROOF_STATE', state=state)
-        elif opt == 17:
+        elif opt == 15:
             vehicle.command('MEDIA_TOGGLE_PLAYBACK')
+        elif opt == 16:
+            command = raw_input("Enter command (close/vent):")
+            vehicle.command('WINDOW_CONTROL', command=command, lat=0, lon=0)
+        elif opt == 17:
+            try:
+                if vehicle['climate_state']['defrost_mode']:
+                    vehicle.command('MAX_DEFROST', on=False)
+                else:
+                    vehicle.command('MAX_DEFROST', on=True)
+            except KeyError:
+                print('Not available')
 
 def main():
     logging.basicConfig(level=logging.DEBUG,

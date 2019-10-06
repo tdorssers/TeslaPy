@@ -55,10 +55,14 @@ These are the major commands:
 | FLASH_LIGHTS | |
 | CLIMATE_ON | |
 | CLIMATE_OFF | |
+| MAX_DEFROST | on |
 | CHANGE_CLIMATE_TEMPERATURE_SETTING | driver_temp, passenger_temp |
 | CHANGE_CHARGE_LIMIT | percent |
 | CHANGE_SUNROOF_STATE | state |
+| WINDOW_CONTROL | command, lat, lon |
 | ACTUATE_TRUNK | which_trunk |
+| REMOTE_START | password |
+| TRIGGER_HOMELINK | lat, lon |
 | CHARGE_PORT_DOOR_OPEN | |
 | CHARGE_PORT_DOOR_CLOSE | |
 | START_CHARGE | |
