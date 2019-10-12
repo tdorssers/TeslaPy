@@ -47,44 +47,44 @@ with teslapy.Tesla(EMAIL, PASSWORD, CLIENT_ID, CLIENT_SECRET) as tesla:
 
 These are the major commands:
 
-| Endpoint | Parameters |
-| --- | --- |
-| UNLOCK | |
-| LOCK | |
-| HONK_HORN | |
-| FLASH_LIGHTS | |
-| CLIMATE_ON | |
-| CLIMATE_OFF | |
-| MAX_DEFROST | on |
-| CHANGE_CLIMATE_TEMPERATURE_SETTING | driver_temp, passenger_temp |
-| CHANGE_CHARGE_LIMIT | percent |
-| CHANGE_SUNROOF_STATE | state |
-| WINDOW_CONTROL | command, lat, lon |
-| ACTUATE_TRUNK | which_trunk |
-| REMOTE_START | password |
-| TRIGGER_HOMELINK | lat, lon |
-| CHARGE_PORT_DOOR_OPEN | |
-| CHARGE_PORT_DOOR_CLOSE | |
-| START_CHARGE | |
-| STOP_CHARGE | |
-| MEDIA_TOGGLE_PLAYBACK | |
-| MEDIA_NEXT_TRACK | |
-| MEDIA_PREVIOUS_TRACK | |
-| MEDIA_NEXT_FAVORITE | |
-| MEDIA_PREVIOUS_FAVORITE | |
-| MEDIA_VOLUME_UP | |
-| MEDIA_VOLUME_DOWN | |
-| SET_VALET_MODE | on, password|
-| RESET_VALET_PIN | |
-| SPEED_LIMIT_ACTIVATE | pin |
-| SPEED_LIMIT_DEACTIVATE | pin |
-| SPEED_LIMIT_SET_LIMIT | limit_mph |
-| SPEED_LIMIT_CLEAR_PIN | pin |
-| SCHEDULE_SOFTWARE_UPDATE | offset_sec |
-| CANCEL_SOFTWARE_UPDATE | |
-| SET_SENTRY_MODE | on |
-| REMOTE_SEAT_HEATER_REQUEST | heater, level |
-| REMOTE_STEERING_WHEEL_HEATER_REQUEST | on |
+| Endpoint | Parameters | Value
+| --- | --- | --- |
+| UNLOCK | | |
+| LOCK | | |
+| HONK_HORN | | |
+| FLASH_LIGHTS | | |
+| CLIMATE_ON | | |
+| CLIMATE_OFF | | |
+| MAX_DEFROST | on | on
+| CHANGE_CLIMATE_TEMPERATURE_SETTING | driver_temp, passenger_temp | |
+| CHANGE_CHARGE_LIMIT | percent | |
+| CHANGE_SUNROOF_STATE | state | |
+| WINDOW_CONTROL | command, lat, lon | |
+| ACTUATE_TRUNK | which_trunk | front, rear
+| REMOTE_START | password | |
+| TRIGGER_HOMELINK | lat, lon | |
+| CHARGE_PORT_DOOR_OPEN | | |
+| CHARGE_PORT_DOOR_CLOSE | | |
+| START_CHARGE | | |
+| STOP_CHARGE | | |
+| MEDIA_TOGGLE_PLAYBACK | | |
+| MEDIA_NEXT_TRACK | | |
+| MEDIA_PREVIOUS_TRACK | | |
+| MEDIA_NEXT_FAVORITE | | |
+| MEDIA_PREVIOUS_FAVORITE | | |
+| MEDIA_VOLUME_UP | | |
+| MEDIA_VOLUME_DOWN | | |
+| SET_VALET_MODE | on, password| |
+| RESET_VALET_PIN | | |
+| SPEED_LIMIT_ACTIVATE | pin | |
+| SPEED_LIMIT_DEACTIVATE | pin | |
+| SPEED_LIMIT_SET_LIMIT | limit_mph | |
+| SPEED_LIMIT_CLEAR_PIN | pin | |
+| SCHEDULE_SOFTWARE_UPDATE | offset_sec | |
+| CANCEL_SOFTWARE_UPDATE | | |
+| SET_SENTRY_MODE | on,off | on,off
+| REMOTE_SEAT_HEATER_REQUEST | heater, level | |
+| REMOTE_STEERING_WHEEL_HEATER_REQUEST | on | |
 
 ## Exceptions
 
