@@ -178,7 +178,8 @@ class Dashboard(Frame):
                'Rear Trunk:', 'Remote Start:', 'Is User Present:',
                'Speed Limit Mode:', 'Current Limit:', 'Speed Limit Pin Set:',
                'Sentry Mode:', 'Valet Mode:', 'Valet Pin Set:',
-               'Software Update:', 'Expected duration:']
+               'Software Update:', 'Expected Duration:', 'Update Version:',
+               'Install Percentage:']
         for i, t in enumerate(lst):
             Label(group, text=t).grid(row=i // 2, column=i % 2 * 2, sticky=E)
         self.vehicle_name = LabelVarGrid(group, row=0, column=1, sticky=W)
@@ -205,6 +206,8 @@ class Dashboard(Frame):
         self.valet_pin = LabelVarGrid(group, row=10, column=3, sticky=W)
         self.sw_update = LabelVarGrid(group, row=11, column=1, sticky=W)
         self.sw_duration = LabelVarGrid(group, row=11, column=3, sticky=W)
+        self.update_ver = LabelVarGrid(group, row=12, column=1, sticky=W)
+        self.inst_perc = LabelVarGrid(group, row=12, column=3, sticky=W)
         # Drive state on right frame
         group = LabelFrame(right, text='Drive State', padx=5, pady=5)
         group.pack(padx=5, pady=5, fill=X)
@@ -305,14 +308,16 @@ class Dashboard(Frame):
         self.valet_mode.text(str(ve['valet_mode']))
         self.valet_pin.text(str(not 'valet_pin_needed' in ve))
         status = ve['software_update']['status'] or 'unavailable'
-        if 'warning_time_remaining_ms' in ve['software_update']:
-            time_rem = ve['software_update']['warning_time_remaining_ms'] / 1000
-            status += ' in {:02.0f}:{:02.0f}'.format(*divmod(time_rem, 60))
-        self.sw_update.text(status)
+        wt = ve['software_update'].get('warning_time_remaining_ms', 0) / 1000
+        status += ' in {:02.0f}:{:02.0f}'.format(*divmod(wt, 60)) if wt else ''
+        self.sw_update.text(status.capitalize())
         sueds = divmod(ve['software_update']['expected_duration_sec'] / 60, 60)
         self.sw_duration.text('{:02.0f}:{:02.0f}'.format(*sueds))
+        self.update_ver.text(ve['software_update'].get('version') or 'None')
+        self.inst_perc.text(ve['software_update'].get('install_perc') or 'None')
         # Drive state
-        self.power.text('%d kW' % dr['power'])
+        power = 0 if dr['power'] is None else dr['power']
+        self.power.text('%d kW' % power)
         speed = 0 if dr['speed'] is None else dr['speed']
         self.speed.text(app.vehicle.dist_units(speed, True))
         self.shift_state.text(str(dr['shift_state']))
@@ -322,12 +327,19 @@ class Dashboard(Frame):
         self.charging_state.text(ch['charging_state'])
         ttfc = divmod(ch['time_to_full_charge'] * 60, 60)
         self.time_to_full.text('{:02.0f}:{:02.0f}'.format(*ttfc))
-        self.charger_voltage.text('%d V' % ch['charger_voltage'])
+        volt = 0 if ch['charger_voltage'] is None else ch['charger_voltage']
+        self.charger_voltage.text('%d V' % volt)
         ph = '3 x ' if ch['charger_phases'] == 2 else ''
-        self.charger_current.text('%s%d A' % (ph, ch['charger_actual_current']))
-        self.charger_power.text('%d kW' % ch['charger_power'])
+        amps = 0 if ch['charger_actual_current'] is None else ch['charger_actual_current']
+        self.charger_current.text('%s%d A' % (ph, amps))
+        charger_power = 0 if ch['charger_power'] is None else ch['charger_power']
+        self.charger_power.text('%d kW' % charger_power)
         self.charge_rate.text(app.vehicle.dist_units(ch['charge_rate'], True))
-        self.battery_level.text('%d %%' % ch['battery_level'])
+        if ch['usable_battery_level'] < ch['battery_level']:
+            usable = ' (%d %% usable)' % ch['usable_battery_level']
+        else:
+            usable = ''
+        self.battery_level.text('%d %%%s' % (ch['battery_level'], usable))
         self.battery_range.text(app.vehicle.dist_units(ch['battery_range']))
         self.energy_added.text('%.1f kWh' % ch['charge_energy_added'])
         self.range_added.text(app.vehicle.dist_units(ch['charge_miles_added_rated']))

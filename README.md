@@ -47,7 +47,7 @@ with teslapy.Tesla(EMAIL, PASSWORD, CLIENT_ID, CLIENT_SECRET) as tesla:
 
 These are the major commands:
 
-| Endpoint | Parameters | Value
+| Endpoint | Parameters | Value |
 | --- | --- | --- |
 | UNLOCK | | |
 | LOCK | | |
@@ -55,14 +55,14 @@ These are the major commands:
 | FLASH_LIGHTS | | |
 | CLIMATE_ON | | |
 | CLIMATE_OFF | | |
-| MAX_DEFROST | on | on
-| CHANGE_CLIMATE_TEMPERATURE_SETTING | driver_temp, passenger_temp | |
-| CHANGE_CHARGE_LIMIT | percent | |
-| CHANGE_SUNROOF_STATE | state | |
-| WINDOW_CONTROL | command, lat, lon | |
-| ACTUATE_TRUNK | which_trunk | front, rear
-| REMOTE_START | password | |
-| TRIGGER_HOMELINK | lat, lon | |
+| MAX_DEFROST | on | `true` or `false` |
+| CHANGE_CLIMATE_TEMPERATURE_SETTING | driver_temp, passenger_temp | temperature in celcius |
+| CHANGE_CHARGE_LIMIT | percent | percentage |
+| CHANGE_SUNROOF_STATE | state | `vent` or `close` |
+| WINDOW_CONTROL | command, lat, lon | `vent` or `close`, `0`, `0` |
+| ACTUATE_TRUNK | which_trunk | `rear` or `front` |
+| REMOTE_START | password | password |
+| TRIGGER_HOMELINK | lat, lon | current lattitude and logitude |
 | CHARGE_PORT_DOOR_OPEN | | |
 | CHARGE_PORT_DOOR_CLOSE | | |
 | START_CHARGE | | |
@@ -74,17 +74,17 @@ These are the major commands:
 | MEDIA_PREVIOUS_FAVORITE | | |
 | MEDIA_VOLUME_UP | | |
 | MEDIA_VOLUME_DOWN | | |
-| SET_VALET_MODE | on, password| |
+| SET_VALET_MODE | on, password | `true` or `false`, 4 digit PIN |
 | RESET_VALET_PIN | | |
-| SPEED_LIMIT_ACTIVATE | pin | |
-| SPEED_LIMIT_DEACTIVATE | pin | |
-| SPEED_LIMIT_SET_LIMIT | limit_mph | |
-| SPEED_LIMIT_CLEAR_PIN | pin | |
-| SCHEDULE_SOFTWARE_UPDATE | offset_sec | |
+| SPEED_LIMIT_ACTIVATE | pin | 4 digit PIN |
+| SPEED_LIMIT_DEACTIVATE | pin | 4 digit PIN |
+| SPEED_LIMIT_SET_LIMIT | limit_mph | between 50-90 |
+| SPEED_LIMIT_CLEAR_PIN | pin | 4 digit PIN |
+| SCHEDULE_SOFTWARE_UPDATE | offset_sec | seconds |
 | CANCEL_SOFTWARE_UPDATE | | |
-| SET_SENTRY_MODE | on,off | on,off
-| REMOTE_SEAT_HEATER_REQUEST | heater, level | |
-| REMOTE_STEERING_WHEEL_HEATER_REQUEST | on | |
+| SET_SENTRY_MODE | on | `true` or `false` |
+| REMOTE_SEAT_HEATER_REQUEST | heater, level | seat 0-5, level 0-3 |
+| REMOTE_STEERING_WHEEL_HEATER_REQUEST | on | `true` or `false` |
 
 ## Exceptions
 
