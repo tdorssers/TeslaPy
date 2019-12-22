@@ -5,7 +5,7 @@
 from __future__ import print_function
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
-import teslapy
+from teslapy import Tesla
 import logging
 import getpass
 
@@ -236,9 +236,9 @@ def menu(vehicle):
 def main():
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s - %(levelname)s - %(message)s')
-    email = raw_input('Enter email: ') if not EMAIL else EMAIL
-    password = getpass.getpass('Password: ') if not PASSWORD else PASSWORD
-    with teslapy.Tesla(email, password, CLIENT_ID, CLIENT_SECRET) as tesla:
+    email = EMAIL or raw_input('Enter email: ')
+    password = EMAIL or getpass.getpass('Password: ')
+    with Tesla(email, password, CLIENT_ID, CLIENT_SECRET) as tesla:
         tesla.fetch_token()
         vehicles = tesla.vehicle_list()
         print('-'*80)

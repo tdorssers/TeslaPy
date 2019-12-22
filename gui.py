@@ -14,7 +14,7 @@ except ImportError:
     from tkinter.simpledialog import *
     from configparser import *
 import time
-import teslapy
+from teslapy import Tesla
 import logging
 import threading
 
@@ -478,7 +478,7 @@ class App(Tk):
         if dlg.result:
             self.email, self.password = dlg.result
             self.status.text('Logging in...')
-            tesla = teslapy.Tesla(self.email, self.password, CLIENT_ID, CLIENT_SECRET)
+            tesla = Tesla(self.email, self.password, CLIENT_ID, CLIENT_SECRET)
             # Create and start login thread. Check thread status after 100 ms
             self.login_thread = LoginThread(tesla)
             self.login_thread.start()
