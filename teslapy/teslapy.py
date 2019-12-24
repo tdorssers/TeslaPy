@@ -7,11 +7,11 @@ and client ID and secret are required.
 # Author: Tim Dorssers
 
 import json
-import logging
 import time
-from pathlib import Path
-
+import logging
+import pkgutil
 import requests
+from requests.exceptions import *
 
 
 requests.packages.urllib3.disable_warnings()
@@ -22,7 +22,6 @@ class Tesla(requests.Session):
 
     def __init__(self, email, password, client_id, client_secret, proxy=None):
         super(Tesla, self).__init__()
-        self.base_path = Path(__file__).parent
         self.email = email
         self.password = password
         self.client_id = client_id
@@ -45,7 +44,7 @@ class Tesla(requests.Session):
             if 0 < self.expires_at < time.time():
                 self.refresh_token()
             self.headers.update({'Authorization': 'Bearer '
-                                                  + self.token['access_token']})
+                                 + self.token['access_token']})
         # Construct URL, serialize data and send request
         url = 'https://owner-api.teslamotors.com/' + uri.strip('/')
         data = json.dumps(data).encode('utf-8') if data is not None else None
@@ -85,7 +84,7 @@ class Tesla(requests.Session):
         """ Handles token persistency """
         # Open cache file
         try:
-            with open((self.base_path / '../cache.json').resolve()) as infile:
+            with open('cache.json') as infile:
                 cache = json.load(infile)
         except (IOError, ValueError):
             cache = {}
@@ -93,7 +92,7 @@ class Tesla(requests.Session):
         if self.authorized:
             cache[self.email] = self.token
             try:
-                with open((self.base_path / '../cache.json').resolve(), 'w') as outfile:
+                with open('cache.json', 'w') as outfile:
                     json.dump(cache, outfile)
             except IOError:
                 logging.error('Cache not updated')
@@ -137,9 +136,9 @@ class Tesla(requests.Session):
         # Load API endpoints once
         if not self.endpoints:
             try:
-                with open((self.base_path / 'endpoints.json').resolve()) as infile:
-                    self.endpoints = json.load(infile)
-                    logging.debug('%d endpoints loaded' % len(self.endpoints))
+                data = pkgutil.get_data(__name__, 'endpoints.json')
+                self.endpoints = json.loads(data.decode())
+                logging.debug('%d endpoints loaded' % len(self.endpoints))
             except (IOError, ValueError):
                 logging.error('No endpoints loaded')
         # Lookup endpoint name
@@ -191,7 +190,6 @@ class Vehicle(JsonDict):
 
     def __init__(self, vehicle, tesla):
         super(Vehicle, self).__init__(vehicle)
-        self.base_path = Path(__file__).parent
         self.tesla = tesla
 
     def api(self, name, **kwargs):
@@ -226,9 +224,9 @@ class Vehicle(JsonDict):
         # Load option codes once
         if Vehicle.codes is None:
             try:
-                with open((self.base_path / 'option_codes.json').resolve()) as infile:
-                    Vehicle.codes = json.load(infile)
-                    logging.debug('%d option codes loaded' % len(Vehicle.codes))
+                data = pkgutil.get_data(__name__, 'option_codes.json')
+                Vehicle.codes = json.loads(data.decode())
+                logging.debug('%d option codes loaded' % len(Vehicle.codes))
             except (IOError, ValueError):
                 Vehicle.codes = {}
                 logging.error('No option codes loaded')
