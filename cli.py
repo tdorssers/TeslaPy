@@ -4,7 +4,7 @@
 
 from __future__ import print_function
 import argparse
-import teslapy
+from teslapy import Tesla
 import logging
 import getpass
 
@@ -42,11 +42,11 @@ def main():
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s')
-    if args.password == '':
+    if args.password is None or args.password == '':
         password = getpass.getpass('Password: ')
     else:
         password = args.password
-    with teslapy.Tesla(args.email, password, CLIENT_ID, CLIENT_SECRET) as tesla:
+    with Tesla(args.email, password, CLIENT_ID, CLIENT_SECRET) as tesla:
         tesla.fetch_token()
         selected = cars = tesla.vehicle_list()
         if args.filter:
