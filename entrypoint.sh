@@ -7,6 +7,14 @@ run_cli() {
         python cli.py $@
 }
 
+run_menu() {
+        python menu.py $@
+}
+
+run_gui() {
+        python gui.py $@
+}
+
 print_usage() {
 echo "
 
