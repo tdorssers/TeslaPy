@@ -4,7 +4,7 @@ A Python implementation based on [unofficial documentation](https://tesla-api.ti
 
 ## Overview
 
-The single file module *teslapy.py* depends on Python [requests](https://pypi.org/project/requests/). The `Tesla` class extends `requests.Session` and inherits methods like `get` and `post` that can be used to perform API calls. The class implements a custom [OAuth 2.0 Password Grant](https://oauth.net/2/grant-types/password/), since *email* instead of *username* is used in the access token request body. The [OAuth 2.0 Bearer Token](https://oauth.net/2/bearer-tokens/) is cached to disk (*cache.json*) for reuse, so a password is only needed when a new token is requested. The token is automatically renewed when needed. The constructor takes four arguments required for authentication and one optional argument to specify a proxy server. The convenience method `api` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
+The single file module *teslapy* depends on Python [requests](https://pypi.org/project/requests/). The `Tesla` class extends `requests.Session` and inherits methods like `get` and `post` that can be used to perform API calls. The class implements a custom [OAuth 2.0 Password Grant](https://oauth.net/2/grant-types/password/), since *email* instead of *username* is used in the access token request body. The [OAuth 2.0 Bearer Token](https://oauth.net/2/bearer-tokens/) is cached to disk (*cache.json*) for reuse, so a password is only needed when a new token is requested. The token is automatically renewed when needed. The constructor takes four arguments required for authentication and one optional argument to specify a proxy server. The convenience method `api` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
@@ -55,14 +55,14 @@ These are the major commands:
 | FLASH_LIGHTS | | |
 | CLIMATE_ON | | |
 | CLIMATE_OFF | | |
-| MAX_DEFROST | on | `true` or `false` |
-| CHANGE_CLIMATE_TEMPERATURE_SETTING | driver_temp, passenger_temp | temperature in celcius |
-| CHANGE_CHARGE_LIMIT | percent | percentage |
-| CHANGE_SUNROOF_STATE | state | `vent` or `close` |
-| WINDOW_CONTROL | command, lat, lon | `vent` or `close`, `0`, `0` |
-| ACTUATE_TRUNK | which_trunk | `rear` or `front` |
-| REMOTE_START | password | password |
-| TRIGGER_HOMELINK | lat, lon | current lattitude and logitude |
+| MAX_DEFROST | `on` | `true` or `false` |
+| CHANGE_CLIMATE_TEMPERATURE_SETTING | `driver_temp`, `passenger_temp` | temperature in celcius |
+| CHANGE_CHARGE_LIMIT | `percent` | percentage |
+| CHANGE_SUNROOF_STATE | `state` | `vent` or `close` |
+| WINDOW_CONTROL <sup>1</sup> | `command`, `lat`, `lon` | `vent` or `close`, `0`, `0` |
+| ACTUATE_TRUNK | `which_trunk` | `rear` or `front` |
+| REMOTE_START | `password` | password |
+| TRIGGER_HOMELINK | `lat`, `lon` | current lattitude and logitude |
 | CHARGE_PORT_DOOR_OPEN | | |
 | CHARGE_PORT_DOOR_CLOSE | | |
 | START_CHARGE | | |
@@ -74,17 +74,19 @@ These are the major commands:
 | MEDIA_PREVIOUS_FAVORITE | | |
 | MEDIA_VOLUME_UP | | |
 | MEDIA_VOLUME_DOWN | | |
-| SET_VALET_MODE | on, password | `true` or `false`, 4 digit PIN |
+| SET_VALET_MODE | `on`, `password` | `true` or `false`, 4 digit PIN |
 | RESET_VALET_PIN | | |
-| SPEED_LIMIT_ACTIVATE | pin | 4 digit PIN |
-| SPEED_LIMIT_DEACTIVATE | pin | 4 digit PIN |
-| SPEED_LIMIT_SET_LIMIT | limit_mph | between 50-90 |
-| SPEED_LIMIT_CLEAR_PIN | pin | 4 digit PIN |
-| SCHEDULE_SOFTWARE_UPDATE | offset_sec | seconds |
+| SPEED_LIMIT_ACTIVATE | `pin` | 4 digit PIN |
+| SPEED_LIMIT_DEACTIVATE | `pin` | 4 digit PIN |
+| SPEED_LIMIT_SET_LIMIT | `limit_mph` | between 50-90 |
+| SPEED_LIMIT_CLEAR_PIN | `pin` | 4 digit PIN |
+| SCHEDULE_SOFTWARE_UPDATE | `offset_sec` | seconds |
 | CANCEL_SOFTWARE_UPDATE | | |
-| SET_SENTRY_MODE | on | `true` or `false` |
-| REMOTE_SEAT_HEATER_REQUEST | heater, level | seat 0-5, level 0-3 |
-| REMOTE_STEERING_WHEEL_HEATER_REQUEST | on | `true` or `false` |
+| SET_SENTRY_MODE | `on` | `true` or `false` |
+| REMOTE_SEAT_HEATER_REQUEST | `heater`, `level` | seat 0-5, level 0-3 |
+| REMOTE_STEERING_WHEEL_HEATER_REQUEST | `on` | `true` or `false` |
+
+<sup>1</sup> `close` requires `lat` and `lon` values to be near the current location of the car.
 
 ## Exceptions
 
@@ -156,4 +158,4 @@ or on Ubuntu as follows:
 
 `sudo apt-get install python-requests python-geopy`
 
-Put *teslapy.py*, *endpoints.json*, *option_codes.json*, *cli.py*, *menu.py* and *gui.py* in a directory and run *cli.py*, *menu.py* or *gui.py*.
+Copy directory *teslapy* and files *cli.py*, *menu.py* and *gui.py* to your machine and run *cli.py*, *menu.py* or *gui.py*.
