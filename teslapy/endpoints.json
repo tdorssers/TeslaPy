@@ -324,10 +324,11 @@
     "URI": "api/1/vehicles/{vehicle_id}/eligible_upgrades",
     "AUTH": true
   },
-  "AUTOPILOT_UPGRADE_URL": {
+  "UPGRADES_PAGE": {
     "TYPE": "GET",
-    "URI": "api/1/vehicles/{vehicle_id}/purchase_url",
-    "AUTH": true
+    "URI": "upgrades_page",
+    "AUTH": true,
+    "CONTENT": "HTML"
   },
   "MESSAGE_CENTER_MESSAGE_LIST": {
     "TYPE": "GET",
@@ -438,6 +439,11 @@
   "BACKUP_RESERVE": {
     "TYPE": "POST",
     "URI": "api/1/energy_sites/{site_id}/backup",
+    "AUTH": true
+  },
+  "OFF_GRID_VEHICLE_CHARGING_RESERVE": {
+    "TYPE": "POST",
+    "URI": "api/1/energy_sites/{site_id}/off_grid_vehicle_charging_reserve",
     "AUTH": true
   },
   "SITE_NAME": {

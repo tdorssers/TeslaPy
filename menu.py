@@ -84,7 +84,7 @@ def show_vehicle_data(vehicle):
     print(fmt.format(str(dr['power']) + ' kW', vehicle.dist_units(speed, True)))
     fmt = 'Shift State: {:25} Heading: {}'
     print(fmt.format(str(dr['shift_state']), heading_to_str(dr['heading'])))
-    print('GPS: {:.75}'.format(str(location)))
+    print(u'GPS: {:.75}'.format(location.address))
     print('-'*80)
     # Charging state
     fmt = 'Charging State: {:22} Time To Full Charge: {:02.0f}:{:02.0f}'

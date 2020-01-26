@@ -322,7 +322,7 @@ class Dashboard(Frame):
         self.speed.text(app.vehicle.dist_units(speed, True))
         self.shift_state.text(str(dr['shift_state']))
         self.heading.text(self._heading_to_str(dr['heading']))
-        self.gps.text(app.update_thread.location)
+        self.gps.text(app.update_thread.location.address)
         # Charging state
         self.charging_state.text(ch['charging_state'])
         ttfc = divmod(ch['time_to_full_charge'] * 60, 60)
