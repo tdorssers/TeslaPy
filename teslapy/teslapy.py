@@ -11,7 +11,6 @@ import time
 import logging
 import pkgutil
 import requests
-from requests.exceptions import *
 
 
 requests.packages.urllib3.disable_warnings()
@@ -291,17 +290,18 @@ class Vehicle(JsonDict):
         make = 'Model ' + self['vin'][3]
         body = {'A': 'Hatchback 5 Dr / LHD', 'B': 'Hatchback 5 Dr / RHD',
                 'C': 'MPV / 5 Dr / LHD', 'D': 'MPV / 5 Dr / RHD',
-                'E': 'Sedan 4 Dr / LHD',
-                'F': 'Sedan 4 Dr / RHD'}.get(self['vin'][4], 'Unknown')
+                'E': 'Sedan 4 Dr / LHD', 'F': 'Sedan 4 Dr / RHD',
+                'G': 'MPV / 5 Dr / LHD'}.get(self['vin'][4], 'Unknown')
         batt = {'E': 'Electric', 'H': 'High Capacity', 'S': 'Standard Capacity',
                 'V': 'Ultra Capacity'}.get(self['vin'][6], 'Unknown')
         drive = {'1': 'Single Motor', '2': 'Dual Motor',
                  '3': 'Performance Single Motor', 'C': 'Base, Tier 2',
                  '4': 'Performance Dual Motor', 'P': 'Performance, Tier 7',
-                 'A': 'Single Motor', 'B': 'Dual Motor', 'G': 'Base, Tier 4',
+                 'A': 'Single Motor', 'B': 'Dual Motor',
+                 'F': 'Performance Dual Motor', 'G': 'Base, Tier 4',
                  'N': 'Base, Tier 7'}.get(self['vin'][7], 'Unknown')
         year = 2009 + '9ABCDEFGHJKLMNPRSTVWXY12345678'.index(self['vin'][9])
-        plant = {'F': 'Fremont, CA, USA',
+        plant = {'C': 'Shanghai, China', 'F': 'Fremont, CA, USA',
                  'P': 'Palo Alto, CA, USA'}.get(self['vin'][10], 'Unknown')
         return JsonDict(manufacturer='Tesla Motors, Inc.',
                         make=make, body_type=body, battery_type=batt,
