@@ -3,19 +3,22 @@
 # Author: Tim Dorssers
 
 from __future__ import print_function
-import argparse
-from teslapy import Tesla
 import logging
 import getpass
+import argparse
+from teslapy import Tesla
 
-CLIENT_ID='e4a9949fcfa04068f59abb5a658f2bac0a3428e4652315490b659d5ab3f35a9e'
-CLIENT_SECRET='c75f14bbadc8bee3a7594412c31416f8300256d7668ea7e6e7f06727bfb9d220'
+raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
+
+def get_passcode(args):
+    return args.passcode if args.passcode else raw_input('Passcode: ')
 
 def main():
     parser = argparse.ArgumentParser(description='Tesla Owner API CLI')
     parser.add_argument('-e', dest='email', help='login email', required=True)
     parser.add_argument('-p', dest='password', nargs='?', const='',
                         help='prompt/specify login password')
+    parser.add_argument('-t', dest='passcode', help='two factor passcode')
     parser.add_argument('-f', dest='filter', help='filter on id, vin, etc.')
     parser.add_argument('-a', dest='api', help='API call endpoint name')
     parser.add_argument('-k', dest='keyvalue', help='API parameter (key=value)',
@@ -42,16 +45,16 @@ def main():
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s')
-    if args.password is None or args.password == '':
+    if args.password == '':
         password = getpass.getpass('Password: ')
     else:
         password = args.password
-    with Tesla(args.email, password, CLIENT_ID, CLIENT_SECRET) as tesla:
+    with Tesla(args.email, password, lambda: get_passcode(args)) as tesla:
         tesla.fetch_token()
         selected = cars = tesla.vehicle_list()
         if args.filter:
             selected = [c for c in cars for v in c.values() if v == args.filter]
-        logging.info('%d vehicle(s), %d selected' % (len(cars), len(selected)))
+        logging.info('%d vehicle(s), %d selected', len(cars), len(selected))
         for i, vehicle in enumerate(selected):
             print('Vehicle %d:' % i)
             if args.list:

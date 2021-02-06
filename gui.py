@@ -3,6 +3,9 @@
 # Author: Tim Dorssers
 
 from __future__ import print_function
+import time
+import logging
+import threading
 from geopy.geocoders import Nominatim
 from geopy.exc import *
 try:
@@ -13,13 +16,9 @@ except ImportError:
     from tkinter import *
     from tkinter.simpledialog import *
     from configparser import *
-import time
 import teslapy
-import logging
-import threading
 
-CLIENT_ID='e4a9949fcfa04068f59abb5a658f2bac0a3428e4652315490b659d5ab3f35a9e'
-CLIENT_SECRET='c75f14bbadc8bee3a7594412c31416f8300256d7668ea7e6e7f06727bfb9d220'
+passcode = None
 
 class LoginDialog(Dialog):
     """ Display dialog box to enter email and password """
@@ -45,8 +44,8 @@ class LoginDialog(Dialog):
 class LabelGridDialog(Dialog):
     """ Display dialog box with table without cancel button """
 
-    def __init__(self, master, title=None, table=[]):
-        self.table = table
+    def __init__(self, master, title=None, table=None):
+        self.table = table or []
         # The Dialog constructor must be called last
         Dialog.__init__(self, master, title)
 
@@ -258,13 +257,13 @@ class Dashboard(Frame):
         for i, t in enumerate(lst):
             Label(group, text=t).grid(row=i // 2, column=i % 2 * 2, sticky=E)
         self.car_type = LabelVarGrid(group, row=0, column=1, sticky=W)
-        self.exterior_color= LabelVarGrid(group, row=0, column=3, sticky=W)
+        self.exterior_color = LabelVarGrid(group, row=0, column=3, sticky=W)
         self.wheel_type = LabelVarGrid(group, row=1, column=1, sticky=W)
         self.spoiler_type = LabelVarGrid(group, row=1, column=3, sticky=W)
         self.roof_color = LabelVarGrid(group, row=2, column=1, sticky=W)
         self.charge_port_type = LabelVarGrid(group, row=2, column=3, sticky=W)
-        
-    def update_widgets(self, app):
+
+    def update_widgets(self):
         cl = app.vehicle['climate_state']
         ve = app.vehicle['vehicle_state']
         dr = app.vehicle['drive_state']
@@ -363,7 +362,8 @@ class Dashboard(Frame):
         self.roof_color.text(co['roof_color'])
         self.charge_port_type.text(co['charge_port_type'])
 
-    def _heading_to_str(self, deg):
+    @staticmethod
+    def _heading_to_str(deg):
         lst = ['NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW',
                'WSW', 'W', 'WNW', 'NW', 'NNW', 'N']
         return lst[int(abs((deg - 11.25) % 360) / 22.5)]
@@ -472,13 +472,27 @@ class App(Tk):
         return {'label': endpoint.capitalize().replace('_', ' '),
                 'state': DISABLED, 'command': lambda: self.cmd(endpoint)}
 
+    def get_passcode(self):
+        """ Ask user for passcode string in new dialog """
+        def show_dialog():
+            """ Inner function to use simpledialog from non-main thread """
+            global passcode
+            root = Tk()
+            root.withdraw()
+            passcode = askstring('Tesla', 'Passcode:', parent=root)
+            root.destroy()
+        self.after_idle(show_dialog)  # Start from main thread
+        while passcode is None:
+            time.sleep(0.1)  # Block current thread until passcode is entered
+        return passcode
+
     def login(self):
         """ Display login dialog and start new thread to get vehicle list """
         dlg = LoginDialog(self)
         if dlg.result:
             self.email, self.password = dlg.result
             self.status.text('Logging in...')
-            tesla = teslapy.Tesla(self.email, self.password, CLIENT_ID, CLIENT_SECRET)
+            tesla = teslapy.Tesla(self.email, self.password, self.get_passcode)
             # Create and start login thread. Check thread status after 100 ms
             self.login_thread = LoginThread(tesla)
             self.login_thread.start()
@@ -501,7 +515,7 @@ class App(Tk):
                 self.vehicle_menu.add_radiobutton(label=label, value=i,
                                                   variable=self.selected,
                                                   command=self.select)
-            if len(self.login_thread.vehicles):
+            if self.login_thread.vehicles:
                 # Enable show option codes and wake up command
                 for i in range(0, 2):
                     self.vehicle_menu.entryconfig(i, state=NORMAL)
@@ -596,11 +610,11 @@ class App(Tk):
                 timestamp_ms = self.vehicle['vehicle_state']['timestamp']
                 self.status.status(time.ctime(timestamp_ms / 1000))
                 self.status.indicator('green')
-                self.dashboard.update_widgets(self)
+                self.dashboard.update_widgets()
                 # Increase polling rate if charging or user present
                 if (self.vehicle['charge_state']['charging_state'] == 'Charging'
-                    or self.vehicle['vehicle_state']['is_user_present']):
-                        delay = 1000
+                        or self.vehicle['vehicle_state']['is_user_present']):
+                    delay = 1000
             # Run again if auto refresh is on and fail threshold is not exceeded
             if self.auto_refresh.get() and self.update_thread.fail_cnt < 10:
                 self.after(delay, self.update_dashboard, True)
@@ -713,7 +727,7 @@ class App(Tk):
             self.cmd('UNLOCK')
         else:
             self.cmd('LOCK')
-                
+
     def climate_on_off(self):
         if self.vehicle['climate_state']['is_climate_on']:
             self.cmd('CLIMATE_OFF')
@@ -800,7 +814,7 @@ class App(Tk):
             pass
         finally:
             self.quit()
-        
+
 class UpdateThread(threading.Thread):
     """ Retrieves vehicle data and looks up address if coordinates change """
 
@@ -855,7 +869,7 @@ class WakeUpThread(threading.Thread):
             self.exception = e
 
 class ImageThread(threading.Thread):
-    
+
     def __init__(self, vehicle):
         threading.Thread.__init__(self)
         self.vehicle = vehicle

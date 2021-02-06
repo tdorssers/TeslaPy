@@ -4,12 +4,11 @@ A Python implementation based on [unofficial documentation](https://tesla-api.ti
 
 ## Overview
 
-The single file module *teslapy* depends on Python [requests](https://pypi.org/project/requests/). The `Tesla` class extends `requests.Session` and inherits methods like `get` and `post` that can be used to perform API calls. The class implements a custom [OAuth 2.0 Password Grant](https://oauth.net/2/grant-types/password/), since *email* instead of *username* is used in the access token request body. The [OAuth 2.0 Bearer Token](https://oauth.net/2/bearer-tokens/) is cached to disk (*cache.json*) for reuse, so a password is only needed when a new token is requested. The token is automatically renewed when needed. The constructor takes four arguments required for authentication and one optional argument to specify a proxy server. The convenience method `api` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
+The single file module *teslapy* depends on Python [requests](https://pypi.org/project/requests/). The `Tesla` class extends `requests.Session` and inherits methods like `get` and `post` that can be used to perform API calls. It uses Tesla's new RFC compliant [OAuth 2](https://oauth.net/2/) Single Sign-On service and supports Time-based One-Time Passwords. The acquired JSON Web Token is cached to disk (*cache.json*) for reuse, so a password is only needed when a new token is requested. The token is automatically renewed when needed. The constructor takes two arguments required for authentication and two optional argumenta to specify a passcode getter method and a proxy server. The convenience method `api` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
-| `fetch_token()` | requests a new bearer token using password grant |
-| `refresh_token()` | requests a new token using a refresh token |
+| `fetch_token()` | requests a new bearer token |
 | `vehicle_list()` | returns a list of Vehicle objects |
 
 The `Vehicle` class extends `dict` and stores vehicle data returned by the API. Additionally, the class implements the following methods:
@@ -38,7 +37,7 @@ Basic usage of the module:
 
 ```python
 import teslapy
-with teslapy.Tesla(EMAIL, PASSWORD, CLIENT_ID, CLIENT_SECRET) as tesla:
+with teslapy.Tesla(EMAIL, PASSWORD) as tesla:
 	tesla.fetch_token()
 	vehicles = tesla.vehicle_list()
 	vehicles[0].sync_wake_up()
@@ -146,16 +145,16 @@ Example usage of *cli.py* using a cached token:
 
 ## Installation
 
-Make sure you have [Python](https://www.python.org/) 2.7+ or 3.4+ installed on your system. Install [requests](https://pypi.org/project/requests/) and [geopy](https://pypi.org/project/geopy/) using [PIP](https://pypi.org/project/pip/) on Linux or macOS:
+Make sure you have [Python](https://www.python.org/) 2.7+ or 3.4+ installed on your system. Install [requests](https://pypi.org/project/requests/) with [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [geopy](https://pypi.org/project/geopy/) using [PIP](https://pypi.org/project/pip/) on Linux or macOS:
 
-`pip install requests geopy`
+`pip install requests_oauthlib geopy`
 
 or on Windows as follows:
 
-`python -m pip install requests geopy`
+`python -m pip install requests_oauthlib geopy`
 
 or on Ubuntu as follows:
 
-`sudo apt-get install python-requests python-geopy`
+`sudo apt-get install python-requests-oauthlib python-geopy`
 
-Copy directory *teslapy* and files *cli.py*, *menu.py* and *gui.py* to your machine and run *cli.py*, *menu.py* or *gui.py*.
+Copy directory *teslapy* and files *cli.py*, *menu.py* and *gui.py* to your machine and run *cli.py*, *menu.py* or *gui.py* to get started.

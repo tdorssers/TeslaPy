@@ -3,18 +3,16 @@
 # Author: Tim Dorssers
 
 from __future__ import print_function
+import logging
+import getpass
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
 from teslapy import Tesla
-import logging
-import getpass
 
 raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
 
-CLIENT_ID='e4a9949fcfa04068f59abb5a658f2bac0a3428e4652315490b659d5ab3f35a9e'
-CLIENT_SECRET='c75f14bbadc8bee3a7594412c31416f8300256d7668ea7e6e7f06727bfb9d220'
-EMAIL=''
-PASSWORD=''
+EMAIL = ''
+PASSWORD = ''
 
 def heading_to_str(deg):
     lst = ['NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW',
@@ -169,7 +167,7 @@ def menu(vehicle):
         # Perform menu option
         if opt == 0:
             break
-        elif opt == 1:
+        if opt == 1:
             pass
         elif opt == 2:
             print('Please wait...')
@@ -194,7 +192,7 @@ def menu(vehicle):
         elif opt == 8:
             temp = float(raw_input("Enter temperature: "))
             vehicle.command('CHANGE_CLIMATE_TEMPERATURE_SETTING', driver_temp=temp,
-                        passenger_temp=temp)
+                            passenger_temp=temp)
         elif opt == 9:
             which_trunk = raw_input("Which trunk (front/rear):")
             vehicle.command('ACTUATE_TRUNK', which_trunk=which_trunk)
@@ -233,12 +231,15 @@ def menu(vehicle):
             except KeyError:
                 print('Not available')
 
+def get_passcode():
+    return raw_input('Passcode: ')
+
 def main():
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s - %(levelname)s - %(message)s')
     email = EMAIL or raw_input('Enter email: ')
-    password = EMAIL or getpass.getpass('Password: ')
-    with Tesla(email, password, CLIENT_ID, CLIENT_SECRET) as tesla:
+    password = PASSWORD or getpass.getpass('Password: ')
+    with Tesla(email, password, get_passcode) as tesla:
         tesla.fetch_token()
         vehicles = tesla.vehicle_list()
         print('-'*80)

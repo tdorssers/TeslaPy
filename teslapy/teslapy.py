@@ -1,30 +1,43 @@
-""" This module provides access the Tesla Motors Owner API and handles OAuth 2.0
-password granting and bearer token renewal. Tokens are saved to disk for reuse.
-API endpoints are loaded from 'endpoints.json'. Credentials to teslamotors.com
-and client ID and secret are required.
+""" This module provides access the Tesla Motors Owner API. It uses Tesla's new
+RFC compliant OAuth 2 Single Sign-On service and supports Time-based One-Time
+Passwords. Access token is saved to disk for reuse. The API endpoints are loaded
+from 'endpoints.json'.
 """
 
 # Author: Tim Dorssers
 
+import os
 import json
 import time
+import base64
+import hashlib
 import logging
 import pkgutil
+from html.parser import HTMLParser
 import requests
+from requests_oauthlib import OAuth2Session
 
 
 requests.packages.urllib3.disable_warnings()
 
+BASE_URL = 'https://owner-api.teslamotors.com/'
+CLIENT_ID = 'e4a9949fcfa04068f59abb5a658f2bac0a3428e4652315490b659d5ab3f35a9e'
+SSO_BASE_URL = 'https://auth.tesla.com/'
+SSO_CLIENT_ID = 'ownerapi'
+
 
 class Tesla(requests.Session):
-    """ Implements a session manager to the Tesla API """
+    """ Implements a session manager for the Tesla Motors Owner API """
 
-    def __init__(self, email, password, client_id, client_secret, proxy=None):
+    def __init__(self, email, password, passcode_getter=None, proxy=None):
         super(Tesla, self).__init__()
+        if not email:
+            raise ValueError('Identity required')
         self.email = email
         self.password = password
-        self.client_id = client_id
-        self.client_secret = client_secret
+        self.passcode_getter = passcode_getter
+        self.token = {}
+        self.expires_at = 0
         self.authorized = False
         self.endpoints = {}
         # Set Session properties
@@ -33,7 +46,7 @@ class Tesla(requests.Session):
         if proxy:
             self.trust_env = False
             self.proxies.update({'https': proxy})
-        self._token_updater()  # Read token from cache
+        self._token_updater()  # Try to read token from cache
 
     def request(self, method, uri, data=None, **kwargs):
         """ Extends base class method to support bearer token insertion. Raises
@@ -41,13 +54,13 @@ class Tesla(requests.Session):
         # Auto refresh token and insert access token into headers
         if self.authorized:
             if 0 < self.expires_at < time.time():
-                self.refresh_token()
-            self.headers.update({'Authorization': 'Bearer '
-                                 + self.token['access_token']})
+                self.authorized = False
+                self.fetch_token()
+            self.headers.update({'Authorization':
+                                 'Bearer ' + self.token['access_token']})
         # Construct URL, serialize data and send request
-        url = 'https://owner-api.teslamotors.com/' + uri.strip('/')
-        data = json.dumps(data).encode('utf-8') if data is not None else None
-        response = super(Tesla, self).request(method, url, data=data, **kwargs)
+        url = BASE_URL + uri.strip('/')
+        response = super(Tesla, self).request(method, url, json=data, **kwargs)
         # Error message handling
         if 400 <= response.status_code < 600:
             try:
@@ -60,24 +73,83 @@ class Tesla(requests.Session):
         return response.json(object_hook=JsonDict)
 
     def fetch_token(self):
-        """ Requests a new bearer token using password grant """
-        if not self.authorized:
-            if not self.password:
-                raise ValueError('Password required')
-            # Request new token
-            response = self.api('AUTHENTICATE', grant_type='password',
-                                client_id=self.client_id,
-                                client_secret=self.client_secret,
-                                email=self.email, password=self.password)
-            if 'access_token' in response:
-                self.token = response
-                self.expires_at = (self.token['created_at']
-                                   + self.token['expires_in'])
-                logging.debug('Got new token, expires at '
-                              + time.ctime(self.expires_at))
-                self.authorized = True
-            # Save new token or read cached token if applicable
-            self._token_updater()
+        """ Sign in using Tesla's SSO service and request JWT bearer """
+        if self.authorized:
+            return
+        if not self.password:
+            raise ValueError('Password required')
+        # Generate code verifier and challenge for PKCE (RFC 7636)
+        code_verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b'=')
+        unencoded_digest = hashlib.sha256(code_verifier).digest()
+        code_challenge = base64.urlsafe_b64encode(unencoded_digest).rstrip(b'=')
+        # Prepare for OAuth 2 Authorization Code Grant flow
+        oauth = OAuth2Session(client_id=SSO_CLIENT_ID,
+                              scope=('openid', 'email', 'offline_access'),
+                              redirect_uri=SSO_BASE_URL + 'void/callback')
+        oauth.verify = self.verify
+        oauth.trust_env = self.trust_env
+        oauth.proxies = self.proxies
+        url = SSO_BASE_URL + 'oauth2/v3/authorize'
+        auth_url, state = oauth.authorization_url(url,
+                                                  code_challenge=code_challenge,
+                                                  code_challenge_method='S256')
+        # Retrieve SSO page and parse input objects on HTML form
+        form = HTMLForm()
+        form.feed(oauth.get(auth_url).text)
+        # Send login credentials to get authorization response code
+        form.data.update({'identity': self.email, 'credential': self.password})
+        auth_resp = oauth.post(SSO_BASE_URL + 'oauth2/v3/authorize',
+                               data=form.data, allow_redirects=False)
+        auth_resp.raise_for_status()  # Raise HTTPError, if one occurred
+        if auth_resp.status_code == 200:
+            form.feed(auth_resp.text)
+            if not form.data['credential']:
+                raise ValueError('Invalid credential')
+            # Check for MFA factors
+            params = {'transaction_id': form.data['transaction_id']}
+            url = SSO_BASE_URL + 'oauth2/v3/authorize/mfa/factors'
+            response = oauth.get(url, params=params)
+            response.raise_for_status()  # Raise HTTPError, if one occurred
+            factors = response.json()['data']
+            # Only one factor and only TOTP is supported
+            if len(factors) == 1:
+                if factors[0]['factorType'] != 'token:software':
+                    raise NotImplementedError(factors[0]['factorType']
+                                              + ' factor not supported')
+                if not self.passcode_getter:
+                    raise ValueError('passcode_getter method is not set')
+                # Get passcode and verify
+                data = {'transaction_id': form.data['transaction_id'],
+                        'factor_id': factors[0]['id'],
+                        'passcode': self.passcode_getter()}
+                url = SSO_BASE_URL + 'oauth2/v3/authorize/mfa/verify'
+                response = oauth.post(url, json=data)
+                if ('error' in response.json() or
+                        not response.json()['data']['valid']):
+                    raise ValueError('Invalid passcode')
+                # Get authorization response code
+                data = {'transaction_id': form.data['transaction_id']}
+                auth_resp = oauth.post(SSO_BASE_URL + 'oauth2/v3/authorize',
+                                       data=data, allow_redirects=False)
+            elif len(factors) > 1:
+                raise NotImplementedError('Multiple MFA factors not supported')
+        # Use authorization response code in redirected location to get token
+        if auth_resp.status_code != 302:
+            raise RuntimeError('Authorization error')
+        oauth.fetch_token(SSO_BASE_URL + 'oauth2/v3/token',
+                          authorization_response=auth_resp.headers['Location'],
+                          include_client_id=True, code_verifier=code_verifier)
+        # Perform RFC 7523 JSON web token exchange for Owner API access
+        data = {'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                'client_id': CLIENT_ID}
+        response = oauth.post(BASE_URL + 'oauth/token', data=data)
+        response.raise_for_status()  # Raise HTTPError, if one occurred
+        self.token = response.json()
+        self.expires_at = self.token['created_at'] + self.token['expires_in']
+        logging.debug('Got JWT bearer, expires at %s',
+                      time.ctime(self.expires_at))
+        self.authorized = True
+        self._token_updater()  # Save new token
 
     def _token_updater(self):
         """ Handles token persistency """
@@ -108,36 +180,20 @@ class Tesla(requests.Session):
                 self.fetch_token()
             else:
                 self.authorized = True
-                logging.debug('Cached token, expires at '
-                              + time.ctime(self.expires_at))
+                logging.debug('Cached token, expires at %s',
+                              time.ctime(self.expires_at))
 
-    def refresh_token(self):
-        """ Requests a new token using a refresh token """
-        if self.authorized:
-            self.expires_at = 0
-            # Request new token
-            response = self.api('AUTHENTICATE', grant_type='refresh_token',
-                                client_id=self.client_id,
-                                client_secret=self.client_secret,
-                                refresh_token=self.token['refresh_token'])
-            if 'access_token' in response:
-                self.token = response
-                self.expires_at = (self.token['created_at']
-                                   + self.token['expires_in'])
-                logging.debug('Refreshed token, expires '
-                              + time.ctime(self.expires_at))
-                self._token_updater()  # Update cache
-
-    def api(self, name, path_vars={}, **kwargs):
+    def api(self, name, path_vars=None, **kwargs):
         """ Convenience method to perform API request for given endpoint name,
         with keyword arguments as parameters. Substitutes path variables in URI
         using path_vars. Raises ValueError if endpoint name is not found. """
+        path_vars = path_vars or {}
         # Load API endpoints once
         if not self.endpoints:
             try:
                 data = pkgutil.get_data(__name__, 'endpoints.json')
                 self.endpoints = json.loads(data.decode())
-                logging.debug('%d endpoints loaded' % len(self.endpoints))
+                logging.debug('%d endpoints loaded', len(self.endpoints))
             except (IOError, ValueError):
                 logging.error('No endpoints loaded')
         # Lookup endpoint name
@@ -160,7 +216,7 @@ class Tesla(requests.Session):
         # Hide password in debug logging parameters
         log = {k: v if k != 'password' else '***' for k, v in kwargs.items()}
         if log:
-            logging.debug('%s: %s' % (name, json.dumps(log)))
+            logging.debug('%s: %s', name, json.dumps(log))
         # Perform request using given keyword arguments as parameters
         return self.request(endpoint['TYPE'], uri, data=kwargs)
 
@@ -169,13 +225,26 @@ class Tesla(requests.Session):
         return [Vehicle(v, self) for v in self.api('VEHICLE_LIST')['response']]
 
 
+class HTMLForm(HTMLParser):
+    """ Parse input tags on HTML form """
+
+    def __init__(self):
+        self.data = {}
+        HTMLParser.__init__(self)
+
+    def handle_starttag(self, tag, attrs):
+        """ Make dictionary of name and value attributes of input tags """
+        if tag == 'input':
+            self.data[dict(attrs)['name']] = dict(attrs).get('value', '')
+
+
 class VehicleError(Exception):
     """ Vehicle exception class """
     pass
 
 
 class JsonDict(dict):
-    """ Dictionary for pretty printing """
+    """ Pretty printing dictionary """
 
     def __str__(self):
         """ Serialize dict to JSON formatted string with indents """
@@ -202,21 +271,21 @@ class Vehicle(JsonDict):
 
     def sync_wake_up(self, timeout=60, interval=2, backoff=1.15):
         """ Wakes up vehicle if needed and waits for it to come online """
-        logging.info('%s is %s' % (self['display_name'], self['state']))
+        logging.info('%s is %s', self['display_name'], self['state'])
         if self['state'] != 'online':
             self.api('WAKE_UP')  # Send wake up command
             start_time = time.time()
             while self['state'] != 'online':
-                logging.debug('Waiting for %d seconds' % interval)
+                logging.debug('Waiting for %d seconds', interval)
                 time.sleep(int(interval))
                 # Get vehicle status
                 self.get_vehicle_summary()
                 # Raise exception when task has timed out
-                if (start_time + timeout < time.time()):
+                if start_time + timeout < time.time():
                     raise VehicleError('%s not woken up within %s seconds'
                                        % (self['display_name'], timeout))
                 interval *= backoff
-            logging.info('%s is %s' % (self['display_name'], self['state']))
+            logging.info('%s is %s', self['display_name'], self['state'])
 
     def option_code_list(self):
         """ Returns a list of known option code titles """
@@ -225,7 +294,7 @@ class Vehicle(JsonDict):
             try:
                 data = pkgutil.get_data(__name__, 'option_codes.json')
                 Vehicle.codes = json.loads(data.decode())
-                logging.debug('%d option codes loaded' % len(Vehicle.codes))
+                logging.debug('%d option codes loaded', len(Vehicle.codes))
             except (IOError, ValueError):
                 Vehicle.codes = {}
                 logging.error('No option codes loaded')
@@ -265,25 +334,23 @@ class Vehicle(JsonDict):
         """ Format and convert distance or speed to GUI setting units """
         if miles is None:
             return None
-        if not 'gui_settings' in self:
+        if 'gui_settings' not in self:
             self.get_vehicle_data()
         # Lookup GUI settings of the vehicle
         if 'km' in self['gui_settings']['gui_distance_units']:
             return '%.1f %s' % (miles * 1.609344, 'km/h' if speed else 'km')
-        else:
-            return '%.1f %s' % (miles, 'mph' if speed else 'mi')
+        return '%.1f %s' % (miles, 'mph' if speed else 'mi')
 
     def temp_units(self, celcius):
         """ Format and convert temperature to GUI setting units """
         if celcius is None:
             return None
-        if not 'gui_settings' in self:
+        if 'gui_settings' not in self:
             self.get_vehicle_data()
         # Lookup GUI settings of the vehicle
         if 'F' in self['gui_settings']['gui_temperature_units']:
             return '%.1f F' % (celcius * 1.8 + 32)
-        else:
-            return '%.1f C' % celcius
+        return '%.1f C' % celcius
 
     def decode_vin(self):
         """ Returns decoded VIN as dict """
