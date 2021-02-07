@@ -2,7 +2,6 @@
 
 # Author: Tim Dorssers
 
-from __future__ import print_function
 import time
 import logging
 import threading
@@ -17,8 +16,6 @@ except ImportError:
     from tkinter.simpledialog import *
     from configparser import *
 import teslapy
-
-passcode = None
 
 class LoginDialog(Dialog):
     """ Display dialog box to enter email and password """
@@ -113,12 +110,15 @@ class StatusBar(Frame):
         self.no_color = self.indicator_label.cget('bg')
 
     def text(self, text):
+        """ Set informational text """
         self.text_value.set(str(text)[:120])
 
     def status(self, status):
+        """ Set status text """
         self.status_value.set(status)
 
     def indicator(self, color):
+        """ Set or reset indicator color """
         self.indicator_label.config(bg=color if color else self.no_color)
         self.update_idletasks()
 
@@ -132,6 +132,7 @@ class LabelVarGrid(Label):
         self.grid(**kwargs)
 
     def text(self, text):
+        """ Set textvariable of label """
         self.value.set(text)
 
 class Dashboard(Frame):
@@ -264,6 +265,7 @@ class Dashboard(Frame):
         self.charge_port_type = LabelVarGrid(group, row=2, column=3, sticky=W)
 
     def update_widgets(self):
+        """ Set values of dashboard widgets """
         cl = app.vehicle['climate_state']
         ve = app.vehicle['vehicle_state']
         dr = app.vehicle['drive_state']
@@ -364,6 +366,7 @@ class Dashboard(Frame):
 
     @staticmethod
     def _heading_to_str(deg):
+        """ Convert heading in degrees to a direction string """
         lst = ['NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW',
                'WSW', 'W', 'WNW', 'NW', 'NNW', 'N']
         return lst[int(abs((deg - 11.25) % 360) / 22.5)]
@@ -474,17 +477,14 @@ class App(Tk):
 
     def get_passcode(self):
         """ Ask user for passcode string in new dialog """
+        result = {'passcode': None}
         def show_dialog():
-            """ Inner function to use simpledialog from non-main thread """
-            global passcode
-            root = Tk()
-            root.withdraw()
-            passcode = askstring('Tesla', 'Passcode:', parent=root)
-            root.destroy()
+            """ Inner function to show dialog """
+            result['passcode'] = askstring('Login', 'Passcode:')
         self.after_idle(show_dialog)  # Start from main thread
-        while passcode is None:
-            time.sleep(0.1)  # Block current thread until passcode is entered
-        return passcode
+        while result['passcode'] is None:
+            time.sleep(0.1)  # Block login thread until passcode is entered
+        return result['passcode']
 
     def login(self):
         """ Display login dialog and start new thread to get vehicle list """
@@ -549,6 +549,7 @@ class App(Tk):
             self.dashboard.vehicle_image.config(image=self.image_thread.photo)
 
     def show_status(self):
+        """ Display vehicle state """
         self.status.text('%s is %s' % (self.vehicle['display_name'],
                                        self.vehicle['state']))
         # Enable/disable commands
@@ -652,17 +653,20 @@ class App(Tk):
             self.update_dashboard()
 
     def about(self):
+        """ Show about dialog """
         LabelGridDialog(self, 'About',
                         [{'text': 'Tesla Owner API Python GUI by Tim Dorssers'},
                          {'text': 'Tcl/Tk toolkit version %s' % TkVersion}])
 
     def option_codes(self):
+        """ Show vehicle option codes in a dialog """
         table = []
         for i, item in enumerate(self.vehicle.option_code_list()):
             table.append(dict(text=item, row=i // 2, column=i % 2, sticky=W))
         LabelGridDialog(self, 'Option codes', table)
 
     def decode_vin(self):
+        """ Show decoded vin in a dialog """
         table = []
         for i, item in enumerate(self.vehicle.decode_vin().items()):
             table.append(dict(text=item[0] + ':', row=i, sticky=E))
@@ -723,18 +727,21 @@ class App(Tk):
                 self.after(1000, self.update_dashboard)
 
     def lock_unlock(self):
+        """ Lock or unlock vehicle """
         if self.vehicle['vehicle_state']['locked']:
             self.cmd('UNLOCK')
         else:
             self.cmd('LOCK')
 
     def climate_on_off(self):
+        """ Turn climate control on or off """
         if self.vehicle['climate_state']['is_climate_on']:
             self.cmd('CLIMATE_OFF')
         else:
             self.cmd('CLIMATE_ON')
 
     def set_temperature(self):
+        """ Set climate control temperature """
         # Get user input using a simple dialog box
         temp = askfloat('Set', 'Temperature')
         if temp:
@@ -742,51 +749,61 @@ class App(Tk):
                      passenger_temp=temp)
 
     def actuate_trunk(self, which_trunk):
+        """ Actuate trunk or frunk """
         self.cmd('ACTUATE_TRUNK', which_trunk=which_trunk)
 
     def remote_start_drive(self):
+        """ Trigger remote start drive """
         if self.password:
             self.cmd('REMOTE_START', password=self.password)
         else:
             self.status.text('Password required')
 
     def set_charge_limit(self):
+        """ Set charging limit """
         limit = askinteger('Set', 'Charge Limit')
         if limit:
             self.cmd('CHANGE_CHARGE_LIMIT', percent=limit)
 
     def open_close_charge_port(self):
+        """ Open or close charging port """
         if self.vehicle['charge_state']['charge_port_door_open']:
             self.cmd('CHARGE_PORT_DOOR_CLOSE')
         else:
             self.cmd('CHARGE_PORT_DOOR_OPEN')
 
     def start_stop_charge(self):
+        """ Start or stop vehicle charging """
         if self.vehicle['charge_state']['charging_state'].lower() == 'charging':
             self.cmd('STOP_CHARGE')
         else:
             self.cmd('START_CHARGE')
 
     def seat_heater(self):
+        """ Ask user which seat to heat """
         dlg = SeatHeaterDialog(self)
         if dlg.result:
             self.cmd('REMOTE_SEAT_HEATER_REQUEST', heater=dlg.result[0],
                      level=dlg.result[1])
 
     def vent_close_sun_roof(self):
+        """ Ask user to vent or close the sun roof """
         dlg = ControlDialog(self, 'Sun Roof')
         if dlg.result:
             self.cmd('CHANGE_SUNROOF_STATE', state=dlg.result)
 
     def schedule_sw_update(self):
+        """ Start software upgrade in two minutes """
         self.cmd('SCHEDULE_SOFTWARE_UPDATE', offset_sec=120)
 
     def window_control(self):
+        """ Ask user to vent or close windows """
         dlg = ControlDialog(self, 'Windows')
         if dlg.result:
             self.cmd('WINDOW_CONTROL', command=dlg.result, lat=0, lon=0)
 
     def max_defrost(self):
+        """ Set max defrost mode """
         try:
             if self.vehicle['climate_state']['defrost_mode']:
                 self.cmd('MAX_DEFROST', on=False)
@@ -796,10 +813,12 @@ class App(Tk):
             pass
 
     def set_log(self):
+        """ Set logging level """
         level = logging.DEBUG if self.debug.get() else logging.WARNING
         logging.getLogger().setLevel(level)
 
     def save_and_quit(self):
+        """ Save settings to file and quit app """
         config = RawConfigParser()
         config.add_section('app')
         config.add_section('display')
@@ -856,6 +875,7 @@ class UpdateThread(threading.Thread):
             UpdateThread.fail_cnt = 0
 
 class WakeUpThread(threading.Thread):
+    """ Wake vehicle up """
 
     def __init__(self, vehicle):
         threading.Thread.__init__(self)
@@ -869,6 +889,7 @@ class WakeUpThread(threading.Thread):
             self.exception = e
 
 class ImageThread(threading.Thread):
+    """ Compose vehicle image """
 
     def __init__(self, vehicle):
         threading.Thread.__init__(self)
@@ -892,6 +913,7 @@ class ImageThread(threading.Thread):
                 self.photo = ImageTk.PhotoImage(Image.open(io.BytesIO(response)))
 
 class LoginThread(threading.Thread):
+    """ Authenticate and retrieve vehicle list """
 
     def __init__(self, tesla):
         threading.Thread.__init__(self)
@@ -907,6 +929,7 @@ class LoginThread(threading.Thread):
             self.exception = e
 
 class StatusThread(threading.Thread):
+    """ Retrieve vehicle status summary """
 
     def __init__(self, vehicle):
         threading.Thread.__init__(self)
@@ -920,6 +943,7 @@ class StatusThread(threading.Thread):
             self.exception = e
 
 class CommandThread(threading.Thread):
+    """ Send vehicle command """
 
     def __init__(self, vehicle, name, **kwargs):
         threading.Thread.__init__(self)
@@ -935,6 +959,7 @@ class CommandThread(threading.Thread):
             self.exception = e
 
 class NearbySitesThread(threading.Thread):
+    """ Retrieve nearby charging sites """
 
     def __init__(self, vehicle):
         threading.Thread.__init__(self)

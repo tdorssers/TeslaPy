@@ -4,7 +4,7 @@ A Python implementation based on [unofficial documentation](https://tesla-api.ti
 
 ## Overview
 
-The single file module *teslapy* depends on Python [requests](https://pypi.org/project/requests/). The `Tesla` class extends `requests.Session` and inherits methods like `get` and `post` that can be used to perform API calls. It uses Tesla's new RFC compliant [OAuth 2](https://oauth.net/2/) Single Sign-On service and supports Time-based One-Time Passwords. The acquired JSON Web Token is cached to disk (*cache.json*) for reuse, so a password is only needed when a new token is requested. The token is automatically renewed when needed. The constructor takes two arguments required for authentication and two optional argumenta to specify a passcode getter method and a proxy server. The convenience method `api` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
+The single file module *teslapy* depends on Python [requests](https://pypi.org/project/requests/) and [requests_oauthlib](https://pypi.org/project/requests-oauthlib/). The `Tesla` class extends `requests.Session` and therefore inherits methods like `get` and `post` that can be used to perform API calls. It uses Tesla's new RFC compliant [OAuth 2](https://oauth.net/2/) Single Sign-On service and supports Time-based One-Time Passwords for MFA. The acquired JSON Web Token is cached to disk (*cache.json*) for reuse, so authentication is only needed when a new token is requested. The token is automatically renewed when needed. The constructor takes two arguments required for authentication (email and password) and two optional arguments to specify a passcode getter function and a proxy server. The convenience method `api` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
@@ -37,12 +37,20 @@ Basic usage of the module:
 
 ```python
 import teslapy
-with teslapy.Tesla(EMAIL, PASSWORD) as tesla:
+with teslapy.Tesla('elon@tesla.com', 'starship') as tesla:
 	tesla.fetch_token()
 	vehicles = tesla.vehicle_list()
 	vehicles[0].sync_wake_up()
 	vehicles[0].command('ACTUATE_TRUNK', which_trunk='front')
 ```
+
+The constructor requires the third parameter to reference a function that returns a passcode string in case your Tesla account has MFA enabled:
+
+```python
+with teslapy.Tesla('elon@tesla.com', 'starship', lambda: '123456') as tesla:
+```
+
+Take a look at *menu.py* or *gui.py* for examples of a passcode getter function.
 
 These are the major commands:
 
@@ -107,7 +115,7 @@ Additionally, `sync_wake_up()` raises `teslapy.VehicleError` when the vehicle do
 *cli.py* is a simple CLI application that can use almost all functionality of the TeslaPy module. The filter option allows you to select a vehicle if more than one vehicle is linked to your account. API output is JSON formatted:
 
 ```
-usage: cli.py [-h] -e EMAIL [-p [PASSWORD]] [-f FILTER] [-a API] [-k KEYVALUE]
+usage: cli.py [-h] -e EMAIL [-p [PASSWORD]] [-t PASSCODE] [-f FILTER] [-a API] [-k KEYVALUE]
               [-c COMMAND] [-l] [-o] [-v] [-w] [-g] [-n] [-m] [-s] [-d]
 
 Tesla Owner API CLI
@@ -116,6 +124,7 @@ optional arguments:
   -h, --help     show this help message and exit
   -e EMAIL       login email
   -p [PASSWORD]  prompt/specify login password
+  -t PASSCODE    two factor passcode
   -f FILTER      filter on id, vin, etc.
   -a API         API call endpoint name
   -k KEYVALUE    API parameter (key=value)
@@ -133,7 +142,7 @@ optional arguments:
 
 Example usage of *cli.py* using a cached token:
 
-`python cli.py -e EMAIL -w -a ACTUATE_TRUNK -k which_trunk=front`
+`python cli.py -e elon@tesla.com -w -a ACTUATE_TRUNK -k which_trunk=front`
 
 *menu.py* is a menu-based console application that displays vehicle data in a tabular format. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address:
 
@@ -155,6 +164,6 @@ or on Windows as follows:
 
 or on Ubuntu as follows:
 
-`sudo apt-get install python-requests-oauthlib python-geopy`
+`sudo apt-get install python3-requests-oauthlib python3-geopy`
 
 Copy directory *teslapy* and files *cli.py*, *menu.py* and *gui.py* to your machine and run *cli.py*, *menu.py* or *gui.py* to get started.

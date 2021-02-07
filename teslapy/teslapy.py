@@ -13,7 +13,10 @@ import base64
 import hashlib
 import logging
 import pkgutil
-from html.parser import HTMLParser
+try:
+    from HTMLParser import HTMLParser
+except ImportError:
+    from html.parser import HTMLParser
 import requests
 from requests_oauthlib import OAuth2Session
 
