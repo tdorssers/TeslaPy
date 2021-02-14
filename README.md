@@ -4,11 +4,12 @@ A Python implementation based on [unofficial documentation](https://tesla-api.ti
 
 ## Overview
 
-The single file module *teslapy* depends on Python [requests](https://pypi.org/project/requests/) and [requests_oauthlib](https://pypi.org/project/requests-oauthlib/). The `Tesla` class extends `requests.Session` and therefore inherits methods like `get` and `post` that can be used to perform API calls. It uses Tesla's new RFC compliant [OAuth 2](https://oauth.net/2/) Single Sign-On service and supports Time-based One-Time Passwords for MFA. The acquired JSON Web Token is cached to disk (*cache.json*) for reuse, so authentication is only needed when a new token is requested. The token is automatically renewed when needed. The constructor takes two arguments required for authentication (email and password) and two optional arguments to specify a passcode getter function and a proxy server. The convenience method `api` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
+The single file module *teslapy* depends on Python [requests](https://pypi.org/project/requests/) and [requests_oauthlib](https://pypi.org/project/requests-oauthlib/). The `Tesla` class extends `requests.Session` and therefore inherits methods like `get()` and `post()` that can be used to perform API calls. It uses Tesla's new [OAuth 2](https://oauth.net/2/) Single Sign-On service with support for Multi-Factor Authentication (MFA) Time-based One-Time Passwords (TOTP) to acquire a JSON Web Token (JWT) bearer to access the Owner API that is cached to disk (*cache.json*) for reuse. The cache stores tokens of each authorized identity (email). Authentication is only needed when a new token is requested. The token is automatically refreshed when expired without the need to reauthenticate. An email registered in another region (e.g. auth.tesla.cn) is also supported. The constructor takes two arguments required for authentication (email and password) and three optional arguments: a passcode getter function, a factor selector function and a proxy server URL. The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
-| `fetch_token()` | requests a new bearer token |
+| `fetch_token()` | requests a new JWT bearer token using Authorization Code grant with [PKCE](https://oauth.net/2/pkce/) extension |
+| `refresh_token()` | requests a new JWT bearer token using [Refresh Token](https://oauth.net/2/grant-types/refresh-token/) grant |
 | `vehicle_list()` | returns a list of Vehicle objects |
 
 The `Vehicle` class extends `dict` and stores vehicle data returned by the API. Additionally, the class implements the following methods:
@@ -44,13 +45,19 @@ with teslapy.Tesla('elon@tesla.com', 'starship') as tesla:
 	vehicles[0].command('ACTUATE_TRUNK', which_trunk='front')
 ```
 
-The constructor requires the third parameter to reference a function that returns a passcode string in case your Tesla account has MFA enabled:
+The constructor requires a function that returns a passcode string as the third argument in case your Tesla account has MFA enabled:
 
 ```python
 with teslapy.Tesla('elon@tesla.com', 'starship', lambda: '123456') as tesla:
 ```
 
-Take a look at *menu.py* or *gui.py* for examples of a passcode getter function.
+Tesla allows you to enable more then one MFA device. In this case the constructor requires a function that takes a list of dicts as an argument and returns the selected factor dict as the fourth argument. The function may return the selected factor name as well:
+
+```python
+with teslapy.Tesla('elon@tesla.com', 'starship', lambda: '123456', lambda _: 'Device #1') as tesla:
+```
+
+Take a look at *menu.py* or *gui.py* for examples of a passcode getter function and a factor selector function.
 
 These are the major commands:
 
@@ -115,8 +122,8 @@ Additionally, `sync_wake_up()` raises `teslapy.VehicleError` when the vehicle do
 *cli.py* is a simple CLI application that can use almost all functionality of the TeslaPy module. The filter option allows you to select a vehicle if more than one vehicle is linked to your account. API output is JSON formatted:
 
 ```
-usage: cli.py [-h] -e EMAIL [-p [PASSWORD]] [-t PASSCODE] [-f FILTER] [-a API] [-k KEYVALUE]
-              [-c COMMAND] [-l] [-o] [-v] [-w] [-g] [-n] [-m] [-s] [-d]
+usage: cli.py [-h] -e EMAIL [-p [PASSWORD]] [-t PASSCODE]  [-u FACTOR] [-f FILTER] [-a API]
+              [-k KEYVALUE] [-c COMMAND] [-l] [-o] [-v] [-w] [-g] [-n] [-m] [-s] [-d]
 
 Tesla Owner API CLI
 
@@ -125,6 +132,7 @@ optional arguments:
   -e EMAIL       login email
   -p [PASSWORD]  prompt/specify login password
   -t PASSCODE    two factor passcode
+  -u FACTOR      use two factor device name
   -f FILTER      filter on id, vin, etc.
   -a API         API call endpoint name
   -k KEYVALUE    API parameter (key=value)
@@ -154,7 +162,7 @@ Example usage of *cli.py* using a cached token:
 
 ## Installation
 
-Make sure you have [Python](https://www.python.org/) 2.7+ or 3.4+ installed on your system. Install [requests](https://pypi.org/project/requests/) with [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [geopy](https://pypi.org/project/geopy/) using [PIP](https://pypi.org/project/pip/) on Linux or macOS:
+Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Install [requests](https://pypi.org/project/requests/) with [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [geopy](https://pypi.org/project/geopy/) using [PIP](https://pypi.org/project/pip/) on Linux or macOS:
 
 `pip install requests_oauthlib geopy`
 

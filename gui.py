@@ -93,6 +93,22 @@ class ControlDialog(Dialog):
     def apply(self):
         self.result = self.state.get()
 
+class SelectFactorDialog(Dialog):
+    """ Display dialog box to select authorization factor """
+
+    def __init__(self, master, title=None, factors=None):
+        self.factors = factors or []
+        Dialog.__init__(self, master, title)
+
+    def body(self, master):
+        self.state = IntVar(value=0)
+        for i, factor in enumerate(self.factors):
+            Radiobutton(master, text=factor['name'], variable=self.state,
+                        value=i).pack(anchor=W)
+
+    def apply(self):
+        self.result = self.factors[self.state.get()]
+
 class StatusBar(Frame):
     """ Status bar widget with transient and permanent status messages """
 
@@ -477,14 +493,26 @@ class App(Tk):
 
     def get_passcode(self):
         """ Ask user for passcode string in new dialog """
-        result = {'passcode': None}
+        result = ['not_set']
         def show_dialog():
             """ Inner function to show dialog """
-            result['passcode'] = askstring('Login', 'Passcode:')
+            result[0] = askstring('Login', 'Passcode:')
         self.after_idle(show_dialog)  # Start from main thread
-        while result['passcode'] is None:
+        while result[0] == 'not_set':
             time.sleep(0.1)  # Block login thread until passcode is entered
-        return result['passcode']
+        return result[0]
+
+    def select_factor(self, factors):
+        """ Let user select authorization factor """
+        result = [{}]
+        def show_dialog():
+            """ Inner function to show dialog """
+            dlg = SelectFactorDialog(self, 'Select factor', factors)
+            result[0] = dlg.result
+        self.after_idle(show_dialog)  # Start from main thread
+        while result[0] == {}:
+            time.sleep(0.1)  # Block login thread until passcode is entered
+        return result[0]
 
     def login(self):
         """ Display login dialog and start new thread to get vehicle list """
@@ -492,7 +520,8 @@ class App(Tk):
         if dlg.result:
             self.email, self.password = dlg.result
             self.status.text('Logging in...')
-            tesla = teslapy.Tesla(self.email, self.password, self.get_passcode)
+            tesla = teslapy.Tesla(self.email, self.password, self.get_passcode,
+                                  self.select_factor)
             # Create and start login thread. Check thread status after 100 ms
             self.login_thread = LoginThread(tesla)
             self.login_thread.start()
@@ -919,13 +948,13 @@ class LoginThread(threading.Thread):
         threading.Thread.__init__(self)
         self.tesla = tesla
         self.exception = None
-        self.vehicles = None
+        self.vehicles = []
 
     def run(self):
         try:
             self.tesla.fetch_token()
             self.vehicles = self.tesla.vehicle_list()
-        except (teslapy.RequestException, ValueError) as e:
+        except (teslapy.RequestException, teslapy.OAuth2Error, ValueError) as e:
             self.exception = e
 
 class StatusThread(threading.Thread):

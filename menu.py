@@ -11,9 +11,6 @@ from teslapy import Tesla
 
 raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
 
-EMAIL = ''
-PASSWORD = ''
-
 def heading_to_str(deg):
     lst = ['NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW',
            'W', 'WNW', 'NW', 'NNW', 'N']
@@ -234,12 +231,22 @@ def menu(vehicle):
 def get_passcode():
     return raw_input('Passcode: ')
 
+def select_factor(factors):
+    print('-'*80)
+    print('ID Name')
+    for i, factor in enumerate(factors):
+        print('{:2} {}'.format(i, factor['name']))
+    print('-'*80)
+    idx = int(raw_input('Select factor: '))
+    print('-'*80)
+    return factors[idx]
+
 def main():
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s - %(levelname)s - %(message)s')
-    email = EMAIL or raw_input('Enter email: ')
-    password = PASSWORD or getpass.getpass('Password: ')
-    with Tesla(email, password, get_passcode) as tesla:
+    email = raw_input('Enter email: ')
+    password = getpass.getpass('Password: ')
+    with Tesla(email, password, get_passcode, select_factor) as tesla:
         tesla.fetch_token()
         vehicles = tesla.vehicle_list()
         print('-'*80)

@@ -1,7 +1,8 @@
 """ This module provides access the Tesla Motors Owner API. It uses Tesla's new
 RFC compliant OAuth 2 Single Sign-On service and supports Time-based One-Time
-Passwords. Access token is saved to disk for reuse. The API endpoints are loaded
-from 'endpoints.json'.
+Passwords. Tokens are saved to disk for reuse and refreshed automatically, only
+needing an email (no password). The vehicle option codes are loaded from
+'option_codes.json' and the API endpoints are loaded from 'endpoints.json'.
 """
 
 # Author: Tim Dorssers
@@ -15,8 +16,10 @@ import logging
 import pkgutil
 try:
     from HTMLParser import HTMLParser
+    from urlparse import urljoin
 except ImportError:
     from html.parser import HTMLParser
+    from urllib.parse import urljoin
 import requests
 from requests_oauthlib import OAuth2Session
 
@@ -30,22 +33,35 @@ SSO_CLIENT_ID = 'ownerapi'
 
 
 class Tesla(requests.Session):
-    """ Implements a session manager for the Tesla Motors Owner API """
+    """ Implements a session manager for the Tesla Motors Owner API
 
-    def __init__(self, email, password, passcode_getter=None, proxy=None):
+    :param email: SSO identity.
+    :param password: SSO credential.
+    :passcode_getter: Function that returns the TOTP passcode.
+    :factor_selector: Function with one argument, a list of factor dicts, that
+                      returns the selected dict or factor name.
+    :param verify: Verify SSL certificate.
+    :param proxy: URL of proxy server.
+    """
+
+    def __init__(self, email, password, passcode_getter=None,
+                 factor_selector=None, verify=True, proxy=None):
         super(Tesla, self).__init__()
         if not email:
-            raise ValueError('Identity required')
+            raise ValueError('`email` is not set')
         self.email = email
         self.password = password
         self.passcode_getter = passcode_getter
+        self.factor_selector = factor_selector
         self.token = {}
         self.expires_at = 0
         self.authorized = False
         self.endpoints = {}
+        self.sso_token = {}
+        self.sso_base = SSO_BASE_URL
         # Set Session properties
         self.headers.update({'Content-Type': 'application/json'})
-        self.verify = False
+        self.verify = verify
         if proxy:
             self.trust_env = False
             self.proxies.update({'https': proxy})
@@ -53,12 +69,14 @@ class Tesla(requests.Session):
 
     def request(self, method, uri, data=None, **kwargs):
         """ Extends base class method to support bearer token insertion. Raises
-        HTTPError when an error occurs. """
+        HTTPError when an error occurs.
+
+        :rtype: JsonDict
+        """
         # Auto refresh token and insert access token into headers
         if self.authorized:
             if 0 < self.expires_at < time.time():
-                self.authorized = False
-                self.fetch_token()
+                self.refresh_token()
             self.headers.update({'Authorization':
                                  'Bearer ' + self.token['access_token']})
         # Construct URL, serialize data and send request
@@ -76,11 +94,12 @@ class Tesla(requests.Session):
         return response.json(object_hook=JsonDict)
 
     def fetch_token(self):
-        """ Sign in using Tesla's SSO service and request JWT bearer """
+        """ Sign in using Tesla's SSO service to request a JWT bearer. Raises
+        HTTPError, CustomOAuth2Error or ValueError. """
         if self.authorized:
             return
         if not self.password:
-            raise ValueError('Password required')
+            raise ValueError('`password` is not set')
         # Generate code verifier and challenge for PKCE (RFC 7636)
         code_verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b'=')
         unencoded_digest = hashlib.sha256(code_verifier).digest()
@@ -92,57 +111,96 @@ class Tesla(requests.Session):
         oauth.verify = self.verify
         oauth.trust_env = self.trust_env
         oauth.proxies = self.proxies
-        url = SSO_BASE_URL + 'oauth2/v3/authorize'
-        auth_url, state = oauth.authorization_url(url,
-                                                  code_challenge=code_challenge,
-                                                  code_challenge_method='S256')
-        # Retrieve SSO page and parse input objects on HTML form
+        url, _ = oauth.authorization_url(self.sso_base + 'oauth2/v3/authorize',
+                                         code_challenge=code_challenge,
+                                         code_challenge_method='S256',
+                                         login_hint=self.email)
+        # Retrieve SSO page (may be redirected to account's registered region)
+        response = oauth.get(url)
+        response.raise_for_status()  # Raise HTTPError, if one occurred
+        if response.history:
+            self.sso_base = urljoin(response.url, '/')
+        # Parse input objects on HTML form
         form = HTMLForm()
-        form.feed(oauth.get(auth_url).text)
-        # Send login credentials to get authorization response code
+        form.feed(response.text)
+        transaction_id = form.data['transaction_id']
+        # Submit login credentials to get authorization code through redirect
         form.data.update({'identity': self.email, 'credential': self.password})
-        auth_resp = oauth.post(SSO_BASE_URL + 'oauth2/v3/authorize',
-                               data=form.data, allow_redirects=False)
-        auth_resp.raise_for_status()  # Raise HTTPError, if one occurred
-        if auth_resp.status_code == 200:
-            form.feed(auth_resp.text)
-            if not form.data['credential']:
-                raise ValueError('Invalid credential')
-            # Check for MFA factors
-            params = {'transaction_id': form.data['transaction_id']}
-            url = SSO_BASE_URL + 'oauth2/v3/authorize/mfa/factors'
-            response = oauth.get(url, params=params)
-            response.raise_for_status()  # Raise HTTPError, if one occurred
-            factors = response.json()['data']
-            # Only one factor and only TOTP is supported
-            if len(factors) == 1:
-                if factors[0]['factorType'] != 'token:software':
-                    raise NotImplementedError(factors[0]['factorType']
-                                              + ' factor not supported')
-                if not self.passcode_getter:
-                    raise ValueError('passcode_getter method is not set')
-                # Get passcode and verify
-                data = {'transaction_id': form.data['transaction_id'],
-                        'factor_id': factors[0]['id'],
-                        'passcode': self.passcode_getter()}
-                url = SSO_BASE_URL + 'oauth2/v3/authorize/mfa/verify'
-                response = oauth.post(url, json=data)
-                if ('error' in response.json() or
-                        not response.json()['data']['valid']):
-                    raise ValueError('Invalid passcode')
-                # Get authorization response code
-                data = {'transaction_id': form.data['transaction_id']}
-                auth_resp = oauth.post(SSO_BASE_URL + 'oauth2/v3/authorize',
-                                       data=data, allow_redirects=False)
-            elif len(factors) > 1:
-                raise NotImplementedError('Multiple MFA factors not supported')
+        response = oauth.post(self.sso_base + 'oauth2/v3/authorize',
+                              data=form.data, allow_redirects=False)
+        response.raise_for_status()  # Raise HTTPError, if credentials invalid
+        if response.status_code == 200:
+            # Check if login form is on page, cause for example locked account
+            form = HTMLForm()
+            form.feed(response.text)
+            if form.data:
+                raise ValueError('Credentials rejected')
+            # Check for MFA factors to handle to get authorized
+            response = self._check_mfa(oauth, transaction_id)
         # Use authorization response code in redirected location to get token
-        if auth_resp.status_code != 302:
-            raise RuntimeError('Authorization error')
-        oauth.fetch_token(SSO_BASE_URL + 'oauth2/v3/token',
-                          authorization_response=auth_resp.headers['Location'],
-                          include_client_id=True, code_verifier=code_verifier)
-        # Perform RFC 7523 JSON web token exchange for Owner API access
+        url = response.headers.get('Location')
+        oauth.fetch_token(self.sso_base + 'oauth2/v3/token',
+                          authorization_response=url, include_client_id=True,
+                          code_verifier=code_verifier)
+        self.sso_token = oauth.token
+        self._fetch_jwt(oauth)  # Access protected resource
+
+    def _check_mfa(self, oauth, transaction_id):
+        """ Handle multi-factor authentication and return submitted response """
+        # Check for MFA factors
+        url = self.sso_base + 'oauth2/v3/authorize/mfa/factors'
+        response = oauth.get(url, params={'transaction_id': transaction_id})
+        response.raise_for_status()  # Raise HTTPError, if one occurred
+        factors = response.json()['data']
+        if not factors:
+            raise ValueError('No registered factors')
+        if not self.passcode_getter:
+            raise ValueError('`passcode_getter` callback is not set')
+        if len(factors) == 1:
+            factor = factors[0]  # Auto select only factor
+        elif len(factors) > 1:
+            if not self.factor_selector:
+                raise ValueError('`factor_selector` callback is not set')
+            # Get selected factor
+            factor = self.factor_selector(factors)
+            if not factor:
+                # Submit cancel and have fetch_token raise CustomOAuth2Error
+                data = {'transaction_id': transaction_id, 'cancel': '1'}
+                return oauth.post(self.sso_base + 'oauth2/v3/authorize',
+                                  data=data, allow_redirects=False)
+            if not isinstance(factor, dict):
+                # Find factor by name
+                try:
+                    factor = next((f for f in factors if f['name'] == factor))
+                except StopIteration:
+                    raise ValueError('No such factor name ' + factor)
+        # Only TOTP is supported
+        if factor['factorType'] != 'token:software':
+            msg = factor['factorType'] + ' factor is not implemented'
+            raise NotImplementedError(msg)
+        # Get passcode
+        passcode = self.passcode_getter()
+        if not passcode:
+            # Submit cancel and have fetch_token raise CustomOAuth2Error
+            data = {'transaction_id': transaction_id, 'cancel': '1'}
+            return oauth.post(self.sso_base + 'oauth2/v3/authorize', data=data,
+                              allow_redirects=False)
+        # Verify passcode
+        data = {'transaction_id': transaction_id, 'factor_id': factor['id'],
+                'passcode': passcode}
+        url = self.sso_base + 'oauth2/v3/authorize/mfa/verify'
+        response = oauth.post(url, json=data)
+        if 'error' in response.json():
+            raise ValueError(response.json()['error']['message'])
+        if not response.json()['data']['valid']:
+            raise ValueError('Invalid passcode')
+        # Submit and get authorization response code
+        data = {'transaction_id': transaction_id}
+        return oauth.post(self.sso_base + 'oauth2/v3/authorize', data=data,
+                          allow_redirects=False)
+
+    def _fetch_jwt(self, oauth):
+        """ Perform RFC 7523 JSON web token exchange for Owner API access """
         data = {'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer',
                 'client_id': CLIENT_ID}
         response = oauth.post(BASE_URL + 'oauth/token', data=data)
@@ -164,7 +222,8 @@ class Tesla(requests.Session):
             cache = {}
         # Write token to cache file
         if self.authorized:
-            cache[self.email] = self.token
+            cache[self.email] = {'url': self.sso_base, 'sso': self.sso_token,
+                                 SSO_CLIENT_ID: self.token}
             try:
                 with open('cache.json', 'w') as outfile:
                     json.dump(cache, outfile)
@@ -174,22 +233,43 @@ class Tesla(requests.Session):
                 logging.debug('Updated cache')
         # Read token from cache
         elif self.email in cache:
-            self.token = cache[self.email]
+            self.sso_base = cache[self.email].get('url', SSO_BASE_URL)
+            self.sso_token = cache[self.email].get('sso', {})
+            self.token = cache[self.email].get(SSO_CLIENT_ID, {})
+            if not self.token:
+                return
             self.expires_at = (self.token['created_at']
                                + self.token['expires_in'])
-            # Check if token is valid
+            self.authorized = True
+            # Log the token validity
             if 0 < self.expires_at < time.time():
-                logging.debug('Cached token expired')
-                self.fetch_token()
+                logging.debug('Cached JWT bearer expired')
             else:
-                self.authorized = True
-                logging.debug('Cached token, expires at %s',
+                logging.debug('Cached JWT bearer, expires at %s',
                               time.ctime(self.expires_at))
+
+    def refresh_token(self):
+        """ Refreshes the SSO token and requests a new JWT bearer """
+        if not self.sso_token:
+            return
+        # Prepare session for token refresh
+        oauth = OAuth2Session(client_id=SSO_CLIENT_ID, token=self.sso_token,
+                              scope=('openid', 'email', 'offline_access'))
+        oauth.verify = self.verify
+        oauth.trust_env = self.trust_env
+        oauth.proxies = self.proxies
+        # Refresh token request must include client_id
+        oauth.refresh_token(self.sso_base + 'oauth2/v3/token',
+                            client_id=SSO_CLIENT_ID)
+        self._fetch_jwt(oauth)  # Access protected resource
 
     def api(self, name, path_vars=None, **kwargs):
         """ Convenience method to perform API request for given endpoint name,
         with keyword arguments as parameters. Substitutes path variables in URI
-        using path_vars. Raises ValueError if endpoint name is not found. """
+        using path_vars. Raises ValueError if endpoint name is not found.
+
+        :rtype: JsonDict
+        """
         path_vars = path_vars or {}
         # Load API endpoints once
         if not self.endpoints:
@@ -224,7 +304,7 @@ class Tesla(requests.Session):
         return self.request(endpoint['TYPE'], uri, data=kwargs)
 
     def vehicle_list(self):
-        """ Returns a list of Vehicle objects """
+        """ Returns a list of :class: Vehicle <Vehicle> objects """
         return [Vehicle(v, self) for v in self.api('VEHICLE_LIST')['response']]
 
 
@@ -328,7 +408,7 @@ class Vehicle(JsonDict):
                   'view': view, 'size': size, 'options': self['option_codes']}
         # Retrieve image from compositor
         url = 'https://static-assets.tesla.com/v1/compositor/'
-        response = requests.get(url, params=params, verify=False,
+        response = requests.get(url, params=params, verify=self.tesla.verify,
                                 proxies=self.tesla.proxies)
         response.raise_for_status()  # Raise HTTPError, if one occurred
         return response.content
@@ -380,7 +460,7 @@ class Vehicle(JsonDict):
     def remote_start_drive(self):
         """ Enables keyless driving for two minutes """
         if not self.tesla.password:
-            raise ValueError('Password required')
+            raise ValueError('`password` is not set')
         return self.command('REMOTE_START', password=self.tesla.password)
 
     def command(self, name, **kwargs):

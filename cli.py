@@ -19,6 +19,7 @@ def main():
     parser.add_argument('-p', dest='password', nargs='?', const='',
                         help='prompt/specify login password')
     parser.add_argument('-t', dest='passcode', help='two factor passcode')
+    parser.add_argument('-u', dest='factor', help='use two factor device name')
     parser.add_argument('-f', dest='filter', help='filter on id, vin, etc.')
     parser.add_argument('-a', dest='api', help='API call endpoint name')
     parser.add_argument('-k', dest='keyvalue', help='API parameter (key=value)',
@@ -49,7 +50,8 @@ def main():
         password = getpass.getpass('Password: ')
     else:
         password = args.password
-    with Tesla(args.email, password, lambda: get_passcode(args)) as tesla:
+    with Tesla(args.email, password, lambda: get_passcode(args),
+               lambda _: args.factor) as tesla:
         tesla.fetch_token()
         selected = cars = tesla.vehicle_list()
         if args.filter:
