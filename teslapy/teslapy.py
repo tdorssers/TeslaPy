@@ -261,6 +261,7 @@ class Tesla(requests.Session):
         # Refresh token request must include client_id
         oauth.refresh_token(self.sso_base + 'oauth2/v3/token',
                             client_id=SSO_CLIENT_ID)
+        self.sso_token = oauth.token
         self._fetch_jwt(oauth)  # Access protected resource
 
     def api(self, name, path_vars=None, **kwargs):
