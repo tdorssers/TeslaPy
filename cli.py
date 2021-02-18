@@ -51,7 +51,7 @@ def main():
     else:
         password = args.password
     with Tesla(args.email, password, lambda: get_passcode(args),
-               lambda _: args.factor) as tesla:
+               (lambda _: args.factor) if args.factor else None) as tesla:
         tesla.fetch_token()
         selected = cars = tesla.vehicle_list()
         if args.filter:
