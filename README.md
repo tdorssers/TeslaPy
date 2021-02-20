@@ -4,7 +4,17 @@ A Python implementation based on [unofficial documentation](https://tesla-api.ti
 
 ## Overview
 
-The single file module *teslapy* depends on Python [requests](https://pypi.org/project/requests/) and [requests_oauthlib](https://pypi.org/project/requests-oauthlib/). The `Tesla` class extends `requests.Session` and therefore inherits methods like `get()` and `post()` that can be used to perform API calls. It uses Tesla's new [OAuth 2](https://oauth.net/2/) Single Sign-On service with support for Multi-Factor Authentication (MFA) Time-based One-Time Passwords (TOTP) to acquire a JSON Web Token (JWT) bearer to access the Owner API that is cached to disk (*cache.json*) for reuse. The cache stores tokens of each authorized identity (email). Authentication is only needed when a new token is requested. The token is automatically refreshed when expired without the need to reauthenticate. An email registered in another region (e.g. auth.tesla.cn) is also supported. The constructor takes two arguments required for authentication (email and password) and four optional arguments: a passcode getter function, a factor selector function, a verify SSL certificate bool and a proxy server URL. The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
+The module *teslapy* depends on Python [requests](https://pypi.org/project/requests/) and [requests_oauthlib](https://pypi.org/project/requests-oauthlib/). The `Tesla` class extends `requests.Session` and therefore inherits methods like `get()` and `post()` that can be used to perform API calls. All calls to the Owner API are intercepted to add the JSON Web Token (JWT) bearer, which is acquired after authentication:
+
+* It implements Tesla's new [OAuth 2](https://oauth.net/2/) Single Sign-On service.
+* And supports Multi-Factor Authentication (MFA) Time-based One-Time Passwords (TOTP).
+* Acquired tokens are cached to disk (*cache.json*) for persistence.
+* The cache stores tokens of each authorized identity (email).
+* Authentication is only needed when a new token is requested.
+* The token is automatically refreshed when expired without the need to reauthenticate.
+* An email registered in another region (e.g. auth.tesla.cn) is also supported.
+
+The constructor takes two arguments required for authentication (email and password) and four optional arguments: a passcode getter function, a factor selector function, a verify SSL certificate bool and a proxy server URL. The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
@@ -120,7 +130,7 @@ Additionally, `sync_wake_up()` raises `teslapy.VehicleError` when the vehicle do
 
 When you pass an empty string as passcode or factor to the constructor and your account has MFA enabled, then the module will cancel the transaction and this exception will be raised: `CustomOAuth2Error: (login_cancelled) User cancelled login`.
 
-:memo: If you get a `requests.exceptions.HTTPError: 400 Client Error: endpoint_deprecated:_please_update_your_app for url: https://owner-api.teslamotors.com/oauth/token` then it is time to update your local copy or sync your fork of this repository. As of January 29, 2021, Tesla updated this endpoint to follow [RFC 7523](https://tools.ietf.org/html/rfc7523) and requires the use of the SSO service (auth.tesla.com) for authentication.
+:memo: If you get a `requests.exceptions.HTTPError: 400 Client Error: endpoint_deprecated:_please_update_your_app for url: https://owner-api.teslamotors.com/oauth/token` then it is time to pull this repository. As of January 29, 2021, Tesla updated this endpoint to follow [RFC 7523](https://tools.ietf.org/html/rfc7523) and requires the use of the SSO service (auth.tesla.com) for authentication.
 
 ## Demo applications
 
@@ -360,7 +370,7 @@ Example output of `get_vehicle_data()` or `python cli.py -e elon@tesla.com -w -g
 
 ## Installation
 
-Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Install [requests](https://pypi.org/project/requests/) with [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [geopy](https://pypi.org/project/geopy/) using [PIP](https://pypi.org/project/pip/) on Linux or macOS:
+Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Install [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [geopy](https://pypi.org/project/geopy/) using [PIP](https://pypi.org/project/pip/) on Linux or macOS:
 
 `pip install requests_oauthlib geopy`
 

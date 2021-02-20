@@ -44,8 +44,9 @@ def main():
     parser.add_argument('-d', '--debug', action='store_true',
                         help='set logging level to debug')
     args = parser.parse_args()
+    default_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
-                        format='%(asctime)s - %(levelname)s - %(message)s')
+                        format=default_format)
     if args.password == '':
         password = getpass.getpass('Password: ')
     else:

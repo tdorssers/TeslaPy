@@ -66,8 +66,8 @@ class SeatHeaterDialog(Dialog):
     def body(self, master):
         Label(master, text="Heater:").grid(row=0, sticky=E)
         Label(master, text="Level:").grid(row=1, sticky=E)
-        lst = ['0: Driver', '1: Passenger', '2: Rear left', '3: Rear center',
-               '4: Rear right']
+        lst = ['0: Front Left', '1: Front Right', '2: Rear left',
+               '3: Rear center', '4: Rear right']
         self.heater = StringVar(value=lst[0])
         OptionMenu(master, self.heater, *lst).grid(row=0, column=1, sticky=W)
         self.level = IntVar(value=0)
@@ -483,7 +483,8 @@ class App(Tk):
         except (NoSectionError, NoOptionError, ParsingError):
             pass
         # Initialize logging
-        logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
+        default_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        logging.basicConfig(format=default_format)
         self.set_log()
 
     def add_cmd_args(self, endpoint):

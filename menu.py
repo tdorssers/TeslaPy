@@ -242,8 +242,8 @@ def select_factor(factors):
     return factors[idx]
 
 def main():
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s - %(levelname)s - %(message)s')
+    default_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    logging.basicConfig(level=logging.DEBUG, format=default_format)
     email = raw_input('Enter email: ')
     password = getpass.getpass('Password: ')
     with Tesla(email, password, get_passcode, select_factor) as tesla:

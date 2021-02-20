@@ -1,3 +1,4 @@
 .idea
 cache.json
 **/__pycache__
+**/*.pyc
