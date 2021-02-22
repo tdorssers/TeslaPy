@@ -4,7 +4,7 @@ A Python implementation based on [unofficial documentation](https://tesla-api.ti
 
 ## Overview
 
-The module *teslapy* depends on Python [requests](https://pypi.org/project/requests/) and [requests_oauthlib](https://pypi.org/project/requests-oauthlib/). The `Tesla` class extends `requests.Session` and therefore inherits methods like `get()` and `post()` that can be used to perform API calls. All calls to the Owner API are intercepted to add the JSON Web Token (JWT) bearer, which is acquired after authentication:
+This module depends on Python [requests](https://pypi.org/project/requests/) and [requests_oauthlib](https://pypi.org/project/requests-oauthlib/). The `Tesla` class extends `requests.Session` and therefore inherits methods like `get()` and `post()` that can be used to perform API calls. All calls to the Owner API are intercepted to add the JSON Web Token (JWT) bearer, which is acquired after authentication:
 
 * It implements Tesla's new [OAuth 2](https://oauth.net/2/) Single Sign-On service.
 * And supports Multi-Factor Authentication (MFA) Time-based One-Time Passwords (TOTP).
@@ -29,7 +29,7 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the API. 
 | `api()` | performs an API call to named endpoint requiring vehicle_id with optional arguments |
 | `get_vehicle_summary()` | gets the state of the vehicle (online, asleep, offline) |
 | `sync_wake_up()` | wakes up and waits for the vehicle to come online |
-| `option_code_list()` | lists known descriptions of the vehicle option codes |
+| `option_code_list()` | lists known descriptions (read from *option_codes.json*) of the vehicle option codes |
 | `get_vehicle_data()` | gets a rollup of all the data request endpoints plus vehicle config |
 | `get_nearby_charging_sites()` | lists nearby Tesla-operated charging stations |
 | `mobile_enabled()` | checks if mobile access is enabled in the vehicle |
@@ -68,7 +68,7 @@ Tesla allows you to enable more then one MFA device. In this case the constructo
 with teslapy.Tesla('elon@tesla.com', 'starship', lambda: '123456', lambda _: 'Device #1') as tesla:
 ```
 
-Take a look at *menu.py* or *gui.py* for examples of a passcode getter function and a factor selector function.
+Take a look at [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) for examples of a passcode getter function and a factor selector function.
 
 These are the major commands:
 
@@ -130,11 +130,13 @@ Additionally, `sync_wake_up()` raises `teslapy.VehicleError` when the vehicle do
 
 When you pass an empty string as passcode or factor to the constructor and your account has MFA enabled, then the module will cancel the transaction and this exception will be raised: `CustomOAuth2Error: (login_cancelled) User cancelled login`.
 
-:memo: If you get a `requests.exceptions.HTTPError: 400 Client Error: endpoint_deprecated:_please_update_your_app for url: https://owner-api.teslamotors.com/oauth/token` then it is time to pull this repository. As of January 29, 2021, Tesla updated this endpoint to follow [RFC 7523](https://tools.ietf.org/html/rfc7523) and requires the use of the SSO service (auth.tesla.com) for authentication.
+If you get a `requests.exceptions.HTTPError: 400 Client Error: endpoint_deprecated:_please_update_your_app for url: https://owner-api.teslamotors.com/oauth/token` then you are probably using an old version of this module. As of January 29, 2021, Tesla updated this endpoint to follow [RFC 7523](https://tools.ietf.org/html/rfc7523) and requires the use of the SSO service (auth.tesla.com) for authentication.
 
 ## Demo applications
 
-*cli.py* is a simple CLI application that can use almost all functionality of the TeslaPy module. The filter option allows you to select a vehicle if more than one vehicle is linked to your account. API output is JSON formatted:
+The source repository contains three demo applications.
+
+[cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) is a simple CLI application that can use almost all functionality of the TeslaPy module. The filter option allows you to select a vehicle if more than one vehicle is linked to your account. API output is JSON formatted:
 
 ```
 usage: cli.py [-h] -e EMAIL [-p [PASSWORD]] [-t PASSCODE]  [-u FACTOR] [-f FILTER] [-a API]
@@ -163,17 +165,17 @@ optional arguments:
   -d, --debug    set logging level to debug
 ```
 
-Example usage of *cli.py* using a cached token:
+Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) using a cached token:
 
 `python cli.py -e elon@tesla.com -w -a ACTUATE_TRUNK -k which_trunk=front`
 
-*menu.py* is a menu-based console application that displays vehicle data in a tabular format. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address:
+[menu.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) is a menu-based console application that displays vehicle data in a tabular format. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address:
 
-![](media/menu.png)
+![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/menu.png)
 
-*gui.py* is a graphical interface using `tkinter`. API calls are performed asynchronously using threading. The GUI also supports auto refreshing of the vehicle data and the GUI displays a composed vehicle image. Note that the vehicle will not go to sleep, if auto refresh is enabled. The application depends on [pillow](https://pypi.org/project/Pillow/) to display the vehicle image, if the Tcl/Tk GUI toolkit version of your Python installation is 8.5. Python 3.4+ should include Tcl/Tk 8.6, which natively supports PNG image format and therefore has no such dependency.
+[gui.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) is a graphical interface using `tkinter`. API calls are performed asynchronously using threading. The GUI also supports auto refreshing of the vehicle data and the GUI displays a composed vehicle image. Note that the vehicle will not go to sleep, if auto refresh is enabled. The application depends on [pillow](https://pypi.org/project/Pillow/) to display the vehicle image, if the Tcl/Tk GUI toolkit version of your Python installation is 8.5. Python 3.4+ should include Tcl/Tk 8.6, which natively supports PNG image format and therefore has no such dependency.
 
-![](media/gui.png)
+![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/gui.png)
 
 ## Vehicle data
 
@@ -370,16 +372,14 @@ Example output of `get_vehicle_data()` or `python cli.py -e elon@tesla.com -w -g
 
 ## Installation
 
-Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Install [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [geopy](https://pypi.org/project/geopy/) using [PIP](https://pypi.org/project/pip/) on Linux or macOS:
+TeslaPy is available on PyPI:
 
-`pip install requests_oauthlib geopy`
+`python -m pip install teslapy`
 
-or on Windows as follows:
+Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [geopy](https://pypi.org/project/geopy/) using [PIP](https://pypi.org/project/pip/) as follows:
 
 `python -m pip install requests_oauthlib geopy`
 
 or on Ubuntu as follows:
 
 `sudo apt-get install python3-requests-oauthlib python3-geopy`
-
-Copy directory *teslapy* and files *cli.py*, *menu.py* and *gui.py* to your machine and run *cli.py*, *menu.py* or *gui.py* to get started.

@@ -2,3 +2,6 @@
 cache.json
 **/__pycache__
 **/*.pyc
+build/
+dist/
+TeslaPy.egg-info/
