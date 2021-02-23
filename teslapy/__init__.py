@@ -336,8 +336,21 @@ class Tesla(requests.Session):
     def vehicle_list(self):
         """ Returns a list of :class: Vehicle <Vehicle> objects """
         return [Vehicle(v, self) for v in self.api('VEHICLE_LIST')['response']]
+    
+    def product_list(self):
+        """ Returns a list of the raw json response of Tesla products """
+        return self.api('PRODUCT_LIST')['response']
 
+    def battery_list(self):
+        """ Returns a list of :class: Battery <Battery> objects """
+        battery_list = []
+        for product in self.product_list():
+            if product['resource_type'] != 'battery':
+                continue
+            battery_list.append(Battery(product, self))
+        return battery_list
 
+    
 class HTMLForm(HTMLParser):
     """ Parse input tags on HTML form """
 
@@ -499,3 +512,49 @@ class Vehicle(JsonDict):
         if not response['result']:
             raise VehicleError(response['reason'])
         return response['result']
+
+    
+class BatteryError(Exception):
+    """ Vehicle exception class """
+    pass
+
+
+class Battery(JsonDict):
+    """ Battery class with dictionary access and API request support """
+
+    def __init__(self, battery, tesla):
+        super(Battery, self).__init__(battery)
+        self.tesla = tesla
+
+    def api(self, name, **kwargs):
+        """ Endpoint request with either the necessary id path variables """
+        return self.tesla.api(name, {'battery_id': self['id'],
+                                     'site_id': self['energy_site_id']},
+                              **kwargs)
+
+    def get_battery_data(self):
+        """ Determine the state and details of the battery """
+        self.update(self.api('BATTERY_DATA')['response'])
+        return self
+
+    def set_operation(self, mode):
+        """ Set battery operation to self_consumption, backup or autonomous """
+        response = self.api('BATTERY_OPERATION_MODE',
+                            default_real_mode=mode)['response']
+        if response['code'] == 201:
+            return
+        raise BatteryError("Unable to set operation mode %s, code: %s "
+                           "error: %s" % (
+                               mode, response.get('code', "Unknown"),
+                               response.get('message', "Unknown")))
+
+    def set_backup_reserve_percent(self, percent):
+        """ Set the minimum backup reserve percent for that battery """
+        response = self.api('BACKUP_RESERVE',
+                            backup_reserve_percent=int(percent))['response']
+        if response['code'] == 201:
+            return
+        raise BatteryError("Unable to set backup reserve percent %s, code: %s "
+                           "error: %s" % (
+                               percent, response.get('code', "Unknown"),
+                               response.get('message', "Unknown")))
