@@ -337,18 +337,10 @@ class Tesla(requests.Session):
         """ Returns a list of :class: Vehicle <Vehicle> objects """
         return [Vehicle(v, self) for v in self.api('VEHICLE_LIST')['response']]
     
-    def product_list(self):
-        """ Returns a list of the raw json response of Tesla products """
-        return self.api('PRODUCT_LIST')['response']
-
     def battery_list(self):
         """ Returns a list of :class: Battery <Battery> objects """
-        battery_list = []
-        for product in self.product_list():
-            if product['resource_type'] != 'battery':
-                continue
-            battery_list.append(Battery(product, self))
-        return battery_list
+        return [Battery(p, self) for p in self.api('PRODUCT_LIST')['response']
+                if p.get('resource_type') == 'battery']
 
     
 class HTMLForm(HTMLParser):
@@ -515,7 +507,7 @@ class Vehicle(JsonDict):
 
     
 class BatteryError(Exception):
-    """ Vehicle exception class """
+    """ Battery exception class """
     pass
 
 
@@ -527,34 +519,33 @@ class Battery(JsonDict):
         self.tesla = tesla
 
     def api(self, name, **kwargs):
-        """ Endpoint request with either the necessary id path variables """
-        return self.tesla.api(name, {'battery_id': self['id'],
-                                     'site_id': self['energy_site_id']},
-                              **kwargs)
+        """ Endpoint request with battery_id or site_id path variable """
+        pathvars = {'battery_id': self['id'], 'site_id': self['energy_site_id']}
+        return self.tesla.api(name, pathvars, **kwargs)
+
+    def get_battery_summary(self):
+        """ Update the summary state of the battery """
+        self.update(self.api('BATTERY_SUMMARY')['response'])
+        return self
 
     def get_battery_data(self):
-        """ Determine the state and details of the battery """
+        """ Retrieve detailed state and configuration of the battery """
         self.update(self.api('BATTERY_DATA')['response'])
         return self
 
+    def command(self, name, **kwargs):
+        """ Wrapper method for battery command response error handling """
+        response = self.api(name, **kwargs)['response']
+        if response['code'] == 201:
+            return response.get('message')
+        raise BatteryError(response.get('message'))
+
     def set_operation(self, mode):
         """ Set battery operation to self_consumption, backup or autonomous """
-        response = self.api('BATTERY_OPERATION_MODE',
-                            default_real_mode=mode)['response']
-        if response['code'] == 201:
-            return
-        raise BatteryError("Unable to set operation mode %s, code: %s "
-                           "error: %s" % (
-                               mode, response.get('code', "Unknown"),
-                               response.get('message', "Unknown")))
+        return self.command('BATTERY_OPERATION_MODE', default_real_mode=mode)
 
     def set_backup_reserve_percent(self, percent):
         """ Set the minimum backup reserve percent for that battery """
-        response = self.api('BACKUP_RESERVE',
-                            backup_reserve_percent=int(percent))['response']
-        if response['code'] == 201:
-            return
-        raise BatteryError("Unable to set backup reserve percent %s, code: %s "
-                           "error: %s" % (
-                               percent, response.get('code', "Unknown"),
-                               response.get('message', "Unknown")))
+        return self.command('BACKUP_RESERVE',
+                            backup_reserve_percent=int(percent))
+

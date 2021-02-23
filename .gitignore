@@ -1,5 +1,6 @@
 .idea
 cache.json
+gui.ini
 **/__pycache__
 **/*.pyc
 build/
