@@ -523,11 +523,6 @@ class Battery(JsonDict):
         pathvars = {'battery_id': self['id'], 'site_id': self['energy_site_id']}
         return self.tesla.api(name, pathvars, **kwargs)
 
-    def get_battery_summary(self):
-        """ Update the summary state of the battery """
-        self.update(self.api('BATTERY_SUMMARY')['response'])
-        return self
-
     def get_battery_data(self):
         """ Retrieve detailed state and configuration of the battery """
         self.update(self.api('BATTERY_DATA')['response'])

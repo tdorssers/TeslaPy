@@ -29,7 +29,7 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the API. 
 | `api()` | performs an API call to named endpoint requiring vehicle_id with optional arguments |
 | `get_vehicle_summary()` | gets the state of the vehicle (online, asleep, offline) |
 | `sync_wake_up()` | wakes up and waits for the vehicle to come online |
-| `option_code_list()` | lists known descriptions (read from *option_codes.json*) of the vehicle option codes |
+| `option_code_list()` <sup>1</sup> | lists known descriptions (read from *option_codes.json*) of the vehicle option codes |
 | `get_vehicle_data()` | gets a rollup of all the data request endpoints plus vehicle config |
 | `get_nearby_charging_sites()` | lists nearby Tesla-operated charging stations |
 | `mobile_enabled()` | checks if mobile access is enabled in the vehicle |
@@ -40,7 +40,19 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the API. 
 | `remote_start_drive()` | enables keyless drive (requires password to be set) |
 | `command()` | wrapper around `api()` for vehicle command response error handling |
 
+<sup>1</sup> Option codes appear to be deprecated. Vehicles return a generic set of codes related to a Model 3.
+
 Only `get_vehicle_summary()`, `option_code_list()`, `compose_image()` and `decode_vin()` are available when the vehicle is asleep or offline. These methods will not prevent your vehicle from sleeping. Other methods and API calls require the vehicle to be brought online by using `sync_wake_up()` and can prevent your vehicle from sleeping if called with too short a period.
+
+The `Battery` class extends `dict` and stores Powerwall data returned by the API. Additionally, the class implements the following methods:
+
+| Call | Description |
+| --- | --- |
+| `api()` | performs an API call to named endpoint requiring battery_id or site_id with optional arguments |
+| `get_battery_data()` | Retrieve detailed state and configuration of the battery |
+| `command()` | wrapper around `api()` for battery command response error handling |
+| `set_operation()` | Set battery operation to self_consumption, backup or autonomous |
+| `set_backup_reserve_percent()` | Set the minimum backup reserve percent for that battery |
 
 ## Usage
 
@@ -136,11 +148,12 @@ If you get a `requests.exceptions.HTTPError: 400 Client Error: endpoint_deprecat
 
 The source repository contains three demo applications.
 
-[cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) is a simple CLI application that can use almost all functionality of the TeslaPy module. The filter option allows you to select a vehicle if more than one vehicle is linked to your account. API output is JSON formatted:
+[cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) is a simple CLI application that can use almost all functionality of the TeslaPy module. The filter option allows you to select a product if more than one product is linked to your account. API output is JSON formatted:
 
 ```
-usage: cli.py [-h] -e EMAIL [-p [PASSWORD]] [-t PASSCODE]  [-u FACTOR] [-f FILTER] [-a API]
-              [-k KEYVALUE] [-c COMMAND] [-l] [-o] [-v] [-w] [-g] [-n] [-m] [-s] [-d]
+usage: cli.py [-h] -e EMAIL [-p [PASSWORD]] [-t PASSCODE] [-u FACTOR]
+              [-f FILTER] [-a API] [-k KEYVALUE] [-c COMMAND] [-l] [-o] [-v]
+              [-w] [-g] [-b] [-n] [-m] [-s] [-d]
 
 Tesla Owner API CLI
 
@@ -153,12 +166,13 @@ optional arguments:
   -f FILTER      filter on id, vin, etc.
   -a API         API call endpoint name
   -k KEYVALUE    API parameter (key=value)
-  -c COMMAND     vehicle command endpoint
-  -l, --list     list all selected vehicles
+  -c COMMAND     product command endpoint
+  -l, --list     list all selected vehicles/batteries
   -o, --option   list vehicle option codes
   -v, --vin      vehicle identification number decode
   -w, --wake     wake up selected vehicle(s)
   -g, --get      get rollup of all vehicle data
+  -b, --battery  get detailed battery state and config
   -n, --nearby   list nearby charging sites
   -m, --mobile   get mobile enabled state
   -s, --start    remote start drive
@@ -367,6 +381,74 @@ Example output of `get_vehicle_data()` or `python cli.py -e elon@tesla.com -w -g
         "valet_pin_needed": true,
         "vehicle_name": "Tim's Tesla"
     }
+}
+```
+
+## Powerwall data
+
+Example output of `get_battery_data()` or `python cli.py -e elon@tesla.com -b` below:
+
+```json
+{
+    "energy_site_id": 111110110110,
+    "resource_type": "battery",
+    "site_name": "Elon's House",
+    "id": "STE10110111-00101",
+    "gateway_id": "1111100-11-A--AAA11110A1A111",
+    "asset_site_id": "a1100111-1a11-1aaa-a111-1a0011aa1111",
+    "energy_left": 0,
+    "total_pack_energy": 13746,
+    "percentage_charged": 0,
+    "battery_type": "ac_powerwall",
+    "backup_capable": true,
+    "battery_power": 0,
+    "sync_grid_alert_enabled": false,
+    "breaker_alert_enabled": false,
+    "components": {
+        "solar": true,
+        "solar_type": "pv_panel",
+        "battery": true,
+        "grid": true,
+        "backup": true,
+        "gateway": "teg",
+        "load_meter": true,
+        "tou_capable": true,
+        "storm_mode_capable": true,
+        "flex_energy_request_capable": false,
+        "car_charging_data_supported": false,
+        "off_grid_vehicle_charging_reserve_supported": false,
+        "vehicle_charging_performance_view_enabled": false,
+        "vehicle_charging_solar_offset_view_enabled": false,
+        "battery_solar_offset_view_enabled": true,
+        "show_grid_import_battery_source_cards": true,
+        "battery_type": "ac_powerwall",
+        "configurable": false,
+        "grid_services_enabled": false
+    },
+    "grid_status": "Active",
+    "backup": {
+        "backup_reserve_percent": 0,
+        "events": null
+    },
+    "user_settings": {
+        "storm_mode_enabled": false,
+        "sync_grid_alert_enabled": false,
+        "breaker_alert_enabled": false
+    },
+    "default_real_mode": "self_consumption",
+    "operation": "self_consumption",
+    "installation_date": "2020-01-01T10:10:00+08:00",
+    "power_reading": [
+        {
+            "timestamp": "2021-02-24T04:25:39+08:00",
+            "load_power": 5275,
+            "solar_power": 3,
+            "grid_power": 5262,
+            "battery_power": 10,
+            "generator_power": 0
+        }
+    ],
+    "battery_count": 1
 }
 ```
 
