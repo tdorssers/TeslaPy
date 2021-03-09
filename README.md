@@ -33,7 +33,7 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the API. 
 | `get_vehicle_data()` | gets a rollup of all the data request endpoints plus vehicle config |
 | `get_nearby_charging_sites()` | lists nearby Tesla-operated charging stations |
 | `mobile_enabled()` | checks if mobile access is enabled in the vehicle |
-| `compose_image()` | composes a vehicle image based on vehicle option codes |
+| `compose_image()` <sup>2</sup> | composes a vehicle image based on vehicle option codes |
 | `dist_units()` | converts distance or speed units to GUI setting of the vehicle |
 | `temp_units()` | converts temperature units to GUI setting of the vehicle |
 | `decode_vin()` | decodes the vehicle identification number to a dict |
@@ -41,6 +41,7 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the API. 
 | `command()` | wrapper around `api()` for vehicle command response error handling |
 
 <sup>1</sup> Option codes appear to be deprecated. Vehicles return a generic set of codes related to a Model 3.
+<sup>2</sup> Pass vehicle option codes to this method or the image may not be accurate.
 
 Only `get_vehicle_summary()`, `option_code_list()`, `compose_image()` and `decode_vin()` are available when the vehicle is asleep or offline. These methods will not prevent your vehicle from sleeping. Other methods and API calls require the vehicle to be brought online by using `sync_wake_up()` and can prevent your vehicle from sleeping if called with too short a period.
 

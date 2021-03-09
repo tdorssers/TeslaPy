@@ -435,12 +435,16 @@ class Vehicle(JsonDict):
         uri = 'api/1/vehicles/%s/mobile_enabled' % self['id_s']
         return self.tesla.get(uri)['response']
 
-    def compose_image(self, view='STUD_3QTR', size=640):
+    def compose_image(self, view='STUD_3QTR', size=640, options=None):
         """ Returns a PNG formatted composed vehicle image. Valid views are:
         STUD_3QTR, STUD_SEAT, STUD_SIDE, STUD_REAR and STUD_WHEEL """
-        # Derive model from VIN and other properties from option codes
-        params = {'model': 'm' + self['vin'][3].lower(), 'bkba_opt': 1,
-                  'view': view, 'size': size, 'options': self['option_codes']}
+        if options is None:
+            msg = 'compose_image requires options for the image to be accurate'
+            logger.warning(msg)
+        # Derive model from VIN and other properties from (given) option codes
+        params = {'model': 'm' + self['vin'][3].lower(),
+                  'bkba_opt': 1, 'view': view, 'size': size,
+                  'options': options or self['option_codes']}
         # Retrieve image from compositor
         url = 'https://static-assets.tesla.com/v1/compositor/'
         response = requests.get(url, params=params, verify=self.tesla.verify,
