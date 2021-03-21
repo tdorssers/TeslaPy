@@ -796,8 +796,9 @@ class App(Tk):
             self.cmd('CHANGE_CHARGE_LIMIT', percent=limit)
 
     def open_close_charge_port(self):
-        """ Open or close charging port """
-        if self.vehicle['charge_state']['charge_port_door_open']:
+        """ Open, unlock or close charging port """
+        if (self.vehicle['charge_state']['charge_port_door_open'] and
+                self.vehicle['charge_state']['charge_port_latch'] != 'Engaged'):
             self.cmd('CHARGE_PORT_DOOR_CLOSE')
         else:
             self.cmd('CHARGE_PORT_DOOR_OPEN')

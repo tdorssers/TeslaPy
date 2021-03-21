@@ -41,6 +41,7 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the API. 
 | `command()` | wrapper around `api()` for vehicle command response error handling |
 
 <sup>1</sup> Option codes appear to be deprecated. Vehicles return a generic set of codes related to a Model 3.
+
 <sup>2</sup> Pass vehicle option codes to this method or the image may not be accurate.
 
 Only `get_vehicle_summary()`, `option_code_list()`, `compose_image()` and `decode_vin()` are available when the vehicle is asleep or offline. These methods will not prevent your vehicle from sleeping. Other methods and API calls require the vehicle to be brought online by using `sync_wake_up()` and can prevent your vehicle from sleeping if called with too short a period.

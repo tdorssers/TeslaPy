@@ -23,6 +23,7 @@ except ImportError:
 import requests
 from requests_oauthlib import OAuth2Session
 from requests.exceptions import *
+from requests.packages.urllib3.util.retry import Retry
 from oauthlib.oauth2.rfc6749.errors import *
 
 
@@ -91,6 +92,8 @@ class Tesla(requests.Session):
         self.sso_token = {}
         self.sso_base = SSO_BASE_URL
         # Set Session properties
+        retry = Retry(total=2, status_forcelist=(408, 429, 500, 502, 503, 504))
+        self.mount('https://', requests.adapters.HTTPAdapter(max_retries=retry))
         self.headers.update({'Content-Type': 'application/json'})
         self.verify = verify
         if proxy:
@@ -114,6 +117,7 @@ class Tesla(requests.Session):
         url = BASE_URL + uri.strip('/')
         logger.debug('Requesting url %s using method %s', url, method)
         logger.debug('Supplying headers %s and data %s', self.headers, data)
+        kwargs.setdefault('timeout', 10)
         response = super(Tesla, self).request(method, url, json=data, **kwargs)
         # Error message handling
         if 400 <= response.status_code < 600:
@@ -336,13 +340,13 @@ class Tesla(requests.Session):
     def vehicle_list(self):
         """ Returns a list of :class: Vehicle <Vehicle> objects """
         return [Vehicle(v, self) for v in self.api('VEHICLE_LIST')['response']]
-    
+
     def battery_list(self):
         """ Returns a list of :class: Battery <Battery> objects """
         return [Battery(p, self) for p in self.api('PRODUCT_LIST')['response']
                 if p.get('resource_type') == 'battery']
 
-    
+
 class HTMLForm(HTMLParser):
     """ Parse input tags on HTML form """
 
@@ -509,7 +513,7 @@ class Vehicle(JsonDict):
             raise VehicleError(response['reason'])
         return response['result']
 
-    
+
 class BatteryError(Exception):
     """ Battery exception class """
     pass
@@ -547,4 +551,3 @@ class Battery(JsonDict):
         """ Set the minimum backup reserve percent for that battery """
         return self.command('BACKUP_RESERVE',
                             backup_reserve_percent=int(percent))
-
