@@ -413,7 +413,7 @@
   },
   "SITE_SUMMARY": {
     "TYPE": "GET",
-    "URI": "api/1/energy_sites/{site_id}/status",
+    "URI": "api/1/energy_sites/{site_id}/site_status",
     "AUTH": true
   },
   "SITE_DATA": {
