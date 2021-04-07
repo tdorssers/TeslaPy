@@ -158,19 +158,17 @@ class Tesla(requests.Session):
         if response.history:
             self.sso_base = urljoin(response.url, '/')
         # Parse input objects on HTML form
-        form = HTMLForm()
-        form.feed(response.text)
-        transaction_id = form.data['transaction_id']
+        form = HTMLForm(response.text)
+        transaction_id = form['transaction_id']
         # Submit login credentials to get authorization code through redirect
-        form.data.update({'identity': self.email, 'credential': self.password})
+        form.update({'identity': self.email, 'credential': self.password})
         response = oauth.post(self.sso_base + 'oauth2/v3/authorize',
-                              data=form.data, allow_redirects=False)
+                              data=form, allow_redirects=False)
         response.raise_for_status()  # Raise HTTPError, if credentials invalid
         if response.status_code == 200:
             # Check if login form is on page, cause for example locked account
-            form = HTMLForm()
-            form.feed(response.text)
-            if form.data:
+            form = HTMLForm(response.text)
+            if form:
                 raise ValueError('Credentials rejected')
             # Check for MFA factors to handle to get authorized
             response = self._check_mfa(oauth, transaction_id)
@@ -347,17 +345,17 @@ class Tesla(requests.Session):
                 if p.get('resource_type') == 'battery']
 
 
-class HTMLForm(HTMLParser):
+class HTMLForm(HTMLParser, dict):
     """ Parse input tags on HTML form """
 
-    def __init__(self):
-        self.data = {}
+    def __init__(self, html):
         HTMLParser.__init__(self)
+        self.feed(html)
 
     def handle_starttag(self, tag, attrs):
         """ Make dictionary of name and value attributes of input tags """
         if tag == 'input':
-            self.data[dict(attrs)['name']] = dict(attrs).get('value', '')
+            self[dict(attrs)['name']] = dict(attrs).get('value', '')
 
 
 class VehicleError(Exception):
