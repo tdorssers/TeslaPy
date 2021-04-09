@@ -313,8 +313,8 @@ class Dashboard(Frame):
         self.fp.text(window.get(ve.get('fp_window')))
         self.rd.text(window.get(ve.get('rd_window')))
         self.rp.text(window.get(ve.get('rp_window')))
-        self.ft.text(door[ve['ft']])
-        self.rt.text(door[ve['rt']])
+        self.ft.text(door[bool(ve['ft'])])
+        self.rt.text(door[bool(ve['rt'])])
         self.remote_start.text(str(ve['remote_start']))
         self.user_present.text(str(ve['is_user_present']))
         self.speed_limit.text(str(ve['speed_limit_mode']['active']))
@@ -521,8 +521,10 @@ class App(Tk):
         if dlg.result:
             self.email, self.password = dlg.result
             self.status.text('Logging in...')
+            retry = teslapy.Retry(total=2,
+                                  status_forcelist=(408, 500, 502, 503, 504))
             tesla = teslapy.Tesla(self.email, self.password, self.get_passcode,
-                                  self.select_factor)
+                                  self.select_factor, retry=retry)
             # Create and start login thread. Check thread status after 100 ms
             self.login_thread = LoginThread(tesla)
             self.login_thread.start()

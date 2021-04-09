@@ -74,10 +74,11 @@ class Tesla(requests.Session):
                       returns the selected dict or factor name.
     :param verify: Verify SSL certificate.
     :param proxy: URL of proxy server.
+    :param retry: Number of connection retries or :class:`Retry` instance.
     """
 
     def __init__(self, email, password, passcode_getter=None,
-                 factor_selector=None, verify=True, proxy=None):
+                 factor_selector=None, verify=True, proxy=None, retry=0):
         super(Tesla, self).__init__()
         if not email:
             raise ValueError('`email` is not set')
@@ -92,7 +93,6 @@ class Tesla(requests.Session):
         self.sso_token = {}
         self.sso_base = SSO_BASE_URL
         # Set Session properties
-        retry = Retry(total=2, status_forcelist=(408, 429, 500, 502, 503, 504))
         self.mount('https://', requests.adapters.HTTPAdapter(max_retries=retry))
         self.headers.update({'Content-Type': 'application/json'})
         self.verify = verify
