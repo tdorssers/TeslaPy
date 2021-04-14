@@ -75,6 +75,8 @@ class Tesla(requests.Session):
     :param verify: Verify SSL certificate.
     :param proxy: URL of proxy server.
     :param retry: Number of connection retries or :class:`Retry` instance.
+    :param user_agent_prefix: The first piece of the User-Agent string, for example:
+                            `YourClass.__name__ + ' ' + YourClass.__version__`
     """
 
     def __init__(self, email, password, passcode_getter=None,
