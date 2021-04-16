@@ -75,10 +75,13 @@ class Tesla(requests.Session):
     :param verify: Verify SSL certificate.
     :param proxy: URL of proxy server.
     :param retry: Number of connection retries or :class:`Retry` instance.
+    :param user_agent_prefix: The first piece of the User-Agent string, for example:
+                            `YourClass.__name__ + ' ' + YourClass.__version__`
     """
 
     def __init__(self, email, password, passcode_getter=None,
-                 factor_selector=None, verify=True, proxy=None, retry=0):
+                 factor_selector=None, verify=True, proxy=None,
+                 retry=0, user_agent_prefix=''):
         super(Tesla, self).__init__()
         if not email:
             raise ValueError('`email` is not set')
@@ -94,7 +97,10 @@ class Tesla(requests.Session):
         self.sso_base = SSO_BASE_URL
         # Set Session properties
         self.mount('https://', requests.adapters.HTTPAdapter(max_retries=retry))
-        self.headers.update({'Content-Type': 'application/json'})
+        _user_agent = ([user_agent_prefix] if user_agent_prefix else []) + \
+                      ['TeslaPy', self.headers['User-Agent']]
+        self.headers.update({'Content-Type': 'application/json',
+                             'User-Agent': '; '.join(_user_agent)})
         self.verify = verify
         if proxy:
             self.trust_env = False
