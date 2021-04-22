@@ -14,7 +14,7 @@ This module depends on Python [requests](https://pypi.org/project/requests/) and
 * The token is automatically refreshed when expired without the need to reauthenticate.
 * An email registered in another region (e.g. auth.tesla.cn) is also supported.
 
-The constructor takes two arguments required for authentication (email and password) and four optional arguments: a passcode getter function, a factor selector function, a verify SSL certificate bool and a proxy server URL. The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
+The constructor takes two arguments required for authentication (email and password) and five optional arguments: a passcode getter function, a factor selector function, a verify SSL certificate bool, a proxy server URL, the maximum number of retries or an instance of the `teslapy.Retry` class and a User-Agent prefix. The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
