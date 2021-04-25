@@ -7,6 +7,8 @@ needing an email (no password). The vehicle option codes are loaded from
 
 # Author: Tim Dorssers
 
+__version__ = '1.1.0'
+
 import os
 import json
 import time
@@ -75,13 +77,12 @@ class Tesla(requests.Session):
     :param verify: Verify SSL certificate.
     :param proxy: URL of proxy server.
     :param retry: Number of connection retries or :class:`Retry` instance.
-    :param user_agent_prefix: The first piece of the User-Agent string, for example:
-                            `YourClass.__name__ + ' ' + YourClass.__version__`
+    :param user_agent: The first piece of the User-Agent string.
     """
 
     def __init__(self, email, password, passcode_getter=None,
                  factor_selector=None, verify=True, proxy=None,
-                 retry=0, user_agent_prefix=''):
+                 retry=0, user_agent=__name__ + '/' + __version__):
         super(Tesla, self).__init__()
         if not email:
             raise ValueError('`email` is not set')
@@ -97,10 +98,9 @@ class Tesla(requests.Session):
         self.sso_base = SSO_BASE_URL
         # Set Session properties
         self.mount('https://', requests.adapters.HTTPAdapter(max_retries=retry))
-        _user_agent = ([user_agent_prefix] if user_agent_prefix else []) + \
-                      ['TeslaPy', self.headers['User-Agent']]
+        user_agent += ' ' + self.headers['User-Agent']
         self.headers.update({'Content-Type': 'application/json',
-                             'User-Agent': '; '.join(_user_agent)})
+                             'User-Agent': user_agent.strip()})
         self.verify = verify
         if proxy:
             self.trust_env = False
