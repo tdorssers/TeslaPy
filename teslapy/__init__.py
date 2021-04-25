@@ -107,7 +107,7 @@ class Tesla(requests.Session):
             self.proxies.update({'https': proxy})
         self._token_updater()  # Try to read token from cache
 
-    def request(self, method, uri, data=None, **kwargs):
+    def request(self, method, url, **kwargs):
         """ Extends base class method to support bearer token insertion. Raises
         HTTPError when an error occurs.
 
@@ -119,15 +119,14 @@ class Tesla(requests.Session):
                 self.refresh_token()
             self.headers.update({'Authorization':
                                  'Bearer ' + self.token['access_token']})
-        # Construct URL, serialize data and send request
-        url = BASE_URL + uri.strip('/')
+        # Construct URL and send request with optional serialized data
+        url = BASE_URL + url.strip('/')
+        kwargs.setdefault('timeout', 10)
+        data = kwargs.pop('data', {})
         logger.debug('Requesting url %s using method %s', url, method)
         logger.debug('Supplying headers %s and data %s', self.headers, data)
-        kwargs.setdefault('timeout', 10)
-        if method == "GET":
-            response = super(Tesla, self).request(method, url, params=data, **kwargs)
-        else:
-            response = super(Tesla, self).request(method, url, json=data, **kwargs)
+        logger.debug('Passing through key word arguments %s', kwargs)
+        response = super(Tesla, self).request(method, url, json=data, **kwargs)
         # Error message handling
         if 400 <= response.status_code < 600:
             try:
@@ -336,12 +335,13 @@ class Tesla(requests.Session):
         if endpoint['AUTH'] and not self.authorized:
             self.fetch_token()
         # Substitute path variables in URI
-        uri = endpoint['URI']
         try:
-            uri = uri.format(**path_vars)
+            uri = endpoint['URI'].format(**path_vars)
         except KeyError as e:
             raise ValueError('%s requires path variable %s' % (name, e))
         # Perform request using given keyword arguments as parameters
+        if endpoint['TYPE'] == 'GET':
+            return self.request('GET', uri, params=kwargs)
         return self.request(endpoint['TYPE'], uri, data=kwargs)
 
     def vehicle_list(self):
@@ -542,33 +542,29 @@ class Battery(JsonDict):
         """ Retrieve detailed state and configuration of the battery """
         self.update(self.api('BATTERY_DATA')['response'])
         return self
-    
+
     def get_calendar_history_data(
-            self, kind='savings', period="day",
-            start_date=None,
-            end_date=datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.000Z'),
-            installation_timezone=None,
-            timezone=None,
-            tariff=None):
+            self, kind='savings', period='day', start_date=None,
+            end_date=time.strftime('%Y-%m-%dT%H:%M:%S.000Z'),
+            installation_timezone=None, timezone=None, tariff=None):
         """ Retrieve live status of battery
-          kind: A telemery type of 'backup', 'energy', 'power',
+        kind: A telemetry type of 'backup', 'energy', 'power',
               'self_consumption', 'time_of_use_energy',
               'time_of_use_self_consumption' and 'savings'
-          period: 'day', 'month', 'year', or 'lifetime'
-          end_date: The final day in the data requested in the json format
-              '2021-02-28T07:59:59.999Z'
-          time_zone: Timezone on the json timezone format. eg. Europe/Brussels
-          start_date: The state date in the data requested in the json format
-              '2021-02-27T07:59:59.999Z' 
-          installation_timezone: Timezone of installation location for
-              'savings'.
-          tariff: Unclear format use in 'savings' only.
+        period: 'day', 'month', 'year', or 'lifetime'
+        end_date: The final day in the data requested in the json format
+                  '2021-02-28T07:59:59.999Z'
+        time_zone: Timezone in the json timezone format. eg. Europe/Brussels
+        start_date: The state date in the data requested in the json format
+                    '2021-02-27T07:59:59.999Z'
+        installation_timezone: Timezone of installation location for 'savings'
+        tariff: Unclear format use in 'savings' only
         """
-        self.update(self.api('CALENDAR_HISTORY_DATA', kind=kind, period=period,
-                             end_date=end_date, timnezone=timezone,
-                             installation_timezone=installation_timezone,
-                             tariff=tariff)['response'])
-        return self
+        return self.api('CALENDAR_HISTORY_DATA', kind=kind, period=period,
+                        start_date=start_date, end_date=end_date,
+                        timezone=timezone,
+                        installation_timezone=installation_timezone,
+                        tariff=tariff)['response']
 
     def command(self, name, **kwargs):
         """ Wrapper method for battery command response error handling """
