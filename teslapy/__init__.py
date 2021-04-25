@@ -124,7 +124,10 @@ class Tesla(requests.Session):
         logger.debug('Requesting url %s using method %s', url, method)
         logger.debug('Supplying headers %s and data %s', self.headers, data)
         kwargs.setdefault('timeout', 10)
-        response = super(Tesla, self).request(method, url, json=data, **kwargs)
+        if method == "GET":
+            response = super(Tesla, self).request(method, url, params=data, **kwargs)
+        else:
+            response = super(Tesla, self).request(method, url, json=data, **kwargs)
         # Error message handling
         if 400 <= response.status_code < 600:
             try:
@@ -538,6 +541,33 @@ class Battery(JsonDict):
     def get_battery_data(self):
         """ Retrieve detailed state and configuration of the battery """
         self.update(self.api('BATTERY_DATA')['response'])
+        return self
+    
+    def get_calendar_history_data(
+            self, kind='savings', period="day",
+            start_date=None,
+            end_date=datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.000Z'),
+            installation_timezone=None,
+            timezone=None,
+            tariff=None):
+        """ Retrieve live status of battery
+          kind: A telemery type of 'backup', 'energy', 'power',
+              'self_consumption', 'time_of_use_energy',
+              'time_of_use_self_consumption' and 'savings'
+          period: 'day', 'month', 'year', or 'lifetime'
+          end_date: The final day in the data requested in the json format
+              '2021-02-28T07:59:59.999Z'
+          time_zone: Timezone on the json timezone format. eg. Europe/Brussels
+          start_date: The state date in the data requested in the json format
+              '2021-02-27T07:59:59.999Z' 
+          installation_timezone: Timezone of installation location for
+              'savings'.
+          tariff: Unclear format use in 'savings' only.
+        """
+        self.update(self.api('CALENDAR_HISTORY_DATA', kind=kind, period=period,
+                             end_date=end_date, timnezone=timezone,
+                             installation_timezone=installation_timezone,
+                             tariff=tariff)['response'])
         return self
 
     def command(self, name, **kwargs):
