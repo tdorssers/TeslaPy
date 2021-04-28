@@ -3,6 +3,7 @@
 # Author: Tim Dorssers
 
 from __future__ import print_function
+import ast
 import logging
 import getpass
 import argparse
@@ -83,7 +84,12 @@ def main():
             elif args.battery:
                 print(product.get_battery_data())
             if args.api:
-                data = dict(args.keyvalue) if args.keyvalue else {}
+                data = {}
+                for key, value in args.keyvalue or []:
+                    try:
+                        data[key] = ast.literal_eval(value)
+                    except ValueError:
+                        data[key] = value
                 print(product.api(args.api, **data))
 
 if __name__ == "__main__":
