@@ -2,19 +2,19 @@
 
 # Author: Tim Dorssers
 
+import io
 import time
+import base64
 import logging
 import threading
 from geopy.geocoders import Nominatim
 from geopy.exc import *
-try:
-    from Tkinter import *
-    from tkSimpleDialog import *
-    from ConfigParser import *
-except ImportError:
-    from tkinter import *
-    from tkinter.simpledialog import *
-    from configparser import *
+from tkinter import *
+from tkinter.simpledialog import *
+from configparser import *
+from PIL import Image, ImageTk
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPM
 import teslapy
 
 class LoginDialog(Dialog):
@@ -108,6 +108,22 @@ class SelectFactorDialog(Dialog):
 
     def apply(self):
         self.result = self.factors[self.state.get()]
+
+class CaptchaDialog(Dialog):
+    """ Display dialog box to input captcha characters in picture """
+
+    def __init__(self, master, title=None, photo=None):
+        self.photo = photo
+        Dialog.__init__(self, master, title)
+
+    def body(self, master):
+        Label(master, image=self.photo).pack()
+        self.captcha = Entry(master)
+        self.captcha.pack()
+        return self.captcha
+
+    def apply(self):
+        self.result = self.captcha.get()
 
 class StatusBar(Frame):
     """ Status bar widget with transient and permanent status messages """
@@ -512,7 +528,23 @@ class App(Tk):
             result[0] = dlg.result
         self.after_idle(show_dialog)  # Start from main thread
         while result[0] == {}:
-            time.sleep(0.1)  # Block login thread until passcode is entered
+            time.sleep(0.1)  # Block login thread until factor is selected
+        return result[0]
+
+    def captcha(self, response):
+        """ Show captcha image and let user enter characters """
+        result = ['not_set']
+        drawing = svg2rlg(io.BytesIO(response))
+        image = io.BytesIO()
+        renderPM.drawToFile(drawing, image, fmt='PNG')
+        photo = ImageTk.PhotoImage(Image.open(image))
+        def show_dialog():
+            """ Inner function to show dialog """
+            dlg = CaptchaDialog(self, 'Enter characters', photo)
+            result[0] = dlg.result
+        self.after_idle(show_dialog)  # Start from main thread
+        while result[0] == 'not_set':
+            time.sleep(0.1)  # Block login thread until factor is selected
         return result[0]
 
     def login(self):
@@ -524,7 +556,7 @@ class App(Tk):
             retry = teslapy.Retry(total=2,
                                   status_forcelist=(408, 500, 502, 503, 504))
             tesla = teslapy.Tesla(self.email, self.password, self.get_passcode,
-                                  self.select_factor, retry=retry)
+                                  self.select_factor, self.captcha, retry=retry)
             # Create and start login thread. Check thread status after 100 ms
             self.login_thread = LoginThread(tesla)
             self.login_thread.start()
@@ -936,14 +968,7 @@ class ImageThread(threading.Thread):
         except teslapy.RequestException as e:
             self.exception = e
         else:
-            # Tk 8.6 has native PNG support, older Tk require PIL
-            try:
-                import base64
-                self.photo = PhotoImage(data=base64.b64encode(response))
-            except TclError:
-                from PIL import Image, ImageTk
-                import io
-                self.photo = ImageTk.PhotoImage(Image.open(io.BytesIO(response)))
+            self.photo = ImageTk.PhotoImage(Image.open(io.BytesIO(response)))
 
 class LoginThread(threading.Thread):
     """ Authenticate and retrieve vehicle list """

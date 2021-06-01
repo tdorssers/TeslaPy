@@ -74,6 +74,7 @@ class Tesla(requests.Session):
     :passcode_getter: Function that returns the TOTP passcode.
     :factor_selector: Function with one argument, a list of factor dicts, that
                       returns the selected dict or factor name.
+    :captcha_solver: Function with one argument that returns the captcha code.
     :param verify: Verify SSL certificate.
     :param proxy: URL of proxy server.
     :param retry: Number of connection retries or :class:`Retry` instance.
@@ -81,8 +82,8 @@ class Tesla(requests.Session):
     """
 
     def __init__(self, email, password, passcode_getter=None,
-                 factor_selector=None, verify=True, proxy=None,
-                 retry=0, user_agent=__name__ + '/' + __version__):
+                 factor_selector=None, captcha_solver=None, verify=True,
+                 proxy=None, retry=0, user_agent=__name__ + '/' + __version__):
         super(Tesla, self).__init__()
         if not email:
             raise ValueError('`email` is not set')
@@ -90,6 +91,7 @@ class Tesla(requests.Session):
         self.password = password
         self.passcode_getter = passcode_getter
         self.factor_selector = factor_selector
+        self.captcha_solver = captcha_solver
         self.token = {}
         self.expires_at = 0
         self.authorized = False
@@ -145,6 +147,8 @@ class Tesla(requests.Session):
             return
         if not self.password:
             raise ValueError('`password` is not set')
+        if not self.captcha_solver:
+                raise ValueError('`captcha_solver` callback is not set')
         # Generate code verifier and challenge for PKCE (RFC 7636)
         code_verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b'=')
         unencoded_digest = hashlib.sha256(code_verifier).digest()
@@ -168,8 +172,12 @@ class Tesla(requests.Session):
         # Parse input objects on HTML form
         form = HTMLForm(response.text)
         transaction_id = form['transaction_id']
+        # Retrieve captcha picture
+        response = oauth.get(self.sso_base + 'captcha')
+        response.raise_for_status()
         # Submit login credentials to get authorization code through redirect
-        form.update({'identity': self.email, 'credential': self.password})
+        form.update({'identity': self.email, 'credential': self.password,
+                     'captcha': self.captcha_solver(response.content)})
         response = oauth.post(self.sso_base + 'oauth2/v3/authorize',
                               data=form, allow_redirects=False)
         response.raise_for_status()  # Raise HTTPError, if credentials invalid
