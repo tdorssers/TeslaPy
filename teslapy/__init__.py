@@ -65,16 +65,6 @@ logger.addHandler(logging.NullHandler())
 logger.addFilter(PasswdFilter())
 logging.getLogger('requests_oauthlib.oauth2_session').addFilter(PasswdFilter())
 
-import os, sys, subprocess
-
-# https://stackoverflow.com/questions/17317219/is-there-an-platform-independent-equivalent-of-os-startfile
-def open_file(filename):
-    if sys.platform == "win32":
-        os.startfile(filename)
-    else:
-        opener = "open" if sys.platform == "darwin" else "xdg-open"
-        subprocess.call([opener, filename])
-
 class Tesla(requests.Session):
     """ Implements a session manager for the Tesla Motors Owner API
 
@@ -178,9 +168,13 @@ class Tesla(requests.Session):
         form = HTMLForm(response.text)
         if 'captcha' in form.keys():
             import urllib.parse
+            import pathlib
+            import webbrowser
             captcharesp = oauth.get(urllib.parse.urljoin(response.url, "/captcha"))
-            open("tmpcaptcha.svg", "wb").write(captcharesp.content)
-            open_file("tmpcaptcha.svg")
+            captchpath = pathlib.Path("tmpcaptcha.svg")
+            captchpath.write_bytes(captcharesp.content)
+            print("Opening captcha SVG")
+            webbrowser.open("file://" + str(captchpath.absolute()))
             captcha = input("Enter captcha: ")
             form.update({'captcha': captcha})
 
