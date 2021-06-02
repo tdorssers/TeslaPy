@@ -19,7 +19,7 @@ def get_passcode(args):
 def get_captcha(svg):
     with tempfile.NamedTemporaryFile(suffix='.svg', delete=False) as f:
         f.write(svg)
-    webbrowser.open(f.name)
+    webbrowser.open('file://' + f.name)
     return raw_input('Captcha: ')
 
 def main():

@@ -13,8 +13,9 @@ This module depends on Python [requests](https://pypi.org/project/requests/) and
 * Authentication is only needed when a new token is requested.
 * The token is automatically refreshed when expired without the need to reauthenticate.
 * An email registered in another region (e.g. auth.tesla.cn) is also supported.
+* Login form captcha verification support
 
-The constructor takes two arguments required for authentication (email and password) and five optional arguments: a passcode getter function, a factor selector function, a verify SSL certificate bool, a proxy server URL, the maximum number of retries or an instance of the `teslapy.Retry` class and a User-Agent string. The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
+The constructor takes two arguments required for authentication (email and password) and six optional arguments: a passcode getter function, a factor selector function, a captcha resolver function, a verify SSL certificate bool, a proxy server URL, the maximum number of retries or an instance of the `teslapy.Retry` class and a User-Agent string. The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
@@ -82,7 +83,7 @@ Tesla allows you to enable more then one MFA device. In this case the constructo
 with teslapy.Tesla('elon@tesla.com', 'starship', lambda: '123456', lambda _: 'Device #1') as tesla:
 ```
 
-Take a look at [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) for examples of a passcode getter function and a factor selector function.
+Take a look at [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) for examples of passcode getter functions, factor selector functions and captcha solver functions.
 
 These are the major commands:
 
@@ -146,6 +147,8 @@ When you pass an empty string as passcode or factor to the constructor and your 
 
 If you get a `requests.exceptions.HTTPError: 400 Client Error: endpoint_deprecated:_please_update_your_app for url: https://owner-api.teslamotors.com/oauth/token` then you are probably using an old version of this module. As of January 29, 2021, Tesla updated this endpoint to follow [RFC 7523](https://tools.ietf.org/html/rfc7523) and requires the use of the SSO service (auth.tesla.com) for authentication.
 
+As of May 28, 2021 Tesla has added captcha verification to the login form. If you get a `ValueError: Credentials rejected` and you are using correct credentials then you are probably using an old version of this module.
+
 ## Demo applications
 
 The source repository contains three demo applications.
@@ -189,7 +192,7 @@ Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.p
 
 ![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/menu.png)
 
-[gui.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) is a graphical interface using `tkinter`. API calls are performed asynchronously using threading. The GUI also supports auto refreshing of the vehicle data and the GUI displays a composed vehicle image. Note that the vehicle will not go to sleep, if auto refresh is enabled. The application depends on [pillow](https://pypi.org/project/Pillow/) to display the vehicle image, if the Tcl/Tk GUI toolkit version of your Python installation is 8.5. Python 3.4+ should include Tcl/Tk 8.6, which natively supports PNG image format and therefore has no such dependency.
+[gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) is a graphical interface using `tkinter`. API calls are performed asynchronously using threading. The GUI supports auto refreshing of the vehicle data and the GUI displays a composed vehicle image. Note that the vehicle will not go to sleep, if auto refresh is enabled. The application also depends on [svglib](https://pypi.org/project/svglib/) to display the captcha image if required by the login form and therefore requires Python 3.6+.
 
 ![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/gui.png)
 

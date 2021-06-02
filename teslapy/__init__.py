@@ -147,8 +147,6 @@ class Tesla(requests.Session):
             return
         if not self.password:
             raise ValueError('`password` is not set')
-        if not self.captcha_solver:
-                raise ValueError('`captcha_solver` callback is not set')
         # Generate code verifier and challenge for PKCE (RFC 7636)
         code_verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b'=')
         unencoded_digest = hashlib.sha256(code_verifier).digest()
@@ -172,12 +170,17 @@ class Tesla(requests.Session):
         # Parse input objects on HTML form
         form = HTMLForm(response.text)
         transaction_id = form['transaction_id']
-        # Retrieve captcha picture
-        response = oauth.get(self.sso_base + 'captcha')
-        response.raise_for_status()
+        # Retrieve captcha image if required
+        if 'captcha' in form:
+            if not self.captcha_solver:
+                raise ValueError('`captcha_solver` callback is not set')
+            response = oauth.get(self.sso_base + 'captcha')
+            response.raise_for_status()  # Raise HTTPError, if one occurred
+            form['captcha'] = self.captcha_solver(response.content)
+            if not form['captcha']:
+                raise ValueError('`captcha_solver` returned nothing')
         # Submit login credentials to get authorization code through redirect
-        form.update({'identity': self.email, 'credential': self.password,
-                     'captcha': self.captcha_solver(response.content)})
+        form.update({'identity': self.email, 'credential': self.password})
         response = oauth.post(self.sso_base + 'oauth2/v3/authorize',
                               data=form, allow_redirects=False)
         response.raise_for_status()  # Raise HTTPError, if credentials invalid
