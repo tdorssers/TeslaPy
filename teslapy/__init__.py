@@ -16,6 +16,8 @@ import base64
 import hashlib
 import logging
 import pkgutil
+import tempfile
+import webbrowser
 try:
     from HTMLParser import HTMLParser
     from urlparse import urljoin
@@ -65,6 +67,12 @@ logger.addHandler(logging.NullHandler())
 logger.addFilter(PasswdFilter())
 logging.getLogger('requests_oauthlib.oauth2_session').addFilter(PasswdFilter())
 
+# Py2/3 compatibility
+try:
+    input = raw_input
+except NameError:
+    pass
+
 
 class Tesla(requests.Session):
     """ Implements a session manager for the Tesla Motors Owner API
@@ -74,7 +82,8 @@ class Tesla(requests.Session):
     :passcode_getter: Function that returns the TOTP passcode.
     :factor_selector: Function with one argument, a list of factor dicts, that
                       returns the selected dict or factor name.
-    :captcha_solver: Function with one argument that returns the captcha code.
+    :captcha_solver: Function with one argument, SVG image content, that
+                     returns the captcha characters.
     :param verify: Verify SSL certificate.
     :param proxy: URL of proxy server.
     :param retry: Number of connection retries or :class:`Retry` instance.
@@ -89,9 +98,9 @@ class Tesla(requests.Session):
             raise ValueError('`email` is not set')
         self.email = email
         self.password = password
-        self.passcode_getter = passcode_getter
-        self.factor_selector = factor_selector
-        self.captcha_solver = captcha_solver
+        self.passcode_getter = passcode_getter or self._get_passcode
+        self.factor_selector = factor_selector or self._select_factor
+        self.captcha_solver = captcha_solver or self._solve_captcha
         self.token = {}
         self.expires_at = 0
         self.authorized = False
@@ -172,13 +181,11 @@ class Tesla(requests.Session):
         transaction_id = form['transaction_id']
         # Retrieve captcha image if required
         if 'captcha' in form:
-            if not self.captcha_solver:
-                raise ValueError('`captcha_solver` callback is not set')
             response = oauth.get(self.sso_base + 'captcha')
             response.raise_for_status()  # Raise HTTPError, if one occurred
             form['captcha'] = self.captcha_solver(response.content)
             if not form['captcha']:
-                raise ValueError('`captcha_solver` returned nothing')
+                raise ValueError('Missing captcha response')
         # Submit login credentials to get authorization code through redirect
         form.update({'identity': self.email, 'credential': self.password})
         response = oauth.post(self.sso_base + 'oauth2/v3/authorize',
@@ -208,13 +215,9 @@ class Tesla(requests.Session):
         factors = response.json()['data']
         if not factors:
             raise ValueError('No registered factors')
-        if not self.passcode_getter:
-            raise ValueError('`passcode_getter` callback is not set')
         if len(factors) == 1:
             factor = factors[0]  # Auto select only factor
         elif len(factors) > 1:
-            if not self.factor_selector:
-                raise ValueError('`factor_selector` callback is not set')
             # Get selected factor
             factor = self.factor_selector(factors)
             if not factor:
@@ -265,6 +268,27 @@ class Tesla(requests.Session):
                      time.ctime(self.expires_at))
         self.authorized = True
         self._token_updater()  # Save new token
+
+    @staticmethod
+    def _get_passcode():
+        """ Default passcode_getter method """
+        return input('Passcode: ')
+
+    @staticmethod
+    def _select_factor(factors):
+        """ Default factor_selector method """
+        for i, factor in enumerate(factors):
+            print('{:2} {}'.format(i, factor['name']))
+        return factors[int(input('Select factor: '))]
+
+    @staticmethod
+    def _solve_captcha(svg):
+        """ Default captcha_solver method """
+        # Use web browser to display SVG image
+        with tempfile.NamedTemporaryFile(suffix='.svg', delete=False) as f:
+            f.write(svg)
+        webbrowser.open('file://' + f.name)
+        return input('Captcha: ')
 
     def _token_updater(self):
         """ Handles token persistency """

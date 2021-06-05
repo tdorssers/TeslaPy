@@ -13,9 +13,9 @@ This module depends on Python [requests](https://pypi.org/project/requests/) and
 * Authentication is only needed when a new token is requested.
 * The token is automatically refreshed when expired without the need to reauthenticate.
 * An email registered in another region (e.g. auth.tesla.cn) is also supported.
-* Login form captcha verification support
+* Captcha verification support if required by the login form.
 
-The constructor takes two arguments required for authentication (email and password) and six optional arguments: a passcode getter function, a factor selector function, a captcha resolver function, a verify SSL certificate bool, a proxy server URL, the maximum number of retries or an instance of the `teslapy.Retry` class and a User-Agent string. The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
+The constructor takes two arguments required for authentication (email and password) and six optional arguments: a passcode getter function, a factor selector function, a captcha resolver function, a verify SSL certificate bool, a proxy server URL, the maximum number of retries or an instance of the `teslapy.Retry` class and a User-Agent string. The class will use `stdio` to get a passcode, factor and captcha by default. The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
@@ -71,19 +71,19 @@ with teslapy.Tesla('elon@tesla.com', 'starship') as tesla:
 	print(vehicles[0].get_vehicle_data()['vehicle_state']['car_version'])
 ```
 
-The constructor requires a function that returns a passcode string as the third argument (otherwise you will get a ```ValueError: `passcode_getter` callback is not set```) in case your Tesla account has MFA enabled:
+The constructor takes a function that returns a passcode string as the third argument in case your Tesla account has MFA enabled and you don't want to use the default passcode getter method:
 
 ```python
 with teslapy.Tesla('elon@tesla.com', 'starship', lambda: '123456') as tesla:
 ```
 
-Tesla allows you to enable more then one MFA device. In this case the constructor requires a function that takes a list of dicts as an argument and returns the selected factor dict as the fourth argument. The function may return the selected factor name as well:
+Tesla allows you to enable more then one MFA device. If you don't want to use the default factor selector method, you can pass a function that takes a list of dicts as an argument and returns the selected factor dict as the constructor's fourth argument. The function may return the selected factor name as well:
 
 ```python
 with teslapy.Tesla('elon@tesla.com', 'starship', lambda: '123456', lambda _: 'Device #1') as tesla:
 ```
 
-Take a look at [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) for examples of passcode getter functions, factor selector functions and captcha solver functions.
+Take a look at [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) for examples of passcode getter, factor selector and captcha solver functions.
 
 These are the major commands:
 
@@ -147,7 +147,7 @@ When you pass an empty string as passcode or factor to the constructor and your 
 
 If you get a `requests.exceptions.HTTPError: 400 Client Error: endpoint_deprecated:_please_update_your_app for url: https://owner-api.teslamotors.com/oauth/token` then you are probably using an old version of this module. As of January 29, 2021, Tesla updated this endpoint to follow [RFC 7523](https://tools.ietf.org/html/rfc7523) and requires the use of the SSO service (auth.tesla.com) for authentication.
 
-As of May 28, 2021 Tesla has added captcha verification to the login form. If you get a `ValueError: Credentials rejected` and you are using correct credentials then you are probably using an old version of this module.
+As of May 28, 2021, Tesla has added captcha verification to the login form. If you get a `ValueError: Credentials rejected` and you are using correct credentials then you are probably using an old version of this module.
 
 ## Demo applications
 
@@ -188,11 +188,11 @@ Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.p
 
 `python cli.py -e elon@tesla.com -w -a ACTUATE_TRUNK -k which_trunk=front`
 
-[menu.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) is a menu-based console application that displays vehicle data in a tabular format. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address:
+[menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) is a menu-based console application that displays vehicle data in a tabular format. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address:
 
 ![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/menu.png)
 
-[gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) is a graphical interface using `tkinter`. API calls are performed asynchronously using threading. The GUI supports auto refreshing of the vehicle data and the GUI displays a composed vehicle image. Note that the vehicle will not go to sleep, if auto refresh is enabled. The application also depends on [svglib](https://pypi.org/project/svglib/) to display the captcha image if required by the login form and therefore requires Python 3.6+.
+[gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) is a graphical interface using `tkinter`. API calls are performed asynchronously using threading. The GUI supports auto refreshing of the vehicle data and the GUI displays a composed vehicle image. Note that the vehicle will not go to sleep, if auto refresh is enabled. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address, [pillow](https://pypi.org/project/Pillow/) to display the vehicle image and [svglib](https://pypi.org/project/svglib/) to display the captcha image if required by the login form.
 
 ![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/gui.png)
 
@@ -463,9 +463,9 @@ TeslaPy is available on PyPI:
 
 `python -m pip install teslapy`
 
-Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [geopy](https://pypi.org/project/geopy/) using [PIP](https://pypi.org/project/pip/) as follows:
+Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/), [geopy](https://pypi.org/project/geopy/) and [svglib](https://pypi.org/project/svglib/) using [PIP](https://pypi.org/project/pip/) as follows:
 
-`python -m pip install requests_oauthlib geopy`
+`python -m pip install requests_oauthlib geopy svglib`
 
 or on Ubuntu as follows:
 

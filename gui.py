@@ -4,14 +4,18 @@
 
 import io
 import time
-import base64
 import logging
 import threading
 from geopy.geocoders import Nominatim
 from geopy.exc import *
-from tkinter import *
-from tkinter.simpledialog import *
-from configparser import *
+try:
+    from Tkinter import *
+    from tkSimpleDialog import *
+    from ConfigParser import *
+except ImportError:
+    from tkinter import *
+    from tkinter.simpledialog import *
+    from configparser import *
 from PIL import Image, ImageTk
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPM
@@ -119,7 +123,7 @@ class CaptchaDialog(Dialog):
     def body(self, master):
         Label(master, image=self.photo).pack()
         self.captcha = Entry(master)
-        self.captcha.pack()
+        self.captcha.pack(pady=5)
         return self.captcha
 
     def apply(self):
@@ -534,13 +538,14 @@ class App(Tk):
     def captcha(self, response):
         """ Show captcha image and let user enter characters """
         result = ['not_set']
+        # Convert SVG to PhotoImage
         drawing = svg2rlg(io.BytesIO(response))
         image = io.BytesIO()
         renderPM.drawToFile(drawing, image, fmt='PNG')
         photo = ImageTk.PhotoImage(Image.open(image))
         def show_dialog():
             """ Inner function to show dialog """
-            dlg = CaptchaDialog(self, 'Enter characters', photo)
+            dlg = CaptchaDialog(self, 'Enter captcha characters', photo)
             result[0] = dlg.result
         self.after_idle(show_dialog)  # Start from main thread
         while result[0] == 'not_set':

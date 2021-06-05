@@ -5,8 +5,6 @@
 from __future__ import print_function
 import logging
 import getpass
-import tempfile
-import webbrowser
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
 from teslapy import Tesla
@@ -243,19 +241,12 @@ def select_factor(factors):
     print('-'*80)
     return factors[idx]
 
-def get_captcha(svg):
-    with tempfile.NamedTemporaryFile(suffix='.svg', delete=False) as f:
-        f.write(svg)
-    webbrowser.open('file://' + f.name)
-    return raw_input('Captcha: ')
-
 def main():
     default_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(level=logging.DEBUG, format=default_format)
     email = raw_input('Enter email: ')
     password = getpass.getpass('Password: ')
-    with Tesla(email, password, get_passcode, select_factor,
-               get_captcha) as tesla:
+    with Tesla(email, password, get_passcode, select_factor) as tesla:
         tesla.fetch_token()
         vehicles = tesla.vehicle_list()
         print('-'*80)

@@ -7,20 +7,12 @@ import ast
 import logging
 import getpass
 import argparse
-import tempfile
-import webbrowser
 from teslapy import Tesla, Vehicle
 
 raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
 
 def get_passcode(args):
     return args.passcode if args.passcode else raw_input('Passcode: ')
-
-def get_captcha(svg):
-    with tempfile.NamedTemporaryFile(suffix='.svg', delete=False) as f:
-        f.write(svg)
-    webbrowser.open('file://' + f.name)
-    return raw_input('Captcha: ')
 
 def main():
     parser = argparse.ArgumentParser(description='Tesla Owner API CLI')
@@ -63,8 +55,7 @@ def main():
     else:
         password = args.password
     with Tesla(args.email, password, lambda: get_passcode(args),
-               (lambda _: args.factor) if args.factor else None,
-               get_captcha) as tesla:
+               (lambda _: args.factor) if args.factor else None) as tesla:
         tesla.fetch_token()
         selected = prod = tesla.vehicle_list() + tesla.battery_list()
         if args.filter:
