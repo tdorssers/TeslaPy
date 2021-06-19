@@ -475,6 +475,12 @@ class Vehicle(JsonDict):
         """ Lists nearby Tesla-operated charging stations """
         return self.api('NEARBY_CHARGING_SITES')['response']
 
+    def get_service_scheduling_data(self):
+        """ Retrieves next service appointment for this vehicle """
+        response = self.api('SERVICE_SELF_SCHEDULING_ELIGIBILITY')['response']
+        return next((enabled for enabled in response['enabled_vins']
+                     if enabled['vin'] == self['vin']), {})
+
     def mobile_enabled(self):
         """ Checks if the Mobile Access setting is enabled in the car """
         # Construct URL and send request

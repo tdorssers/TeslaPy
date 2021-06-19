@@ -299,6 +299,11 @@ class Dashboard(Frame):
         self.spoiler_type = LabelVarGrid(group, row=1, column=3, sticky=W)
         self.roof_color = LabelVarGrid(group, row=2, column=1, sticky=W)
         self.charge_port_type = LabelVarGrid(group, row=2, column=3, sticky=W)
+        # Service on right frame
+        group = LabelFrame(right, text='Service', padx=5, pady=5)
+        group.pack(padx=5, pady=5, fill=X)
+        Label(group, text='Next appointment:').grid(row=0, sticky=E)
+        self.next_appt = LabelVarGrid(group, row=0, column=1, sticky=W)
 
     def update_widgets(self):
         """ Set values of dashboard widgets """
@@ -600,6 +605,10 @@ class App(Tk):
         self.image_thread = ImageThread(self.vehicle)
         self.image_thread.start()
         self.after(100, self.process_select)
+        # Create and start service thread. Check thread status after 100 ms
+        self.service_thread = ServiceThread(self.vehicle)
+        self.service_thread.start()
+        self.after(100, self.process_service)
         # Start status thread only once
         if not hasattr(self, 'status_thread'):
             self.update_status()
@@ -616,6 +625,19 @@ class App(Tk):
         else:
             # Display vehicle image
             self.dashboard.vehicle_image.config(image=self.image_thread.photo)
+
+    def process_service(self):
+        """ Waits for thread to finish and displays service data """
+        if self.service_thread.is_alive():
+            # Check again after 100 ms
+            self.after(100, self.process_service)
+        elif self.service_thread.exception:
+            # Handle errors
+            self.status.text(self.service_thread.exception)
+        else:
+            # Display service data
+            nat = self.service_thread.data.get('next_appt_timestamp')
+            self.dashboard.next_appt.text(nat)
 
     def show_status(self):
         """ Display vehicle state """
@@ -1033,6 +1055,21 @@ class NearbySitesThread(threading.Thread):
     def run(self):
         try:
             self.sites = self.vehicle.get_nearby_charging_sites()
+        except (teslapy.RequestException, ValueError) as e:
+            self.exception = e
+
+class ServiceThread(threading.Thread):
+    """ Retrieve next service appointment """
+
+    def __init__(self, vehicle):
+        threading.Thread.__init__(self)
+        self.vehicle = vehicle
+        self.exception = None
+        self.data = None
+
+    def run(self):
+        try:
+            self.data = self.vehicle.get_service_scheduling_data()
         except (teslapy.RequestException, ValueError) as e:
             self.exception = e
 
