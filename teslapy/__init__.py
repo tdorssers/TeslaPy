@@ -90,11 +90,13 @@ class Tesla(requests.Session):
     :param proxy: URL of proxy server.
     :param retry: Number of connection retries or :class:`Retry` instance.
     :param user_agent: The first piece of the User-Agent string.
+    :param cache_file: Relative or absolute path to json cache file.
     """
 
     def __init__(self, email, password, passcode_getter=None,
                  factor_selector=None, captcha_solver=None, verify=True,
-                 proxy=None, retry=0, user_agent=__name__ + '/' + __version__):
+                 proxy=None, retry=0, user_agent=__name__ + '/' + __version__,
+                 cache_file='cache.json'):
         super(Tesla, self).__init__()
         if not email:
             raise ValueError('`email` is not set')
@@ -103,6 +105,7 @@ class Tesla(requests.Session):
         self.passcode_getter = passcode_getter or self._get_passcode
         self.factor_selector = factor_selector or self._select_factor
         self.captcha_solver = captcha_solver or self._solve_captcha
+        self.cache_file = cache_file
         self.token = {}
         self.expires_at = 0
         self.authorized = False
@@ -294,9 +297,11 @@ class Tesla(requests.Session):
 
     def _token_updater(self):
         """ Handles token persistency """
+        if not self.cache_file:
+            return
         # Open cache file
         try:
-            with open('cache.json') as infile:
+            with open(self.cache_file) as infile:
                 cache = json.load(infile)
         except (IOError, ValueError):
             cache = {}
@@ -305,7 +310,7 @@ class Tesla(requests.Session):
             cache[self.email] = {'url': self.sso_base, 'sso': self.sso_token,
                                  SSO_CLIENT_ID: self.token}
             try:
-                with open('cache.json', 'w') as outfile:
+                with open(self.cache_file, 'w') as outfile:
                     json.dump(cache, outfile)
             except IOError:
                 logger.error('Cache not updated')
