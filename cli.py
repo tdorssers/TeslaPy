@@ -46,6 +46,8 @@ def main():
                         help='remote start drive')
     parser.add_argument('-d', '--debug', action='store_true',
                         help='set logging level to debug')
+    parser.add_argument('-r', '--stream', action='store_true',
+                        help='let vehicle push on-change data')
     args = parser.parse_args()
     default_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
@@ -81,6 +83,8 @@ def main():
                     print(product.mobile_enabled())
                 if args.start:
                     print(product.remote_start_drive())
+                if args.stream:
+                    product.stream(lambda x: print(x))
             elif args.battery:
                 print(product.get_battery_data())
             if args.api:

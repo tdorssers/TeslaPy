@@ -10,6 +10,7 @@ needing an email (no password). The vehicle option codes are loaded from
 __version__ = '1.3.0'
 
 import os
+import ast
 import json
 import time
 import base64
@@ -29,7 +30,7 @@ from requests_oauthlib import OAuth2Session
 from requests.exceptions import *
 from requests.packages.urllib3.util.retry import Retry
 from oauthlib.oauth2.rfc6749.errors import *
-
+import websocket  # websocket-client v0.49.0 up to v0.58.0 are not supported
 
 requests.packages.urllib3.disable_warnings()
 
@@ -37,6 +38,7 @@ BASE_URL = 'https://owner-api.teslamotors.com/'
 CLIENT_ID = 'e4a9949fcfa04068f59abb5a658f2bac0a3428e4652315490b659d5ab3f35a9e'
 SSO_BASE_URL = 'https://auth.tesla.com/'
 SSO_CLIENT_ID = 'ownerapi'
+STREAMING_BASE_URL = 'wss://streaming.vn.teslamotors.com/'
 
 
 class PasswdFilter(logging.Filter):
@@ -419,10 +421,75 @@ class Vehicle(JsonDict):
     """ Vehicle class with dictionary access and API request support """
 
     codes = None  # Vehicle option codes class variable
+    cols = ['speed', 'odometer', 'soc', 'elevation', 'est_heading', 'est_lat',
+            'est_lng', 'power', 'shift_state', 'range', 'est_range', 'heading']
 
     def __init__(self, vehicle, tesla):
         super(Vehicle, self).__init__(vehicle)
         self.tesla = tesla
+        self.callback = None
+
+    def _subscribe(self, wsapp):
+        """ Authenticate and select streaming telemetry columns """
+        msg = {'msg_type': 'data:subscribe_oauth',
+               'token': self.tesla.token['access_token'],
+               'value': ','.join(self.cols), 'tag': str(self['vehicle_id'])}
+        wsapp.send(json.dumps(msg))
+
+    def _parse_msg(self, wsapp, message):
+        """ Parse messages """
+        msg = json.loads(message)
+        if msg['msg_type'] == 'control:hello':
+            logger.debug('connected')
+        elif msg['msg_type'] == 'data:update':
+            # Parse comma separated data record
+            data = dict(zip(['timestamp'] + self.cols, msg['value'].split(',')))
+            for key, value in data.items():
+                try:
+                    data[key] = ast.literal_eval(value) if value else None
+                except ValueError:
+                    pass
+            logger.debug('Update %s', json.dumps(data))
+            if self.callback:
+                self.callback(data)
+            # Update polled data from streaming telemetry
+            drive_state = self.setdefault('drive_state', JsonDict())
+            vehicle_state = self.setdefault('vehicle_state', JsonDict())
+            charge_state = self.setdefault('charge_state', JsonDict())
+            drive_state['timestamp'] = data['timestamp']
+            drive_state['speed'] = data['speed']
+            vehicle_state['odometer'] = data['odometer']
+            charge_state['battery_level'] = data['soc']
+            drive_state['heading'] = data['est_heading']
+            drive_state['latitude'] = data['est_lat']
+            drive_state['longitude'] = data['est_lng']
+            drive_state['power'] = data['power']
+            drive_state['shift_state'] = data['shift_state']
+            charge_state['ideal_battery_range'] = data['range']
+            charge_state['est_battery_range'] = data['est_range']
+            drive_state['heading'] = data['heading']
+        elif msg['msg_type'] == 'data:error':
+            logger.error(msg['value'])
+            wsapp.close()
+
+    @staticmethod
+    def _ws_error(wsapp, err):
+        """ Log exceptions """
+        logger.error(err)
+
+    def stream(self, callback=None):
+        """ Let vehicle push on-change data, with 10 second idle timeout.
+
+        :callback: Function with one argument, a dict with updated data
+        """
+        self.callback = callback
+        websocket.enableTrace(logger.isEnabledFor(logging.DEBUG),
+                              handler=logging.NullHandler())
+        wsapp = websocket.WebSocketApp(STREAMING_BASE_URL + 'streaming/',
+                                       on_open=self._subscribe,
+                                       on_message=self._parse_msg,
+                                       on_error=self._ws_error)
+        wsapp.run_forever()
 
     def api(self, name, **kwargs):
         """ Endpoint request with vehicle_id path variable """

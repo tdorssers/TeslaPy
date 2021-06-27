@@ -4,7 +4,7 @@ A Python implementation based on [unofficial documentation](https://tesla-api.ti
 
 ## Overview
 
-This module depends on Python [requests](https://pypi.org/project/requests/) and [requests_oauthlib](https://pypi.org/project/requests-oauthlib/). The `Tesla` class extends `requests.Session` and therefore inherits methods like `get()` and `post()` that can be used to perform API calls. All calls to the Owner API are intercepted to add the JSON Web Token (JWT) bearer, which is acquired after authentication:
+This module depends on Python [requests](https://pypi.org/project/requests/), [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [websocket-client](https://pypi.org/project/websocket-client/). The `Tesla` class extends `requests.Session` and therefore inherits methods like `get()` and `post()` that can be used to perform API calls. All calls to the Owner API are intercepted to add the JSON Web Token (JWT) bearer, which is acquired after authentication:
 
 * It implements Tesla's new [OAuth 2](https://oauth.net/2/) Single Sign-On service.
 * And supports Multi-Factor Authentication (MFA) Time-based One-Time Passwords (TOTP).
@@ -27,6 +27,7 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the API. 
 
 | Call | Description |
 | --- | --- |
+| `stream()` | let vehicle push on-change data, with 10 second idle timeout |
 | `api()` | performs an API call to named endpoint requiring vehicle_id with optional arguments |
 | `get_vehicle_summary()` | gets the state of the vehicle (online, asleep, offline) |
 | `sync_wake_up()` | wakes up and waits for the vehicle to come online |
@@ -159,7 +160,7 @@ The source repository contains three demo applications.
 ```
 usage: cli.py [-h] -e EMAIL [-p [PASSWORD]] [-t PASSCODE] [-u FACTOR]
               [-f FILTER] [-a API] [-k KEYVALUE] [-c COMMAND] [-l] [-o] [-v]
-              [-w] [-g] [-b] [-n] [-m] [-s] [-d]
+              [-w] [-g] [-b] [-n] [-m] [-s] [-d] [-r]
 
 Tesla Owner API CLI
 
@@ -183,6 +184,7 @@ optional arguments:
   -m, --mobile   get mobile enabled state
   -s, --start    remote start drive
   -d, --debug    set logging level to debug
+  -r, --stream   let vehicle push on-change data
 ```
 
 Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) using a cached token:
@@ -464,9 +466,9 @@ TeslaPy is available on PyPI:
 
 `python -m pip install teslapy`
 
-Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/), [geopy](https://pypi.org/project/geopy/) and [svglib](https://pypi.org/project/svglib/) using [PIP](https://pypi.org/project/pip/) as follows:
+Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/), [geopy](https://pypi.org/project/geopy/), [svglib](https://pypi.org/project/svglib/) and [websocket-client](https://pypi.org/project/websocket-client/) using [PIP](https://pypi.org/project/pip/) as follows:
 
-`python -m pip install requests_oauthlib geopy svglib`
+`python -m pip install requests_oauthlib geopy svglib websocket-client`
 
 or on Ubuntu as follows:
 
