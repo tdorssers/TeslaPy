@@ -79,18 +79,18 @@ except NameError:
 class Tesla(requests.Session):
     """ Implements a session manager for the Tesla Motors Owner API
 
-    :param email: SSO identity.
-    :param password: SSO credential.
-    :passcode_getter: Function that returns the TOTP passcode.
-    :factor_selector: Function with one argument, a list of factor dicts, that
-                      returns the selected dict or factor name.
-    :captcha_solver: Function with one argument, SVG image content, that
-                     returns the captcha characters.
-    :param verify: Verify SSL certificate.
-    :param proxy: URL of proxy server.
-    :param retry: Number of connection retries or :class:`Retry` instance.
-    :param user_agent: The first piece of the User-Agent string.
-    :param cache_file: Relative or absolute path to json cache file.
+    email: SSO identity.
+    password: SSO credential.
+    passcode_getter: (optional) Function that returns the TOTP passcode.
+    factor_selector: (optional) Function with one argument, a list of factor
+        dicts, that returns the selected dict or factor name.
+    captcha_solver: (optional) Function with one argument, SVG image content,
+        that returns the captcha characters.
+    verify: (optional) Verify SSL certificate.
+    proxy: (optional) URL of proxy server.
+    retry: (optional) Number of connection retries or `Retry` instance.
+    user_agent: (optional) The first piece of the User-Agent string.
+    cache_file: (optional) Relative or absolute path to json cache file.
     """
 
     def __init__(self, email, password, passcode_getter=None,
@@ -127,7 +127,7 @@ class Tesla(requests.Session):
         """ Extends base class method to support bearer token insertion. Raises
         HTTPError when an error occurs.
 
-        :rtype: JsonDict
+        Return type: JsonDict
         """
         # Auto refresh token and insert access token into headers
         if self.authorized:
@@ -354,7 +354,7 @@ class Tesla(requests.Session):
         with keyword arguments as parameters. Substitutes path variables in URI
         using path_vars. Raises ValueError if endpoint name is not found.
 
-        :rtype: JsonDict
+        Return type: JsonDict
         """
         path_vars = path_vars or {}
         # Load API endpoints once
@@ -387,11 +387,11 @@ class Tesla(requests.Session):
         return self.request(endpoint['TYPE'], uri, data=kwargs)
 
     def vehicle_list(self):
-        """ Returns a list of :class: Vehicle <Vehicle> objects """
+        """ Returns a list of `Vehicle` objects """
         return [Vehicle(v, self) for v in self.api('VEHICLE_LIST')['response']]
 
     def battery_list(self):
-        """ Returns a list of :class: Battery <Battery> objects """
+        """ Returns a list of `Battery` objects """
         return [Battery(p, self) for p in self.api('PRODUCT_LIST')['response']
                 if p.get('resource_type') == 'battery']
 
@@ -426,7 +426,7 @@ class Vehicle(JsonDict):
     """ Vehicle class with dictionary access and API request support """
 
     codes = None  # Vehicle option codes class variable
-    cols = ['speed', 'odometer', 'soc', 'elevation', 'est_heading', 'est_lat',
+    COLS = ['speed', 'odometer', 'soc', 'elevation', 'est_heading', 'est_lat',
             'est_lng', 'power', 'shift_state', 'range', 'est_range', 'heading']
 
     def __init__(self, vehicle, tesla):
@@ -438,7 +438,7 @@ class Vehicle(JsonDict):
         """ Authenticate and select streaming telemetry columns """
         msg = {'msg_type': 'data:subscribe_oauth',
                'token': self.tesla.token['access_token'],
-               'value': ','.join(self.cols), 'tag': str(self['vehicle_id'])}
+               'value': ','.join(self.COLS), 'tag': str(self['vehicle_id'])}
         wsapp.send(json.dumps(msg))
 
     def _parse_msg(self, wsapp, message):
@@ -448,7 +448,7 @@ class Vehicle(JsonDict):
             logger.debug('connected')
         elif msg['msg_type'] == 'data:update':
             # Parse comma separated data record
-            data = dict(zip(['timestamp'] + self.cols, msg['value'].split(',')))
+            data = dict(zip(['timestamp'] + self.COLS, msg['value'].split(',')))
             for key, value in data.items():
                 try:
                     data[key] = ast.literal_eval(value) if value else None
@@ -457,7 +457,7 @@ class Vehicle(JsonDict):
             logger.debug('Update %s', json.dumps(data))
             if self.callback:
                 self.callback(data)
-            # Update polled data from streaming telemetry
+            # Update polled data with streaming telemetry data
             drive_state = self.setdefault('drive_state', JsonDict())
             vehicle_state = self.setdefault('vehicle_state', JsonDict())
             charge_state = self.setdefault('charge_state', JsonDict())
@@ -481,11 +481,14 @@ class Vehicle(JsonDict):
     def _ws_error(wsapp, err):
         """ Log exceptions """
         logger.error(err)
-
-    def stream(self, callback=None):
+        
+    def stream(self, callback=None, retry=0, indefinitely=False, **kwargs):
         """ Let vehicle push on-change data, with 10 second idle timeout.
 
-        :callback: Function with one argument, a dict with updated data
+        callback: (optional) Function with one argument, a dict of pushed data.
+        retry: (optional) Number of connection retries.
+        indefinitely: (optional) Retry indefinitely.
+        **kwargs: Optional arguments that `run_forever` takes.
         """
         self.callback = callback
         websocket.enableTrace(logger.isEnabledFor(logging.DEBUG),
@@ -494,7 +497,15 @@ class Vehicle(JsonDict):
                                        on_open=self._subscribe,
                                        on_message=self._parse_msg,
                                        on_error=self._ws_error)
-        wsapp.run_forever()
+        kwargs.setdefault('ping_interval', 10)
+        while True:
+            wsapp.run_forever(**kwargs)
+            if indefinitely:
+                continue
+            if not retry:
+                break
+            logger.debug('%d retries left', retry)
+            retry -= 1
 
     def api(self, name, **kwargs):
         """ Endpoint request with vehicle_id path variable """

@@ -15,7 +15,9 @@ This module depends on Python [requests](https://pypi.org/project/requests/), [r
 * An email registered in another region (e.g. auth.tesla.cn) is also supported.
 * Captcha verification support if required by the login form.
 
-The constructor takes two arguments required for authentication (email and password) and six optional arguments: a passcode getter function, a factor selector function, a captcha resolver function, a verify SSL certificate bool, a proxy server URL, the maximum number of retries or an instance of the `teslapy.Retry` class and a User-Agent string. The class will use `stdio` to get a passcode, factor and captcha by default. The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
+The constructor takes two arguments required for authentication (email and password) and eight optional arguments: a passcode getter function, a factor selector function, a captcha resolver function, a verify SSL certificate bool, a proxy server URL, the maximum number of retries or an instance of the `teslapy.Retry` class, a User-Agent string and a relative or absolute path to the cache file.
+
+The class will use `stdio` to get a passcode, factor and captcha by default. The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
@@ -23,11 +25,10 @@ The constructor takes two arguments required for authentication (email and passw
 | `refresh_token()` | requests a new JWT bearer token using [Refresh Token](https://oauth.net/2/grant-types/refresh-token/) grant |
 | `vehicle_list()` | returns a list of Vehicle objects |
 
-The `Vehicle` class extends `dict` and stores vehicle data returned by the API. Additionally, the class implements the following methods:
+The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner API. The streaming API pushes vehicle data on-change using a [WebSocket](https://datatracker.ietf.org/doc/html/rfc6455). The `stream()` method takes an optional argument, a callback function that is called with one argument, a dict holding the pushed data. If there are no changes after 10 seconds, the vehicle stops streaming data. The `stream()` method has two more optional arguments to control retrying. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
-| `stream()` | let vehicle push on-change data, with 10 second idle timeout |
 | `api()` | performs an API call to named endpoint requiring vehicle_id with optional arguments |
 | `get_vehicle_summary()` | gets the state of the vehicle (online, asleep, offline) |
 | `sync_wake_up()` | wakes up and waits for the vehicle to come online |
