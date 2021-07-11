@@ -10,6 +10,7 @@ needing an email (no password). The vehicle option codes are loaded from
 __version__ = '1.3.0'
 
 import os
+import re
 import ast
 import json
 import time
@@ -195,14 +196,22 @@ class Tesla(requests.Session):
         form.update({'identity': self.email, 'credential': self.password})
         response = oauth.post(self.sso_base + 'oauth2/v3/authorize',
                               data=form, allow_redirects=False)
-        response.raise_for_status()  # Raise HTTPError, if credentials invalid
-        if response.status_code == 200:
-            # Check if login form is on page, cause for example locked account
-            form = HTMLForm(response.text)
-            if form:
-                raise ValueError('Credentials rejected')
+        if response.status_code != 302:
+            # An error occurred if the login form is present
+            msgs = ['Credentials rejected'] if HTMLForm(response.text) else []
+            # Look for messages object literal
+            m = re.search(r'var messages = ({.*});', response.text)
+            if m:
+                # Make list of error messages
+                for msg in json.loads(m.group(1)).values():
+                    msgs += [msg] if not isinstance(msg, list) else msg
+            # Raise error if one occurred
+            if msgs:
+                raise ValueError('. '.join(msgs))
+            response.raise_for_status()
             # Check for MFA factors to handle to get authorized
             response = self._check_mfa(oauth, transaction_id)
+        response.raise_for_status()
         # Use authorization response code in redirected location to get token
         url = response.headers.get('Location')
         oauth.fetch_token(self.sso_base + 'oauth2/v3/token',
