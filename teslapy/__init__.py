@@ -31,7 +31,7 @@ from requests_oauthlib import OAuth2Session
 from requests.exceptions import *
 from requests.packages.urllib3.util.retry import Retry
 from oauthlib.oauth2.rfc6749.errors import *
-import websocket  # websocket-client v0.49.0 up to v0.58.0 are not supported
+import websocket  # websocket-client v0.49.0 up to v0.58.0 is not supported
 
 requests.packages.urllib3.disable_warnings()
 
@@ -115,9 +115,8 @@ class Tesla(requests.Session):
         self.sso_base = SSO_BASE_URL
         # Set Session properties
         self.mount('https://', requests.adapters.HTTPAdapter(max_retries=retry))
-        user_agent += ' ' + self.headers['User-Agent']
         self.headers.update({'Content-Type': 'application/json',
-                             'User-Agent': user_agent.strip()})
+                             'User-Agent': user_agent})
         self.verify = verify
         if proxy:
             self.trust_env = False
@@ -173,6 +172,7 @@ class Tesla(requests.Session):
         oauth.verify = self.verify
         oauth.trust_env = self.trust_env
         oauth.proxies = self.proxies
+        oauth.headers['User-Agent'] = self.headers['User-Agent']
         url, _ = oauth.authorization_url(self.sso_base + 'oauth2/v3/authorize',
                                          code_challenge=code_challenge,
                                          code_challenge_method='S256',
@@ -301,6 +301,7 @@ class Tesla(requests.Session):
         # Use web browser to display SVG image
         with tempfile.NamedTemporaryFile(suffix='.svg', delete=False) as f:
             f.write(svg)
+        logger.debug('Opening %s with default browser', f.name)
         webbrowser.open('file://' + f.name)
         return input('Captcha: ')
 
