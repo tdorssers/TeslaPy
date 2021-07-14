@@ -3,8 +3,11 @@
 # Author: Tim Dorssers
 
 from __future__ import print_function
+import ssl
 import logging
 import getpass
+import argparse
+import geopy.geocoders
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
 from teslapy import Tesla
@@ -25,7 +28,7 @@ def show_vehicle_data(vehicle):
     # Lookup address at coordinates
     coords = '%s, %s' % (dr['latitude'], dr['longitude'])
     try:
-        osm = Nominatim(user_agent='TeslaPy')
+        osm = Nominatim(user_agent='TeslaPy', proxies=vehicle.tesla.proxies)
         location = osm.reverse(coords)
     except GeocoderTimedOut as e:
         logging.error(e)
@@ -228,9 +231,6 @@ def menu(vehicle):
             except KeyError:
                 print('Not available')
 
-def get_passcode():
-    return raw_input('Passcode: ')
-
 def select_factor(factors):
     print('-'*80)
     print('ID Name')
@@ -242,11 +242,26 @@ def select_factor(factors):
     return factors[idx]
 
 def main():
+    parser = argparse.ArgumentParser(description='Tesla Owner API Menu')
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help='set logging level to debug')
+    parser.add_argument('--verify', action='store_false',
+                        help='disable verify SSL certificate')
+    parser.add_argument('--proxy', help='proxy server URL')
+    args = parser.parse_args()
     default_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    logging.basicConfig(level=logging.DEBUG, format=default_format)
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
+                        format=default_format)
+    if not args.verify:
+        # Disable SSL verify for Nominatim
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        geopy.geocoders.options.default_ssl_context = ctx
     email = raw_input('Enter email: ')
     password = getpass.getpass('Password: ')
-    with Tesla(email, password, get_passcode, select_factor) as tesla:
+    with Tesla(email, password, verify=args.verify, proxy=args.proxy) as tesla:
+        tesla.factor_selector = select_factor
         tesla.fetch_token()
         vehicles = tesla.vehicle_list()
         print('-'*80)

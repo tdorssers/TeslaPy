@@ -3,9 +3,11 @@
 # Author: Tim Dorssers
 
 import io
+import ssl
 import time
 import logging
 import threading
+import geopy.geocoders
 from geopy.geocoders import Nominatim
 from geopy.exc import *
 try:
@@ -121,7 +123,8 @@ class CaptchaDialog(Dialog):
         Dialog.__init__(self, master, title)
 
     def body(self, master):
-        Label(master, image=self.photo).pack()
+        Label(master, image=self.photo, borderwidth=1, relief=SOLID).pack()
+        Label(master, text='Enter text from image:').pack()
         self.captcha = Entry(master)
         self.captcha.pack(pady=5)
         return self.captcha
@@ -478,15 +481,19 @@ class App(Tk):
         self.cmd_menu.add_command(label='Max defrost', state=DISABLED,
                                   command=self.max_defrost)
         menu.add_cascade(label='Command', menu=self.cmd_menu)
-        display_menu = Menu(menu, tearoff=0)
+        opt_menu = Menu(menu, tearoff=0)
         self.auto_refresh = BooleanVar()
-        display_menu.add_checkbutton(label='Auto refresh',
-                                     variable=self.auto_refresh,
-                                     command=self.update_dashboard)
+        opt_menu.add_checkbutton(label='Auto refresh',
+                                 variable=self.auto_refresh,
+                                 command=self.update_dashboard)
         self.debug = BooleanVar()
-        display_menu.add_checkbutton(label='Console debugging',
-                                     variable=self.debug, command=self.set_log)
-        menu.add_cascade(label='Display', menu=display_menu)
+        opt_menu.add_checkbutton(label='Console debugging', variable=self.debug,
+                                 command=self.apply_settings)
+        self.verify = BooleanVar()
+        opt_menu.add_checkbutton(label='Verify SSL', variable=self.verify,
+                                 command=self.apply_settings)
+        opt_menu.add_command(label='Proxy URL', command=self.set_proxy)
+        menu.add_cascade(label='Options', menu=opt_menu)
         help_menu = Menu(menu, tearoff=0)
         help_menu.add_command(label='About', command=self.about)
         menu.add_cascade(label='Help', menu=help_menu)
@@ -502,7 +509,9 @@ class App(Tk):
         config = RawConfigParser()
         try:
             config.read('gui.ini')
-            self.email = config.get('app', 'email')
+            self.email = config.get('app', 'email', fallback='')
+            self.verify.set(config.get('app', 'verify', fallback=True))
+            self.proxy = config.get('app', 'proxy', fallback='')
             self.auto_refresh.set(config.get('display', 'auto_refresh'))
             self.debug.set(config.get('display', 'debug'))
         except (NoSectionError, NoOptionError, ParsingError):
@@ -510,7 +519,7 @@ class App(Tk):
         # Initialize logging
         default_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         logging.basicConfig(format=default_format)
-        self.set_log()
+        self.apply_settings()
 
     def add_cmd_args(self, endpoint):
         """ Return add_command arguments for given named endpoint """
@@ -544,13 +553,12 @@ class App(Tk):
         """ Show captcha image and let user enter characters """
         result = ['not_set']
         # Convert SVG to PhotoImage
-        drawing = svg2rlg(io.BytesIO(response))
         image = io.BytesIO()
-        renderPM.drawToFile(drawing, image, fmt='PNG')
+        renderPM.drawToFile(svg2rlg(io.BytesIO(response)), image, fmt='PNG')
         photo = ImageTk.PhotoImage(Image.open(image))
         def show_dialog():
             """ Inner function to show dialog """
-            dlg = CaptchaDialog(self, 'Enter captcha characters', photo)
+            dlg = CaptchaDialog(self, 'Captcha', photo)
             result[0] = dlg.result
         self.after_idle(show_dialog)  # Start from main thread
         while result[0] == 'not_set':
@@ -564,9 +572,10 @@ class App(Tk):
             self.email, self.password = dlg.result
             self.status.text('Logging in...')
             retry = teslapy.Retry(total=2,
-                                  status_forcelist=(408, 500, 502, 503, 504))
+                                  status_forcelist=(500, 502, 503, 504))
             tesla = teslapy.Tesla(self.email, self.password, self.get_passcode,
-                                  self.select_factor, self.captcha, retry=retry)
+                                  self.select_factor, self.captcha,
+                                  self.verify.get(), self.proxy, retry)
             # Create and start login thread. Check thread status after 100 ms
             self.login_thread = LoginThread(tesla)
             self.login_thread.start()
@@ -904,19 +913,32 @@ class App(Tk):
         except KeyError:
             pass
 
-    def set_log(self):
-        """ Set logging level """
+    def apply_settings(self):
+        """ Set logging level and SSL context """
         level = logging.DEBUG if self.debug.get() else logging.WARNING
         logging.getLogger().setLevel(level)
+        # Set Nominatim SSL verify
+        if self.verify.get():
+            geopy.geocoders.options.default_ssl_context = None
+        else:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            geopy.geocoders.options.default_ssl_context = ctx
+
+    def set_proxy(self):
+        """ Set proxy server URL """
+        self.proxy = askstring('Set', 'Proxy URL', initialvalue=self.proxy)
 
     def save_and_quit(self):
         """ Save settings to file and quit app """
         config = RawConfigParser()
         config.add_section('app')
         config.add_section('display')
-        if hasattr(self, 'email'):
-            config.set('app', 'email', self.email)
         try:
+            config.set('app', 'email', self.email)
+            config.set('app', 'proxy', self.proxy)
+            config.set('app', 'verify', self.verify.get())
             config.set('display', 'auto_refresh', self.auto_refresh.get())
             config.set('display', 'debug', self.debug.get())
             with open('gui.ini', 'w') as configfile:
@@ -954,7 +976,8 @@ class UpdateThread(threading.Thread):
                 self.location = coords
                 try:
                     # Lookup address at coordinates
-                    osm = Nominatim(user_agent='TeslaPy')
+                    osm = Nominatim(user_agent='TeslaPy',
+                                    proxies=self.vehicle.tesla.proxies)
                     self.location = osm.reverse(coords)
                 except GeocoderTimedOut:
                     UpdateThread._coords = None  # Force lookup

@@ -1,10 +1,10 @@
 # TeslaPy
 
-A Python implementation based on [unofficial documentation](https://tesla-api.timdorr.com/) of the client side interface to the Tesla Motors Owner API, which provides functionality to monitor and control Tesla vehicles remotely.
+A Python implementation based on [unofficial documentation](https://tesla-api.timdorr.com/) of the client side interface to the Tesla Motors Owner API, which provides functionality to monitor and control Tesla products remotely.
 
 ## Overview
 
-This module depends on Python [requests](https://pypi.org/project/requests/), [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [websocket-client](https://pypi.org/project/websocket-client/). The `Tesla` class extends `requests.Session` and therefore inherits methods like `get()` and `post()` that can be used to perform API calls. All calls to the Owner API are intercepted to add the JSON Web Token (JWT) bearer, which is acquired after authentication:
+This module depends on Python [requests](https://pypi.org/project/requests/), [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [websocket-client](https://pypi.org/project/websocket-client/). The `Tesla` class extends `requests.Session` and therefore inherits methods like `get()` and `post()` that can be used to perform API calls. All calls to the Owner API are intercepted by the `request()` method to add the JSON Web Token (JWT) bearer, which is acquired after authentication. Module characteristics:
 
 * It implements Tesla's new [OAuth 2](https://oauth.net/2/) Single Sign-On service.
 * And supports Multi-Factor Authentication (MFA) Time-based One-Time Passwords (TOTP).
@@ -14,18 +14,20 @@ This module depends on Python [requests](https://pypi.org/project/requests/), [r
 * The token is automatically refreshed when expired without the need to reauthenticate.
 * An email registered in another region (e.g. auth.tesla.cn) is also supported.
 * Captcha verification support if required by the login form.
+* Streaming API support using a [WebSocket](https://datatracker.ietf.org/doc/html/rfc6455).
 
 The constructor takes two arguments required for authentication (email and password) and eight optional arguments: a passcode getter function, a factor selector function, a captcha resolver function, a verify SSL certificate bool, a proxy server URL, the maximum number of retries or an instance of the `teslapy.Retry` class, a User-Agent string and a relative or absolute path to the cache file.
 
-The class will use `stdio` to get a passcode, factor and captcha by default. The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
+The class will use `stdio` to get a passcode, factor and captcha by default. The captcha image is opened in the system's default web browser. The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
 | `fetch_token()` | requests a new JWT bearer token using Authorization Code grant with [PKCE](https://oauth.net/2/pkce/) extension |
 | `refresh_token()` | requests a new JWT bearer token using [Refresh Token](https://oauth.net/2/grant-types/refresh-token/) grant |
 | `vehicle_list()` | returns a list of Vehicle objects |
+| `battery_list()` | returns a list of Battery objects |
 
-The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner API. The streaming API pushes vehicle data on-change using a [WebSocket](https://datatracker.ietf.org/doc/html/rfc6455). The `stream()` method takes an optional argument, a callback function that is called with one argument, a dict holding the pushed data. If there are no changes after 10 seconds, the vehicle stops streaming data. The `stream()` method has two more optional arguments to control retrying. Additionally, the class implements the following methods:
+The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner API, which is a pull API. The streaming API pushes vehicle data on-change after subscription. The `stream()` method takes an optional argument, a callback function that is called with one argument, a dict holding the changed data. The `Vehicle` object is always updated with the pushed data. If there are no changes within 10 seconds, the vehicle stops streaming data. The `stream()` method has two more optional arguments to control restarting. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
@@ -48,7 +50,7 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner
 
 <sup>2</sup> Pass vehicle option codes to this method or the image may not be accurate.
 
-Only `get_vehicle_summary()`, `option_code_list()`, `get_service_scheduling_data()`, `compose_image()` and `decode_vin()` are available when the vehicle is asleep or offline. These methods will not prevent your vehicle from sleeping. Other methods and API calls require the vehicle to be brought online by using `sync_wake_up()` and can prevent your vehicle from sleeping if called with too short a period.
+Only `get_vehicle_summary()`, `option_code_list()`, `get_service_scheduling_data()`, `compose_image()` and `decode_vin()` are available when the vehicle is asleep or offline. These methods will not prevent your vehicle from sleeping. Other methods and API calls require the vehicle to be brought online by using `sync_wake_up()` and can prevent your vehicle from sleeping if called within too short a period.
 
 The `Battery` class extends `dict` and stores Powerwall data returned by the API. Additionally, the class implements the following methods:
 
@@ -62,7 +64,7 @@ The `Battery` class extends `dict` and stores Powerwall data returned by the API
 
 ## Usage
 
-Basic usage of the module (assuming your Tesla account has MFA disabled):
+Basic usage of the module:
 
 ```python
 import teslapy
@@ -80,13 +82,26 @@ The constructor takes a function that returns a passcode string as the third arg
 with teslapy.Tesla('elon@tesla.com', 'starship', lambda: '123456') as tesla:
 ```
 
-Tesla allows you to enable more then one MFA device. If you don't want to use the default factor selector method, you can pass a function that takes a list of dicts as an argument and returns the selected factor dict as the constructor's fourth argument. The function may return the selected factor name as well:
+Tesla allows you to enable more than one MFA device. If you don't want to use the default factor selector method, you can pass a function that takes a list of dicts as an argument and returns the selected factor dict as the constructor's fourth argument. The function may return the selected factor name as well:
 
 ```python
 with teslapy.Tesla('elon@tesla.com', 'starship', lambda: '123456', lambda _: 'Device #1') as tesla:
 ```
 
-Take a look at [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) for examples of passcode getter, factor selector and captcha solver functions.
+If you don't want to use the default captcha solver method, you can pass a function that takes the SVG image as an argument and returns the verification code as the constructor's fifth argument. The `passcode_getter`, `factor_selector` and `captcha_solver` optional arguments are also accessible as attributes:
+
+```python
+def solve_captcha(svg):
+    with open('captcha.svg', 'wb') as f:
+        f.write(svg)
+    return input('Captcha: ')
+
+with teslapy.Tesla('elon@tesla.com', 'starship') as tesla:
+    tesla.captcha_solver = solve_captcha
+    tesla.fetch_token()
+```
+
+Take a look at [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) for more code examples.
 
 These are the major commands:
 
@@ -146,11 +161,11 @@ All `requests.exceptions` and `oauthlib.oauth2.rfc6749.errors` classes are impor
 
 Additionally, `sync_wake_up()` raises `teslapy.VehicleError` when the vehicle does not come online within the specified timeout. And `command()` also raises `teslapy.VehicleError` when the vehicle command response result is `False`. For instance, if one of the media endpoints is called and there is no user present in the vehicle, the following exception is raised: `VehicleError: user_not_present`.
 
-When you pass an empty string as passcode or factor to the constructor and your account has MFA enabled, then the module will cancel the transaction and this exception will be raised: `CustomOAuth2Error: (login_cancelled) User cancelled login`.
+When the `passcode_getter` or `factor_selector` function return an empty string and your account has MFA enabled, then the module will cancel the transaction and this exception will be raised: `CustomOAuth2Error: (login_cancelled) User cancelled login`.
 
 If you get a `requests.exceptions.HTTPError: 400 Client Error: endpoint_deprecated:_please_update_your_app for url: https://owner-api.teslamotors.com/oauth/token` then you are probably using an old version of this module. As of January 29, 2021, Tesla updated this endpoint to follow [RFC 7523](https://tools.ietf.org/html/rfc7523) and requires the use of the SSO service (auth.tesla.com) for authentication.
 
-As of May 28, 2021, Tesla has added captcha verification to the login form. If you get a `ValueError: Credentials rejected` and you are using correct credentials then you are probably using an old version of this module.
+As of May 28, 2021, Tesla has added captcha verification to the login form. The User-Agent string might influence the presence of the captcha. If you get a `ValueError: Credentials rejected` and you are using correct credentials then you are probably using an old version of this module.
 
 ## Demo applications
 
@@ -161,7 +176,8 @@ The source repository contains three demo applications.
 ```
 usage: cli.py [-h] -e EMAIL [-p [PASSWORD]] [-t PASSCODE] [-u FACTOR]
               [-f FILTER] [-a API] [-k KEYVALUE] [-c COMMAND] [-l] [-o] [-v]
-              [-w] [-g] [-b] [-n] [-m] [-s] [-d] [-r]
+              [-w] [-g] [-b] [-n] [-m] [-s] [-d] [-r] [--service] [--verify]
+              [--proxy PROXY]
 
 Tesla Owner API CLI
 
@@ -185,7 +201,10 @@ optional arguments:
   -m, --mobile   get mobile enabled state
   -s, --start    remote start drive
   -d, --debug    set logging level to debug
-  -r, --stream   let vehicle push on-change data
+  -r, --stream   receive streaming vehicle data on-change
+  --service      get service self scheduling eligibility
+  --verify       disable verify SSL certificate
+  --proxy PROXY  proxy server URL
 ```
 
 Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) using a cached token:
@@ -389,6 +408,23 @@ Example output of `get_vehicle_data()` or `python cli.py -e elon@tesla.com -w -g
         "valet_mode": false,
         "valet_pin_needed": true,
         "vehicle_name": "Tim's Tesla"
+    }
+}
+```
+
+Example output of `get_service_scheduling_data()` or `python cli.py -e elon@tesla.com --service` below:
+
+```json
+{
+    "response": {
+        "enabled_vins": [
+            {
+                "vin": "5YJ3E111111111111",
+                "next_appt_timestamp": "2021-06-08T13:15:00",
+                "next_appt_end_timestamp": null,
+                "show_badge": false
+            }
+        ]
     }
 }
 ```

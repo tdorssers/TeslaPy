@@ -11,9 +11,6 @@ from teslapy import Tesla, Vehicle
 
 raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
 
-def get_passcode(args):
-    return args.passcode if args.passcode else raw_input('Passcode: ')
-
 def main():
     parser = argparse.ArgumentParser(description='Tesla Owner API CLI')
     parser.add_argument('-e', dest='email', help='login email', required=True)
@@ -47,7 +44,12 @@ def main():
     parser.add_argument('-d', '--debug', action='store_true',
                         help='set logging level to debug')
     parser.add_argument('-r', '--stream', action='store_true',
-                        help='let vehicle push on-change data')
+                        help='receive streaming vehicle data on-change')
+    parser.add_argument('--service', action='store_true',
+                        help='get service self scheduling eligibility')
+    parser.add_argument('--verify', action='store_false',
+                        help='disable verify SSL certificate')
+    parser.add_argument('--proxy', help='proxy server URL')
     args = parser.parse_args()
     default_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
@@ -56,8 +58,12 @@ def main():
         password = getpass.getpass('Password: ')
     else:
         password = args.password
-    with Tesla(args.email, password, lambda: get_passcode(args),
-               (lambda _: args.factor) if args.factor else None) as tesla:
+    with Tesla(args.email, password, verify=args.verify,
+               proxy=args.proxy) as tesla:
+        if args.passcode:
+            tesla.passcode_getter = lambda: args.passcode
+        if args.factor:
+            tesla.factor_selector = lambda _: args.factor
         tesla.fetch_token()
         selected = prod = tesla.vehicle_list() + tesla.battery_list()
         if args.filter:
@@ -85,6 +91,8 @@ def main():
                     print(product.remote_start_drive())
                 if args.stream:
                     product.stream(lambda x: print(x))
+                if args.service:
+                    print(product.get_service_scheduling_data())
             elif args.battery:
                 print(product.get_battery_data())
             if args.api:
