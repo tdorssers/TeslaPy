@@ -490,6 +490,7 @@ class App(Tk):
         opt_menu.add_checkbutton(label='Console debugging', variable=self.debug,
                                  command=self.apply_settings)
         self.verify = BooleanVar()
+        self.verify.set(1)
         opt_menu.add_checkbutton(label='Verify SSL', variable=self.verify,
                                  command=self.apply_settings)
         opt_menu.add_command(label='Proxy URL', command=self.set_proxy)
@@ -507,11 +508,13 @@ class App(Tk):
         self.status.text('Not logged in')
         # Read config
         config = RawConfigParser()
+        self.email = ''
+        self.proxy = ''
         try:
             config.read('gui.ini')
-            self.email = config.get('app', 'email', fallback='')
-            self.verify.set(config.get('app', 'verify', fallback=True))
-            self.proxy = config.get('app', 'proxy', fallback='')
+            self.email = config.get('app', 'email')
+            self.verify.set(config.get('app', 'verify'))
+            self.proxy = config.get('app', 'proxy')
             self.auto_refresh.set(config.get('display', 'auto_refresh'))
             self.debug.set(config.get('display', 'debug'))
         except (NoSectionError, NoOptionError, ParsingError):
@@ -928,7 +931,8 @@ class App(Tk):
 
     def set_proxy(self):
         """ Set proxy server URL """
-        self.proxy = askstring('Set', 'Proxy URL', initialvalue=self.proxy)
+        temp = askstring('Set', 'Proxy URL', initialvalue=self.proxy)
+        self.proxy = '' if temp is None else temp
 
     def save_and_quit(self):
         """ Save settings to file and quit app """
