@@ -197,6 +197,19 @@ class Tesla(requests.Session):
         response = oauth.post(self.sso_base + 'oauth2/v3/authorize',
                               data=form, allow_redirects=False)
         if response.status_code != 302:
+            form = HTMLForm(response.text)
+            # Retrieve captcha image if required
+            if 'captcha' in form:
+                response = oauth.get(self.sso_base + 'captcha')
+                response.raise_for_status()  # Raise HTTPError, if one occurred
+                form['captcha'] = self.captcha_solver(response.content)
+                if not form['captcha']:
+                    raise ValueError('Missing captcha response')
+                # Resubmit login credentials
+                form.update({'identity': self.email, 'credential': self.password})
+                response = oauth.post(self.sso_base + 'oauth2/v3/authorize',
+                                    data=form, allow_redirects=False)
+        if response.status_code != 302:
             # An error occurred if the login form is present
             msgs = ['Credentials rejected'] if HTMLForm(response.text) else []
             # Look for messages object literal
@@ -720,6 +733,11 @@ class Battery(JsonDict):
         """ Set the minimum backup reserve percent for that battery """
         return self.command('BACKUP_RESERVE',
                             backup_reserve_percent=int(percent))
+
+
+class SolarPanelError(Exception):
+    """ SolarPanel exception class """
+    pass
 
 
 class SolarPanel(JsonDict):

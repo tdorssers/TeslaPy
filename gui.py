@@ -7,7 +7,7 @@ import ssl
 import time
 import logging
 import threading
-import geopy.geocoders
+import geopy.geocoders  # 1.14.0 or higher required
 from geopy.geocoders import Nominatim
 from geopy.exc import *
 try:
