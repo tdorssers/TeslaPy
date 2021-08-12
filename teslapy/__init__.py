@@ -405,6 +405,11 @@ class Tesla(requests.Session):
         return [Battery(p, self) for p in self.api('PRODUCT_LIST')['response']
                 if p.get('resource_type') == 'battery']
 
+    def solar_list(self):
+        """ Returns a list of `SolarPanel` objects """
+        return [SolarPanel(p, self) for p in self.api('PRODUCT_LIST')['response']
+                if p.get('resource_type') == 'solar']
+
 
 class HTMLForm(HTMLParser, dict):
     """ Parse input tags on HTML form """
@@ -715,3 +720,73 @@ class Battery(JsonDict):
         """ Set the minimum backup reserve percent for that battery """
         return self.command('BACKUP_RESERVE',
                             backup_reserve_percent=int(percent))
+
+
+class SolarPanel(JsonDict):
+    """ SolarPanel class with dictionary access and API request support """
+
+    def __init__(self, solar_panel, tesla):
+        super(SolarPanel, self).__init__(solar_panel)
+        self.tesla = tesla
+
+    def api(self, name, **kwargs):
+        """ Endpoint request with site_id path variable """
+        pathvars = {'site_id': self['energy_site_id']}
+        return self.tesla.api(name, pathvars, **kwargs)
+
+    def get_site_data(self):
+        """ Retrieve current site generation data """
+        return self.api('SITE_DATA')['response']
+
+    def get_calendar_history_data(
+            self, kind='savings', period='day', start_date=None,
+            end_date=time.strftime('%Y-%m-%dT%H:%M:%S.000Z'),
+            installation_timezone=None, timezone=None, tariff=None):
+        """ Retrieve live status of battery
+        kind: A telemetry type of 'backup', 'energy', 'power',
+              'self_consumption', 'time_of_use_energy',
+              'time_of_use_self_consumption' and 'savings'
+        period: 'day', 'month', 'year', or 'lifetime'
+        end_date: The final day in the data requested in the json format
+                  '2021-02-28T07:59:59.999Z'
+        time_zone: Timezone in the json timezone format. eg. Europe/Brussels
+        start_date: The state date in the data requested in the json format
+                    '2021-02-27T07:59:59.999Z'
+        installation_timezone: Timezone of installation location for 'savings'
+        tariff: Unclear format use in 'savings' only
+        """
+        return self.api('CALENDAR_HISTORY_DATA', kind=kind, period=period,
+                        start_date=start_date, end_date=end_date,
+                        timezone=timezone,
+                        installation_timezone=installation_timezone,
+                        tariff=tariff)['response']
+
+    def get_history_data(
+            self, kind='savings', period='day', start_date=None,
+            end_date=time.strftime('%Y-%m-%dT%H:%M:%S.000Z'),
+            installation_timezone=None, timezone=None, tariff=None):
+        """ Retrieve live status of battery
+        kind: A telemetry type of 'backup', 'energy', 'power',
+              'self_consumption', 'time_of_use_energy', and
+              'time_of_use_self_consumption'
+        period: 'day', 'month', 'year', or 'lifetime'
+        end_date: The final day in the data requested in the json format
+                  '2021-02-28T07:59:59.999Z'
+        time_zone: Timezone in the json timezone format. eg. Europe/Brussels
+        start_date: The state date in the data requested in the json format
+                    '2021-02-27T07:59:59.999Z'
+        installation_timezone: Timezone of installation location for 'savings'
+        tariff: Unclear format use in 'savings' only
+        """
+        return self.api('HISTORY_DATA', kind=kind, period=period,
+                        start_date=start_date, end_date=end_date,
+                        timezone=timezone,
+                        installation_timezone=installation_timezone,
+                        tariff=tariff)['response']
+
+    def command(self, name, **kwargs):
+        """ Wrapper method for solar command response error handling """
+        response = self.api(name, **kwargs)['response']
+        if response['code'] == 201:
+            return response.get('message')
+        raise SolarPanelError(response.get('message'))
