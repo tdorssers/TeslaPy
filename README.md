@@ -52,15 +52,28 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner
 
 Only `get_vehicle_summary()`, `option_code_list()`, `get_service_scheduling_data()`, `compose_image()` and `decode_vin()` are available when the vehicle is asleep or offline. These methods will not prevent your vehicle from sleeping. Other methods and API calls require the vehicle to be brought online by using `sync_wake_up()` and can prevent your vehicle from sleeping if called within too short a period.
 
-The `Battery` class extends `dict` and stores Powerwall data returned by the API. Additionally, the class implements the following methods:
+The `Product` class extends `dict` and stores product data of Powerwalls and solar panels returned by the API. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
 | `api()` | performs an API call to named endpoint requiring battery_id or site_id with optional arguments |
-| `get_battery_data()` | Retrieve detailed state and configuration of the battery |
+| `get_history_data()` | Retrieve live status of product |
+| `get_calendar_history_data()` | Retrieve live status of product |
 | `command()` | wrapper around `api()` for battery command response error handling |
+
+The `Battery` class extends `Product` and stores Powerwall data returned by the API. Additionally, the class implements the following methods:
+
+| Call | Description |
+| --- | --- |
+| `get_battery_data()` | Retrieve detailed state and configuration of the battery |
 | `set_operation()` | Set battery operation to self_consumption, backup or autonomous |
 | `set_backup_reserve_percent()` | Set the minimum backup reserve percent for that battery |
+
+The `SolarPanel` class extends `Product` and stores solar panel data returned by the API. Additionally, the class implements the following methods:
+
+| Call | Description |
+| --- | --- |
+| `get_site_data()` | Retrieve current site generation data |
 
 ## Usage
 
