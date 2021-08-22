@@ -16,9 +16,26 @@ This module depends on Python [requests](https://pypi.org/project/requests/), [r
 * Captcha verification support if required by the login form.
 * Streaming API support using a [WebSocket](https://datatracker.ietf.org/doc/html/rfc6455).
 
-The constructor takes two arguments required for authentication (email and password) and eight optional arguments: a passcode getter function, a factor selector function, a captcha resolver function, a verify SSL certificate bool, a proxy server URL, the maximum number of retries or an instance of the `teslapy.Retry` class, a User-Agent string and a relative or absolute path to the cache file.
+The constructor takes these arguments:
 
-The class will use `stdio` to get a passcode, factor and captcha by default. The captcha image is opened in the system's default web browser. The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
+| Argument | Description |
+| --- | --- |
+| `email` | SSO identity |
+| `password` | SSO credential. May be an empty string when using a cached identity |
+| `passcode_getter` | (optional) function that returns the TOTP passcode |
+| `factor_selector` | (optional) function with one argument, a list of factor dicts, that returns the selected dict or factor name |
+| `captcha_solver` | (optional) function with one argument, SVG image content, that returns the captcha characters |
+| `verify` | (optional) verify SSL certificate |
+| `proxy` | (optional) URL of proxy server |
+| `retry` | (optional) number of connection retries or `Retry` instance |
+| `user_agent` | (optional) the User-Agent string |
+| `cache_file` | (optional) path to cache file used by default loader and dumper |
+| `cache_loader` | (optional) function that returns the cache dict |
+| `cache_dumper` | (optional) function with one argument, the cache dict |
+
+The class will use `stdio` to get a passcode, factor and captcha by default. The captcha image is opened in the system's default web browser.
+
+The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
@@ -112,6 +129,36 @@ def solve_captcha(svg):
 with teslapy.Tesla('elon@tesla.com', 'starship') as tesla:
     tesla.captcha_solver = solve_captcha
     tesla.fetch_token()
+```
+
+The `Tesla` class implements a pluggable cache method. If you don't want to use the default disk caching, you can pass a function to load and return the cache dict, and a function that takes a dict as an argument to dump the cache dict, as arguments to the constructor. The `cache_loader` and `cache_dumper` arguments are accessible as attributes as well.
+
+```python
+import json
+import sqlite3
+
+def db_load():
+    con = sqlite3.connect('cache.db')
+    cur = con.cursor()
+    cache = {}
+    try:
+        for row in cur.execute('select * from teslapy'):
+            cache[row[0]] = json.loads(row[1])
+    except sqlite3.OperationalError:
+        pass
+    con.close()
+    return cache
+
+def db_dump(cache):
+    con = sqlite3.connect('cache.db')
+    con.execute('create table if not exists teslapy (email text primary key, data json)')
+    for email, data in cache.items():
+        con.execute('replace into teslapy values (?, ?)', [email, json.dumps(data)])
+    con.commit()
+    con.close()
+
+with teslapy.Tesla('elon@tesla.com', 'starship', cache_loader=db_load, cache_dumper=db_dump) as tesla:
+	tesla.fetch_token()
 ```
 
 Take a look at [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) for more code examples.

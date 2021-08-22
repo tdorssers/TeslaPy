@@ -90,14 +90,16 @@ class Tesla(requests.Session):
     verify: (optional) Verify SSL certificate.
     proxy: (optional) URL of proxy server.
     retry: (optional) Number of connection retries or `Retry` instance.
-    user_agent: (optional) The first piece of the User-Agent string.
-    cache_file: (optional) Relative or absolute path to json cache file.
+    user_agent: (optional) The User-Agent string.
+    cache_file: (optional) Path to cache file used by default loader and dumper.
+    cache_loader: (optional) Function that returns the cache dict.
+    cache_dumper: (optional) Function with one argument, the cache dict.
     """
 
     def __init__(self, email, password, passcode_getter=None,
                  factor_selector=None, captcha_solver=None, verify=True,
                  proxy=None, retry=0, user_agent=__name__ + '/' + __version__,
-                 cache_file='cache.json'):
+                 cache_file='cache.json', cache_loader=None, cache_dumper=None):
         super(Tesla, self).__init__()
         if not email:
             raise ValueError('`email` is not set')
@@ -106,6 +108,8 @@ class Tesla(requests.Session):
         self.passcode_getter = passcode_getter or self._get_passcode
         self.factor_selector = factor_selector or self._select_factor
         self.captcha_solver = captcha_solver or self._solve_captcha
+        self.cache_loader = cache_loader or self._cache_load
+        self.cache_dumper = cache_dumper or self._cache_dump
         self.cache_file = cache_file
         self.token = {}
         self.expires_at = 0
@@ -318,27 +322,35 @@ class Tesla(requests.Session):
         webbrowser.open('file://' + f.name)
         return input('Captcha: ')
 
-    def _token_updater(self):
-        """ Handles token persistency """
-        if not self.cache_file:
-            return
-        # Open cache file
+    def _cache_load(self):
+        """ Default cache loader method """
         try:
             with open(self.cache_file) as infile:
                 cache = json.load(infile)
         except (IOError, ValueError):
             cache = {}
-        # Write token to cache file
+        return cache
+
+    def _cache_dump(self, cache):
+        """ Default cache dumper method """
+        try:
+            with open(self.cache_file, 'w') as outfile:
+                json.dump(cache, outfile)
+        except IOError:
+            logger.error('Cache not updated')
+        else:
+            logger.debug('Updated cache')
+
+    def _token_updater(self):
+        """ Handles token persistency """
+        cache = self.cache_loader()
+        if not isinstance(cache, dict):
+            raise ValueError('`cache_loader` must return dict')
+        # Write token to cache
         if self.authorized:
             cache[self.email] = {'url': self.sso_base, 'sso': self.sso_token,
                                  SSO_CLIENT_ID: self.token}
-            try:
-                with open(self.cache_file, 'w') as outfile:
-                    json.dump(cache, outfile)
-            except IOError:
-                logger.error('Cache not updated')
-            else:
-                logger.debug('Updated cache')
+            self.cache_dumper(cache)
         # Read token from cache
         elif self.email in cache:
             self.sso_base = cache[self.email].get('url', SSO_BASE_URL)
