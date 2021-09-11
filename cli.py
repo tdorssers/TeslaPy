@@ -5,7 +5,6 @@
 from __future__ import print_function
 import ast
 import logging
-import getpass
 import argparse
 from teslapy import Tesla, Vehicle
 
@@ -14,10 +13,6 @@ raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
 def main():
     parser = argparse.ArgumentParser(description='Tesla Owner API CLI')
     parser.add_argument('-e', dest='email', help='login email', required=True)
-    parser.add_argument('-p', dest='password', nargs='?', const='',
-                        help='prompt/specify login password')
-    parser.add_argument('-t', dest='passcode', help='two factor passcode')
-    parser.add_argument('-u', dest='factor', help='use two factor device name')
     parser.add_argument('-f', dest='filter', help='filter on id, vin, etc.')
     parser.add_argument('-a', dest='api', help='API call endpoint name')
     parser.add_argument('-k', dest='keyvalue', help='API parameter (key=value)',
@@ -54,16 +49,7 @@ def main():
     default_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
                         format=default_format)
-    if args.password == '':
-        password = getpass.getpass('Password: ')
-    else:
-        password = args.password
-    with Tesla(args.email, password, verify=args.verify,
-               proxy=args.proxy) as tesla:
-        if args.passcode:
-            tesla.passcode_getter = lambda: args.passcode
-        if args.factor:
-            tesla.factor_selector = lambda _: args.factor
+    with Tesla(args.email, verify=args.verify, proxy=args.proxy) as tesla:
         tesla.fetch_token()
         selected = prod = tesla.vehicle_list() + tesla.battery_list()
         if args.filter:

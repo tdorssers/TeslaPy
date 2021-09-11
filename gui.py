@@ -19,30 +19,7 @@ except ImportError:
     from tkinter.simpledialog import *
     from configparser import *
 from PIL import Image, ImageTk
-from svglib.svglib import svg2rlg
-from reportlab.graphics import renderPM
 import teslapy
-
-class LoginDialog(Dialog):
-    """ Display dialog box to enter email and password """
-
-    def __init__(self, master):
-        Dialog.__init__(self, master, title='Login')
-
-    def body(self, master):
-        Label(master, text="Email:").grid(row=0, sticky=W)
-        Label(master, text="Password:").grid(row=1, sticky=W)
-        self.email = Entry(master)
-        self.email.grid(row=0, column=1)
-        # Set previously entered email as default value
-        if hasattr(self.master, 'email'):
-            self.email.insert(0, self.master.email)
-        self.password = Entry(master, show='*')
-        self.password.grid(row=1, column=1)
-        return self.email
-
-    def apply(self):
-        self.result = (self.email.get(), self.password.get())
 
 class LabelGridDialog(Dialog):
     """ Display dialog box with table without cancel button """
@@ -98,39 +75,6 @@ class ControlDialog(Dialog):
 
     def apply(self):
         self.result = self.state.get()
-
-class SelectFactorDialog(Dialog):
-    """ Display dialog box to select authorization factor """
-
-    def __init__(self, master, title=None, factors=None):
-        self.factors = factors or []
-        Dialog.__init__(self, master, title)
-
-    def body(self, master):
-        self.state = IntVar(value=0)
-        for i, factor in enumerate(self.factors):
-            Radiobutton(master, text=factor['name'], variable=self.state,
-                        value=i).pack(anchor=W)
-
-    def apply(self):
-        self.result = self.factors[self.state.get()]
-
-class CaptchaDialog(Dialog):
-    """ Display dialog box to input captcha characters in picture """
-
-    def __init__(self, master, title=None, photo=None):
-        self.photo = photo
-        Dialog.__init__(self, master, title)
-
-    def body(self, master):
-        Label(master, image=self.photo, borderwidth=1, relief=SOLID).pack()
-        Label(master, text='Enter text from image:').pack()
-        self.captcha = Entry(master)
-        self.captcha.pack(pady=5)
-        return self.captcha
-
-    def apply(self):
-        self.result = self.captcha.get()
 
 class StatusBar(Frame):
     """ Status bar widget with transient and permanent status messages """
@@ -529,56 +473,29 @@ class App(Tk):
         return {'label': endpoint.capitalize().replace('_', ' '),
                 'state': DISABLED, 'command': lambda: self.cmd(endpoint)}
 
-    def get_passcode(self):
-        """ Ask user for passcode string in new dialog """
+    def get_response(self):
+        """ Ask user for callback URL in new dialog """
         result = ['not_set']
         def show_dialog():
             """ Inner function to show dialog """
-            result[0] = askstring('Login', 'Passcode:')
+            result[0] = askstring('Login', 'Callback URL:')
         self.after_idle(show_dialog)  # Start from main thread
         while result[0] == 'not_set':
             time.sleep(0.1)  # Block login thread until passcode is entered
         return result[0]
 
-    def select_factor(self, factors):
-        """ Let user select authorization factor """
-        result = [{}]
-        def show_dialog():
-            """ Inner function to show dialog """
-            dlg = SelectFactorDialog(self, 'Select factor', factors)
-            result[0] = dlg.result
-        self.after_idle(show_dialog)  # Start from main thread
-        while result[0] == {}:
-            time.sleep(0.1)  # Block login thread until factor is selected
-        return result[0]
-
-    def captcha(self, response):
-        """ Show captcha image and let user enter characters """
-        result = ['not_set']
-        # Convert SVG to PhotoImage
-        image = io.BytesIO()
-        renderPM.drawToFile(svg2rlg(io.BytesIO(response)), image, fmt='PNG')
-        photo = ImageTk.PhotoImage(Image.open(image))
-        def show_dialog():
-            """ Inner function to show dialog """
-            dlg = CaptchaDialog(self, 'Captcha', photo)
-            result[0] = dlg.result
-        self.after_idle(show_dialog)  # Start from main thread
-        while result[0] == 'not_set':
-            time.sleep(0.1)  # Block login thread until factor is selected
-        return result[0]
-
     def login(self):
         """ Display login dialog and start new thread to get vehicle list """
-        dlg = LoginDialog(self)
-        if dlg.result:
-            self.email, self.password = dlg.result
+        result = askstring('Login', 'Email:',
+                           initialvalue=getattr(self, 'email'))
+        if result:
+            self.email = result
             self.status.text('Logging in...')
             retry = teslapy.Retry(total=2,
                                   status_forcelist=(500, 502, 503, 504))
-            tesla = teslapy.Tesla(self.email, self.password, self.get_passcode,
-                                  self.select_factor, self.captcha,
-                                  self.verify.get(), self.proxy, retry)
+            tesla = teslapy.Tesla(self.email, responder=self.get_response,
+                                  verify=self.verify.get(), proxy=self.proxy,
+                                  retry=retry)
             # Create and start login thread. Check thread status after 100 ms
             self.login_thread = LoginThread(tesla)
             self.login_thread.start()

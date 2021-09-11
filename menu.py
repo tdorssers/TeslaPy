@@ -5,7 +5,6 @@
 from __future__ import print_function
 import ssl
 import logging
-import getpass
 import argparse
 import geopy.geocoders
 from geopy.geocoders import Nominatim
@@ -231,16 +230,6 @@ def menu(vehicle):
             except KeyError:
                 print('Not available')
 
-def select_factor(factors):
-    print('-'*80)
-    print('ID Name')
-    for i, factor in enumerate(factors):
-        print('{:2} {}'.format(i, factor['name']))
-    print('-'*80)
-    idx = int(raw_input('Select factor: '))
-    print('-'*80)
-    return factors[idx]
-
 def main():
     parser = argparse.ArgumentParser(description='Tesla Owner API Menu')
     parser.add_argument('-d', '--debug', action='store_true',
@@ -259,9 +248,7 @@ def main():
         ctx.verify_mode = ssl.CERT_NONE
         geopy.geocoders.options.default_ssl_context = ctx
     email = raw_input('Enter email: ')
-    password = getpass.getpass('Password: ')
-    with Tesla(email, password, verify=args.verify, proxy=args.proxy) as tesla:
-        tesla.factor_selector = select_factor
+    with Tesla(email, verify=args.verify, proxy=args.proxy) as tesla:
         tesla.fetch_token()
         vehicles = tesla.vehicle_list()
         print('-'*80)

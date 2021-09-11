@@ -7,24 +7,20 @@ A Python implementation based on [unofficial documentation](https://tesla-api.ti
 This module depends on Python [requests](https://pypi.org/project/requests/), [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [websocket-client](https://pypi.org/project/websocket-client/). The `Tesla` class extends `requests.Session` and therefore inherits methods like `get()` and `post()` that can be used to perform API calls. All calls to the Owner API are intercepted by the `request()` method to add the JSON Web Token (JWT) bearer, which is acquired after authentication. Module characteristics:
 
 * It implements Tesla's new [OAuth 2](https://oauth.net/2/) Single Sign-On service.
-* And supports Multi-Factor Authentication (MFA) Time-based One-Time Passwords (TOTP).
 * Acquired tokens are cached to disk (*cache.json*) for persistence.
 * The cache stores tokens of each authorized identity (email).
 * Authentication is only needed when a new token is requested.
 * The token is automatically refreshed when expired without the need to reauthenticate.
 * An email registered in another region (e.g. auth.tesla.cn) is also supported.
-* Captcha verification support if required by the login form.
 * Streaming API support using a [WebSocket](https://datatracker.ietf.org/doc/html/rfc6455).
 
-The constructor takes these arguments:
+The constructor takes these arguments and is not backwards compatible to v1.x.x:
 
 | Argument | Description |
 | --- | --- |
 | `email` | SSO identity |
-| `password` | SSO credential. May be an empty string when using a cached identity |
-| `passcode_getter` | (optional) function that returns the TOTP passcode |
-| `factor_selector` | (optional) function with one argument, a list of factor dicts, that returns the selected dict or factor name |
-| `captcha_solver` | (optional) function with one argument, SVG image content, that returns the captcha characters |
+| `authenticator` | (optional) Function with one argument, the authorization URL |
+| `responder` | (optional) Function that returns the callback URL |
 | `verify` | (optional) verify SSL certificate |
 | `proxy` | (optional) URL of proxy server |
 | `retry` | (optional) number of connection retries or `Retry` instance |
@@ -33,7 +29,7 @@ The constructor takes these arguments:
 | `cache_loader` | (optional) function that returns the cache dict |
 | `cache_dumper` | (optional) function with one argument, the cache dict |
 
-The class will use `stdio` to get a passcode, factor and captcha by default. The captcha image is opened in the system's default web browser.
+The SSO page opens in the system's default web browser. Upon successful authentication, a *Page not found* will be displayed and the redirected URL should start with `https://auth.tesla.com/void/callback`. The class will use `stdio` to get the full redirected URL from the web browser by default. Copy and paste the full URL to continue aquirering API tokens.
 
 The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
@@ -43,6 +39,7 @@ The convenience method `api()` uses named endpoints listed in *endpoints.json* t
 | `refresh_token()` | requests a new JWT bearer token using [Refresh Token](https://oauth.net/2/grant-types/refresh-token/) grant |
 | `vehicle_list()` | returns a list of Vehicle objects |
 | `battery_list()` | returns a list of Battery objects |
+| `solar_list()` | returns a list of SolarPanel objects |
 
 The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner API, which is a pull API. The streaming API pushes vehicle data on-change after subscription. The `stream()` method takes an optional argument, a callback function that is called with one argument, a dict holding the changed data. The `Vehicle` object is always updated with the pushed data. If there are no changes within 10 seconds, the vehicle stops streaming data. The `stream()` method has two more optional arguments to control restarting. Additionally, the class implements the following methods:
 
@@ -98,7 +95,7 @@ Basic usage of the module:
 
 ```python
 import teslapy
-with teslapy.Tesla('elon@tesla.com', 'starship') as tesla:
+with teslapy.Tesla('elon@tesla.com') as tesla:
 	tesla.fetch_token()
 	vehicles = tesla.vehicle_list()
 	vehicles[0].sync_wake_up()
@@ -106,29 +103,19 @@ with teslapy.Tesla('elon@tesla.com', 'starship') as tesla:
 	print(vehicles[0].get_vehicle_data()['vehicle_state']['car_version'])
 ```
 
-The constructor takes a function that returns a passcode string as the third argument in case your Tesla account has MFA enabled and you don't want to use the default passcode getter method:
+If you want to implement your own method to handle the SSO page and retrieve the redirected URL after authentication, you can pass a function that takes the authentication URL as an argument and a function that returns the redirected URL, as arguments to the constructor. The `authenticator` and `responder` arguments are accessible as attributes as well.
 
 ```python
-with teslapy.Tesla('elon@tesla.com', 'starship', lambda: '123456') as tesla:
-```
+import webbrowser
 
-Tesla allows you to enable more than one MFA device. If you don't want to use the default factor selector method, you can pass a function that takes a list of dicts as an argument and returns the selected factor dict as the constructor's fourth argument. The function may return the selected factor name as well:
+def custom_auth(url):
+    webbrowser.open(url)
 
-```python
-with teslapy.Tesla('elon@tesla.com', 'starship', lambda: '123456', lambda _: 'Device #1') as tesla:
-```
+def custom_resp():
+    return input('Enter redirect URL: ')
 
-If you don't want to use the default captcha solver method, you can pass a function that takes the SVG image as an argument and returns the verification code as the constructor's fifth argument. The `passcode_getter`, `factor_selector` and `captcha_solver` optional arguments are also accessible as attributes:
-
-```python
-def solve_captcha(svg):
-    with open('captcha.svg', 'wb') as f:
-        f.write(svg)
-    return input('Captcha: ')
-
-with teslapy.Tesla('elon@tesla.com', 'starship') as tesla:
-    tesla.captcha_solver = solve_captcha
-    tesla.fetch_token()
+with teslapy.Tesla('elon@tesla.com', authenticator=custom_auth, responder=custom_resp) as tesla:
+	tesla.fetch_token()
 ```
 
 The `Tesla` class implements a pluggable cache method. If you don't want to use the default disk caching, you can pass a function to load and return the cache dict, and a function that takes a dict as an argument to dump the cache dict, as arguments to the constructor. The `cache_loader` and `cache_dumper` arguments are accessible as attributes as well.
@@ -157,7 +144,7 @@ def db_dump(cache):
     con.commit()
     con.close()
 
-with teslapy.Tesla('elon@tesla.com', 'starship', cache_loader=db_load, cache_dumper=db_dump) as tesla:
+with teslapy.Tesla('elon@tesla.com', cache_loader=db_load, cache_dumper=db_dump) as tesla:
 	tesla.fetch_token()
 ```
 
@@ -225,7 +212,7 @@ When the `passcode_getter` or `factor_selector` function return an empty string 
 
 If you get a `requests.exceptions.HTTPError: 400 Client Error: endpoint_deprecated:_please_update_your_app for url: https://owner-api.teslamotors.com/oauth/token` then you are probably using an old version of this module. As of January 29, 2021, Tesla updated this endpoint to follow [RFC 7523](https://tools.ietf.org/html/rfc7523) and requires the use of the SSO service (auth.tesla.com) for authentication.
 
-As of May 28, 2021, Tesla has added captcha verification to the login form. The User-Agent string might influence the presence of the captcha. If you get a `ValueError: Credentials rejected` and you are using correct credentials then you are probably using an old version of this module.
+As of September 3, 2021, Tesla has added ReCaptcha to the login form. This caused the headless login implemented by TeslaPy to break. If you get a `ValueError: Credentials rejected. Recaptcha is required` and you are using correct credentials then you are probably using an old version of this module.
 
 ## Demo applications
 
@@ -234,19 +221,15 @@ The source repository contains three demo applications.
 [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) is a simple CLI application that can use almost all functionality of the TeslaPy module. The filter option allows you to select a product if more than one product is linked to your account. API output is JSON formatted:
 
 ```
-usage: cli.py [-h] -e EMAIL [-p [PASSWORD]] [-t PASSCODE] [-u FACTOR]
-              [-f FILTER] [-a API] [-k KEYVALUE] [-c COMMAND] [-l] [-o] [-v]
-              [-w] [-g] [-b] [-n] [-m] [-s] [-d] [-r] [--service] [--verify]
-              [--proxy PROXY]
+usage: cli.py [-h] -e EMAIL [-f FILTER] [-a API] [-k KEYVALUE] [-c COMMAND]
+              [-l] [-o] [-v] [-w] [-g] [-b] [-n] [-m] [-s] [-d] [-r]
+              [--service] [--verify] [--proxy PROXY]
 
 Tesla Owner API CLI
 
 optional arguments:
   -h, --help     show this help message and exit
   -e EMAIL       login email
-  -p [PASSWORD]  prompt/specify login password
-  -t PASSCODE    two factor passcode
-  -u FACTOR      use two factor device name
   -f FILTER      filter on id, vin, etc.
   -a API         API call endpoint name
   -k KEYVALUE    API parameter (key=value)
@@ -275,7 +258,7 @@ Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.p
 
 ![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/menu.png)
 
-[gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) is a graphical interface using `tkinter`. API calls are performed asynchronously using threading. The GUI supports auto refreshing of the vehicle data and the GUI displays a composed vehicle image. Note that the vehicle will not go to sleep, if auto refresh is enabled. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address, [pillow](https://pypi.org/project/Pillow/) to display the vehicle image and [svglib](https://pypi.org/project/svglib/) to display the captcha image if required by the login form.
+[gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) is a graphical interface using `tkinter`. API calls are performed asynchronously using threading. The GUI supports auto refreshing of the vehicle data and the GUI displays a composed vehicle image. Note that the vehicle will not go to sleep, if auto refresh is enabled. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address and [pillow](https://pypi.org/project/Pillow/) to display the vehicle image.
 
 ![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/gui.png)
 
@@ -563,9 +546,9 @@ TeslaPy is available on PyPI:
 
 `python -m pip install teslapy`
 
-Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/), [geopy](https://pypi.org/project/geopy/), [svglib](https://pypi.org/project/svglib/) and [websocket-client](https://pypi.org/project/websocket-client/) using [PIP](https://pypi.org/project/pip/) as follows:
+Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/), [geopy](https://pypi.org/project/geopy/), [pillow](https://pypi.org/project/Pillow/) and [websocket-client](https://pypi.org/project/websocket-client/) using [PIP](https://pypi.org/project/pip/) as follows:
 
-`python -m pip install requests_oauthlib geopy svglib websocket-client`
+`python -m pip install requests_oauthlib geopy websocket-client`
 
 or on Ubuntu as follows:
 
