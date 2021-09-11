@@ -6,9 +6,24 @@ from __future__ import print_function
 import ast
 import logging
 import argparse
+try:
+    from selenium import webdriver
+    from selenium.webdriver.support import expected_conditions
+    from selenium.webdriver.support.ui import WebDriverWait
+except ImportError:
+    webdriver = None
 from teslapy import Tesla, Vehicle
 
 raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
+
+def custom_auth(url):
+    browser = webdriver.Chrome()
+    browser.get(url)
+    wait = WebDriverWait(browser, 120)
+    wait.until(expected_conditions.url_contains('void/callback'))
+    url = browser.current_url
+    browser.close()
+    return url
 
 def main():
     parser = argparse.ArgumentParser(description='Tesla Owner API CLI')
@@ -50,6 +65,8 @@ def main():
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
                         format=default_format)
     with Tesla(args.email, verify=args.verify, proxy=args.proxy) as tesla:
+        if webdriver:
+            tesla.authenticator = custom_auth
         tesla.fetch_token()
         selected = prod = tesla.vehicle_list() + tesla.battery_list()
         if args.filter:

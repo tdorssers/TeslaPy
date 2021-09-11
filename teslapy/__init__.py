@@ -52,26 +52,25 @@ class Tesla(requests.Session):
     """ Implements a session manager for the Tesla Motors Owner API
 
     email: SSO identity.
-    authenticator: (optional) Function with one argument, the authorization URL
-    responder: (optional) Function that returns the callback URL
     verify: (optional) Verify SSL certificate.
     proxy: (optional) URL of proxy server.
     retry: (optional) Number of connection retries or `Retry` instance.
     user_agent: (optional) The User-Agent string.
+    authenticator: (optional) Function with one argument, the authorization URL,
+                   that returns the redirected URL.
     cache_file: (optional) Path to cache file used by default loader and dumper.
     cache_loader: (optional) Function that returns the cache dict.
     cache_dumper: (optional) Function with one argument, the cache dict.
     """
 
-    def __init__(self, email, authenticator=None, responder=None, verify=True,
-                 proxy=None, retry=0, user_agent=__name__ + '/' + __version__,
+    def __init__(self, email, verify=True, proxy=None, retry=0,
+                 user_agent=__name__ + '/' + __version__, authenticator=None,
                  cache_file='cache.json', cache_loader=None, cache_dumper=None):
         super(Tesla, self).__init__()
         if not email:
             raise ValueError('`email` is not set')
         self.email = email
-        self.authenticator = authenticator or webbrowser.open
-        self.responder = responder or (lambda: input('Enter redirect URL: '))
+        self.authenticator = authenticator or self._authenticate
         self.cache_loader = cache_loader or self._cache_load
         self.cache_dumper = cache_dumper or self._cache_dump
         self.cache_file = cache_file
@@ -149,11 +148,11 @@ class Tesla(requests.Session):
         if response.history:
             self.sso_base = urljoin(response.url, '/')
         # Open SSO page for user authorization through redirection
-        self.authenticator(response.url)
+        url = self.authenticator(response.url)
         # Use authorization response code in redirected location to get token
         oauth.fetch_token(self.sso_base + 'oauth2/v3/token',
-                          authorization_response=self.responder(),
-                          include_client_id=True, code_verifier=code_verifier)
+                          authorization_response=url, include_client_id=True,
+                          code_verifier=code_verifier)
         self.sso_token = oauth.token
         self._fetch_jwt(oauth)  # Access protected resource
 
@@ -169,6 +168,12 @@ class Tesla(requests.Session):
                      time.ctime(self.expires_at))
         self.authorized = True
         self._token_updater()  # Save new token
+
+    @staticmethod
+    def _authenticate(url):
+        """ Default authenticator method """
+        webbrowser.open(url)
+        return input('Enter redirect URL: ')
 
     def _cache_load(self):
         """ Default cache loader method """

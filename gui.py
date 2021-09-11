@@ -7,9 +7,16 @@ import ssl
 import time
 import logging
 import threading
+import webbrowser
 import geopy.geocoders  # 1.14.0 or higher required
 from geopy.geocoders import Nominatim
 from geopy.exc import *
+try:
+    from selenium import webdriver
+    from selenium.webdriver.support import expected_conditions
+    from selenium.webdriver.support.ui import WebDriverWait
+except ImportError:
+    webdriver = None
 try:
     from Tkinter import *
     from tkSimpleDialog import *
@@ -18,7 +25,6 @@ except ImportError:
     from tkinter import *
     from tkinter.simpledialog import *
     from configparser import *
-from PIL import Image, ImageTk
 import teslapy
 
 class LabelGridDialog(Dialog):
@@ -473,8 +479,19 @@ class App(Tk):
         return {'label': endpoint.capitalize().replace('_', ' '),
                 'state': DISABLED, 'command': lambda: self.cmd(endpoint)}
 
-    def get_response(self):
-        """ Ask user for callback URL in new dialog """
+    def custom_auth(self, url):
+        """ Automated or manual authentication """
+        if webdriver:
+            browser = webdriver.Chrome()
+            browser.get(url)
+            wait = WebDriverWait(browser, 120)
+            wait.until(expected_conditions.url_contains('void/callback'))
+            url = browser.current_url
+            browser.close()
+            return url
+        # Manual authentication
+        webbrowser.open(url)
+        # Ask user for callback URL in new dialog
         result = ['not_set']
         def show_dialog():
             """ Inner function to show dialog """
@@ -493,7 +510,7 @@ class App(Tk):
             self.status.text('Logging in...')
             retry = teslapy.Retry(total=2,
                                   status_forcelist=(500, 502, 503, 504))
-            tesla = teslapy.Tesla(self.email, responder=self.get_response,
+            tesla = teslapy.Tesla(self.email, authenticator=self.custom_auth,
                                   verify=self.verify.get(), proxy=self.proxy,
                                   retry=retry)
             # Create and start login thread. Check thread status after 100 ms
@@ -939,7 +956,14 @@ class ImageThread(threading.Thread):
         except teslapy.RequestException as e:
             self.exception = e
         else:
-            self.photo = ImageTk.PhotoImage(Image.open(io.BytesIO(response)))
+            # Tk 8.6 has native PNG support, older Tk require PIL
+            try:
+                import base64
+                self.photo = PhotoImage(data=base64.b64encode(response))
+            except TclError:
+                from PIL import Image, ImageTk
+                import io
+                self.photo = ImageTk.PhotoImage(Image.open(io.BytesIO(response)))
 
 class LoginThread(threading.Thread):
     """ Authenticate and retrieve vehicle list """

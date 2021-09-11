@@ -13,23 +13,23 @@ This module depends on Python [requests](https://pypi.org/project/requests/), [r
 * The token is automatically refreshed when expired without the need to reauthenticate.
 * An email registered in another region (e.g. auth.tesla.cn) is also supported.
 * Streaming API support using a [WebSocket](https://datatracker.ietf.org/doc/html/rfc6455).
+* Pluggable cache and authenticator methods.
 
-The constructor takes these arguments and is not backwards compatible to v1.x.x:
+The constructor (not backwards compatible) takes these arguments:
 
 | Argument | Description |
 | --- | --- |
 | `email` | SSO identity |
-| `authenticator` | (optional) Function with one argument, the authorization URL |
-| `responder` | (optional) Function that returns the callback URL |
 | `verify` | (optional) verify SSL certificate |
 | `proxy` | (optional) URL of proxy server |
 | `retry` | (optional) number of connection retries or `Retry` instance |
 | `user_agent` | (optional) the User-Agent string |
+| `authenticator` | (optional) Function with one argument, the authorization URL, that returns the redirected URL |
 | `cache_file` | (optional) path to cache file used by default loader and dumper |
 | `cache_loader` | (optional) function that returns the cache dict |
 | `cache_dumper` | (optional) function with one argument, the cache dict |
 
-The SSO page opens in the system's default web browser. Upon successful authentication, a *Page not found* will be displayed and the redirected URL should start with `https://auth.tesla.com/void/callback`. The class will use `stdio` to get the full redirected URL from the web browser by default. Copy and paste the full URL to continue aquirering API tokens.
+The SSO page opens in the system's default web browser. Upon successful authentication, a *Page not found* will be displayed and the redirected URL should start with `https://auth.tesla.com/void/callback`. The class will use `stdio` to get the full redirected URL from the web browser by default. Copy and paste the full URL to continue aquirering API tokens. You can use a pluggable authenticator method to automate this using [selenium](https://pypi.org/project/selenium/).
 
 The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
@@ -103,18 +103,23 @@ with teslapy.Tesla('elon@tesla.com') as tesla:
 	print(vehicles[0].get_vehicle_data()['vehicle_state']['car_version'])
 ```
 
-If you want to implement your own method to handle the SSO page and retrieve the redirected URL after authentication, you can pass a function that takes the authentication URL as an argument and a function that returns the redirected URL, as arguments to the constructor. The `authenticator` and `responder` arguments are accessible as attributes as well.
+The `Tesla` class implements a pluggable authentication method. If you want to implement your own method to handle the SSO page and retrieve the redirected URL after authentication, you can pass a function that takes the authentication URL as an argument and returns the redirected URL, as an argument to the constructor. The `authenticator` argument is accessible as an attribute as well.
 
 ```python
-import webbrowser
+from selenium import webdriver
+from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support.ui import WebDriverWait
 
 def custom_auth(url):
-    webbrowser.open(url)
+    browser = webdriver.Chrome()
+    browser.get(url)
+    wait = WebDriverWait(browser, 120)
+    wait.until(expected_conditions.url_contains('void/callback'))
+    url = browser.current_url
+    browser.close()
+    return url
 
-def custom_resp():
-    return input('Enter redirect URL: ')
-
-with teslapy.Tesla('elon@tesla.com', authenticator=custom_auth, responder=custom_resp) as tesla:
+with teslapy.Tesla('elon@tesla.com', authenticator=custom_auth) as tesla:
 	tesla.fetch_token()
 ```
 
@@ -198,10 +203,10 @@ These are the major commands:
 Basic exception handling:
 
 ```python
-    try:
-        vehicles[0].command('HONK_HORN')
-    except teslapy.HTTPError as e:
-        print(e)
+try:
+    vehicles[0].command('HONK_HORN')
+except teslapy.HTTPError as e:
+    print(e)
 ```
 
 All `requests.exceptions` and `oauthlib.oauth2.rfc6749.errors` classes are imported by the module. When the vehicle is asleep or offline and the vehicle needs to be online for the API endpoint to be executed, the following exception is raised: `requests.exceptions.HTTPError: 408 Client Error: vehicle unavailable`. The exception can be caught as `teslapy.HTTPError`.
@@ -546,7 +551,7 @@ TeslaPy is available on PyPI:
 
 `python -m pip install teslapy`
 
-Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/), [geopy](https://pypi.org/project/geopy/), [pillow](https://pypi.org/project/Pillow/) and [websocket-client](https://pypi.org/project/websocket-client/) using [PIP](https://pypi.org/project/pip/) as follows:
+Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/), [geopy](https://pypi.org/project/geopy/) and [websocket-client](https://pypi.org/project/websocket-client/) using [PIP](https://pypi.org/project/pip/) as follows:
 
 `python -m pip install requests_oauthlib geopy websocket-client`
 

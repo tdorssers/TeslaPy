@@ -9,6 +9,12 @@ import argparse
 import geopy.geocoders
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
+try:
+    from selenium import webdriver
+    from selenium.webdriver.support import expected_conditions
+    from selenium.webdriver.support.ui import WebDriverWait
+except ImportError:
+    webdriver = None
 from teslapy import Tesla
 
 raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
@@ -230,6 +236,15 @@ def menu(vehicle):
             except KeyError:
                 print('Not available')
 
+def custom_auth(url):
+    browser = webdriver.Chrome()
+    browser.get(url)
+    wait = WebDriverWait(browser, 120)
+    wait.until(expected_conditions.url_contains('void/callback'))
+    url = browser.current_url
+    browser.close()
+    return url
+
 def main():
     parser = argparse.ArgumentParser(description='Tesla Owner API Menu')
     parser.add_argument('-d', '--debug', action='store_true',
@@ -249,6 +264,8 @@ def main():
         geopy.geocoders.options.default_ssl_context = ctx
     email = raw_input('Enter email: ')
     with Tesla(email, verify=args.verify, proxy=args.proxy) as tesla:
+        if webdriver:
+            tesla.authenticator = custom_auth
         tesla.fetch_token()
         vehicles = tesla.vehicle_list()
         print('-'*80)
