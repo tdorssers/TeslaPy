@@ -9,13 +9,13 @@ This module depends on Python [requests](https://pypi.org/project/requests/), [r
 * It implements Tesla's new [OAuth 2](https://oauth.net/2/) Single Sign-On service.
 * Acquired tokens are cached to disk (*cache.json*) for persistence.
 * The cache stores tokens of each authorized identity (email).
-* Authentication is only needed when a new token is requested.
+* Authentication is only needed when a new token is requested (usually once).
 * The token is automatically refreshed when expired without the need to reauthenticate.
 * An email registered in another region (e.g. auth.tesla.cn) is also supported.
 * Streaming API support using a [WebSocket](https://datatracker.ietf.org/doc/html/rfc6455).
 * Pluggable cache and authenticator methods.
 
-The constructor (not backwards compatible) takes these arguments:
+TeslaPy 2.0.0+ no longer implements headless authentication. The constructor differs and takes these arguments:
 
 | Argument | Description |
 | --- | --- |
@@ -29,7 +29,7 @@ The constructor (not backwards compatible) takes these arguments:
 | `cache_loader` | (optional) function that returns the cache dict |
 | `cache_dumper` | (optional) function with one argument, the cache dict |
 
-The SSO page opens in the system's default web browser. Upon successful authentication, a *Page not found* will be displayed and the redirected URL should start with `https://auth.tesla.com/void/callback`. The class will use `stdio` to get the full redirected URL from the web browser by default. Copy and paste the full URL to continue aquirering API tokens. You can use a pluggable authenticator method to automate this using [selenium](https://pypi.org/project/selenium/).
+To authenticate, the SSO page opens in the system's default web browser. After successful authentication, a *Page not found* will be displayed and the URL should start with `https://auth.tesla.com/void/callback`, which is the redirected URL. The class will use `stdio` to get the full redirected URL from the web browser by default. You need to copy and paste the full URL from the web browser to the console to continue aquirering API tokens. You can use a pluggable authenticator method to automate this for example using [selenium](https://pypi.org/project/selenium/).
 
 The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
@@ -103,21 +103,18 @@ with teslapy.Tesla('elon@tesla.com') as tesla:
 	print(vehicles[0].get_vehicle_data()['vehicle_state']['car_version'])
 ```
 
-The `Tesla` class implements a pluggable authentication method. If you want to implement your own method to handle the SSO page and retrieve the redirected URL after authentication, you can pass a function that takes the authentication URL as an argument and returns the redirected URL, as an argument to the constructor. The `authenticator` argument is accessible as an attribute as well.
+The `Tesla` class implements a pluggable authentication method. If you want to implement your own method to handle the SSO page and retrieve the redirected URL after authentication, you can pass a function as an argument to the constructor, that takes the authentication URL as an argument and returns the redirected URL. The `authenticator` argument is accessible as an attribute as well.
 
 ```python
 from selenium import webdriver
-from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 def custom_auth(url):
-    browser = webdriver.Chrome()
-    browser.get(url)
-    wait = WebDriverWait(browser, 120)
-    wait.until(expected_conditions.url_contains('void/callback'))
-    url = browser.current_url
-    browser.close()
-    return url
+    with webdriver.Chrome() as browser:
+        browser.get(url)
+        WebDriverWait(browser, 300).until(EC.url_contains('void/callback'))
+        return browser.current_url
 
 with teslapy.Tesla('elon@tesla.com', authenticator=custom_auth) as tesla:
 	tesla.fetch_token()
@@ -263,7 +260,7 @@ Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.p
 
 ![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/menu.png)
 
-[gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) is a graphical interface using `tkinter`. API calls are performed asynchronously using threading. The GUI supports auto refreshing of the vehicle data and the GUI displays a composed vehicle image. Note that the vehicle will not go to sleep, if auto refresh is enabled. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address and [pillow](https://pypi.org/project/Pillow/) to display the vehicle image.
+[gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) is a graphical interface using `tkinter`. API calls are performed asynchronously using threading. The GUI supports auto refreshing of the vehicle data and the GUI displays a composed vehicle image. Note that the vehicle will not go to sleep, if auto refresh is enabled. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address. If Tcl/Tk GUI toolkit version of your Python installation is lower than 8.6 then [pillow](https://pypi.org/project/Pillow/) is required to display the vehicle image.
 
 ![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/gui.png)
 
@@ -551,10 +548,10 @@ TeslaPy is available on PyPI:
 
 `python -m pip install teslapy`
 
-Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/), [geopy](https://pypi.org/project/geopy/) and [websocket-client](https://pypi.org/project/websocket-client/) using [PIP](https://pypi.org/project/pip/) as follows:
+Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/), [geopy](https://pypi.org/project/geopy/), [selenium](https://pypi.org/project/selenium/) and [websocket-client](https://pypi.org/project/websocket-client/) using [PIP](https://pypi.org/project/pip/) as follows:
 
-`python -m pip install requests_oauthlib geopy websocket-client`
+`python -m pip install requests_oauthlib geopy selenium websocket-client`
 
-or on Ubuntu as follows:
+and install [ChromeDriver](https://sites.google.com/chromium.org/driver/) to use Selenium or on Ubuntu as follows:
 
-`sudo apt-get install python3-requests-oauthlib python3-geopy`
+`sudo apt-get install python3-requests-oauthlib python3-geopy python3-selenium python3-websocket`

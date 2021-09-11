@@ -9,7 +9,6 @@ for reuse and refreshed automatically. The vehicle option codes are loaded from
 __version__ = '2.0.0'
 
 import os
-import re
 import ast
 import json
 import time
@@ -172,8 +171,10 @@ class Tesla(requests.Session):
     @staticmethod
     def _authenticate(url):
         """ Default authenticator method """
+        logger.debug('Opening %s with default browser', url)
+        print('Use browser to login. Page Not Found will be shown at success.')
         webbrowser.open(url)
-        return input('Enter redirect URL: ')
+        return input('Enter URL after authentication: ')
 
     def _cache_load(self):
         """ Default cache loader method """

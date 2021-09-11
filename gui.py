@@ -2,7 +2,6 @@
 
 # Author: Tim Dorssers
 
-import io
 import ssl
 import time
 import logging
@@ -13,7 +12,7 @@ from geopy.geocoders import Nominatim
 from geopy.exc import *
 try:
     from selenium import webdriver
-    from selenium.webdriver.support import expected_conditions
+    from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.support.ui import WebDriverWait
 except ImportError:
     webdriver = None
@@ -482,20 +481,18 @@ class App(Tk):
     def custom_auth(self, url):
         """ Automated or manual authentication """
         if webdriver:
-            browser = webdriver.Chrome()
-            browser.get(url)
-            wait = WebDriverWait(browser, 120)
-            wait.until(expected_conditions.url_contains('void/callback'))
-            url = browser.current_url
-            browser.close()
-            return url
+            with webdriver.Chrome() as browser:
+                browser.get(url)
+                wait = WebDriverWait(browser, 300)
+                wait.until(EC.url_contains('void/callback'))
+                return browser.current_url
         # Manual authentication
         webbrowser.open(url)
         # Ask user for callback URL in new dialog
         result = ['not_set']
         def show_dialog():
             """ Inner function to show dialog """
-            result[0] = askstring('Login', 'Callback URL:')
+            result[0] = askstring('Login', 'URL after authentication:')
         self.after_idle(show_dialog)  # Start from main thread
         while result[0] == 'not_set':
             time.sleep(0.1)  # Block login thread until passcode is entered
@@ -503,8 +500,9 @@ class App(Tk):
 
     def login(self):
         """ Display login dialog and start new thread to get vehicle list """
-        result = askstring('Login', 'Email:',
-                           initialvalue=getattr(self, 'email'))
+        result = askstring('Login', 'Use browser to login.\nPage Not Found '
+                           'will be shown at success.\n\nEmail:',
+                           initialvalue=self.email)
         if result:
             self.email = result
             self.status.text('Logging in...')

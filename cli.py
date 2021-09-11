@@ -8,7 +8,7 @@ import logging
 import argparse
 try:
     from selenium import webdriver
-    from selenium.webdriver.support import expected_conditions
+    from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.support.ui import WebDriverWait
 except ImportError:
     webdriver = None
@@ -17,13 +17,10 @@ from teslapy import Tesla, Vehicle
 raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
 
 def custom_auth(url):
-    browser = webdriver.Chrome()
-    browser.get(url)
-    wait = WebDriverWait(browser, 120)
-    wait.until(expected_conditions.url_contains('void/callback'))
-    url = browser.current_url
-    browser.close()
-    return url
+    with webdriver.Chrome() as browser:
+        browser.get(url)
+        WebDriverWait(browser, 300).until(EC.url_contains('void/callback'))
+        return browser.current_url
 
 def main():
     parser = argparse.ArgumentParser(description='Tesla Owner API CLI')
