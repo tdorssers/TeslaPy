@@ -14,6 +14,7 @@ try:
     from selenium import webdriver
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.common.exceptions import WebDriverException
 except ImportError:
     webdriver = None
 try:
@@ -500,9 +501,9 @@ class App(Tk):
 
     def login(self):
         """ Display login dialog and start new thread to get vehicle list """
-        result = askstring('Login', 'Use browser to login.\nPage Not Found '
-                           'will be shown at success.\n\nEmail:',
-                           initialvalue=self.email)
+        prompt = 'Email:' if webdriver else 'Use browser to login.\n' \
+                 'Page Not Found will be shown at success.\n\nEmail:'
+        result = askstring('Login', prompt, initialvalue=self.email)
         if result:
             self.email = result
             self.status.text('Logging in...')
@@ -976,8 +977,9 @@ class LoginThread(threading.Thread):
         try:
             self.tesla.fetch_token()
             self.vehicles = self.tesla.vehicle_list()
-        except (teslapy.RequestException, teslapy.OAuth2Error, ValueError) as e:
-            self.exception = e
+        except (teslapy.RequestException, teslapy.OAuth2Error,
+                WebDriverException) as e:
+            self.exception = str(e).replace('\n', '')
 
 class StatusThread(threading.Thread):
     """ Retrieve vehicle status summary """
