@@ -297,17 +297,7 @@ class VehicleError(Exception):
 
 
 class JsonDict(dict):
-    """ Dictionary with attribute access """
-
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
-
-    def __getattr__(self, name):
-        """ x.__getattr__(y) <==> x.y """
-        try:
-            return self[name]
-        except KeyError:
-            raise AttributeError(name)
+    """ Pretty printing dictionary """
 
     def __str__(self):
         """ Serialize dict to JSON formatted string with indents """
