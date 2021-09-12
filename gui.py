@@ -298,10 +298,7 @@ class Dashboard(Frame):
         limit = ve['speed_limit_mode']['current_limit_mph']
         self.current_limit.text(app.vehicle.dist_units(limit, True))
         self.speed_limit_pin.text(str(ve['speed_limit_mode']['pin_code_set']))
-        try:
-            self.sentry_mode.text(str(ve['sentry_mode']))
-        except:
-            self.sentry_mode.text('Does not exist')
+        self.sentry_mode.text(str(ve.get('sentry_mode')))
         self.valet_mode.text(str(ve['valet_mode']))
         self.valet_pin.text(str(not 'valet_pin_needed' in ve))
         status = ve['software_update']['status'] or 'unavailable'
@@ -319,7 +316,7 @@ class Dashboard(Frame):
         self.speed.text(app.vehicle.dist_units(speed, True))
         self.shift_state.text(str(dr['shift_state']))
         self.heading.text(self._heading_to_str(dr['heading']))
-        self.gps.text(app.update_thread.location.address)
+        self.gps.text(app.update_thread.location)
         # Charging state
         self.charging_state.text(ch['charging_state'])
         ttfc = divmod(ch['time_to_full_charge'] * 60, 60)
@@ -917,7 +914,7 @@ class UpdateThread(threading.Thread):
                     # Lookup address at coordinates
                     osm = Nominatim(user_agent='TeslaPy',
                                     proxies=self.vehicle.tesla.proxies)
-                    self.location = osm.reverse(coords)
+                    self.location = osm.reverse(coords).address
                 except GeocoderTimedOut:
                     UpdateThread._coords = None  # Force lookup
                 except GeopyError as e:

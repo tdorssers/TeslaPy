@@ -34,19 +34,14 @@ def show_vehicle_data(vehicle):
     coords = '%s, %s' % (dr['latitude'], dr['longitude'])
     try:
         osm = Nominatim(user_agent='TeslaPy', proxies=vehicle.tesla.proxies)
-        location = osm.reverse(coords)
+        location = osm.reverse(coords).address
     except GeocoderTimedOut as e:
         logging.error(e)
         location = coords
-    if cl['outside_temp'] is not None and cl['inside_temp'] is not None:
     # Climate state
-        fmt = 'Outside Temperature: {:17} Inside Temperature: {}'
-        print(fmt.format(vehicle.temp_units(cl['outside_temp']),
-                        vehicle.temp_units(cl['inside_temp'])))
-    else:
-        fmt = 'Outside Temperature: {:17} Inside Temperature: {}'
-        print(fmt.format('No reading avail','No reading avail'))
-
+    fmt = 'Outside Temperature: {:17} Inside Temperature: {}'
+    print(fmt.format(vehicle.temp_units(cl['outside_temp']),
+                    vehicle.temp_units(cl['inside_temp'])))
     fmt = 'Driver Temperature Setting: {:10} Passenger Temperature Setting: {}'
     print(fmt.format(vehicle.temp_units(cl['driver_temp_setting']),
                      vehicle.temp_units(cl['passenger_temp_setting'])))
@@ -81,12 +76,8 @@ def show_vehicle_data(vehicle):
     limit = vehicle.dist_units(ve['speed_limit_mode']['current_limit_mph'], True)
     print(fmt.format(str(ve['speed_limit_mode']['active']), limit))
     fmt = 'Speed Limit Pin Set: {:17} Sentry Mode: {}'
-    try:
-        print(fmt.format(str(ve['speed_limit_mode']['pin_code_set']),
-                         str(ve['sentry_mode'])))
-    except:
-        print(fmt.format(str(ve['speed_limit_mode']['pin_code_set']),
-                         'None'))
+    print(fmt.format(str(ve['speed_limit_mode']['pin_code_set']),
+                        str(ve.get('sentry_mode'))))
     fmt = 'Valet Mode: {:26} Valet Pin Set: {}'
     print(fmt.format(str(ve['valet_mode']), str(not 'valet_pin_needed' in ve)))
     print('-'*80)
@@ -96,7 +87,7 @@ def show_vehicle_data(vehicle):
     print(fmt.format(str(dr['power']) + ' kW', vehicle.dist_units(speed, True)))
     fmt = 'Shift State: {:25} Heading: {}'
     print(fmt.format(str(dr['shift_state']), heading_to_str(dr['heading'])))
-    print(u'GPS: {:.75}'.format(location.address))
+    print(u'GPS: {:.75}'.format(location))
     print('-'*80)
     # Charging state
     fmt = 'Charging State: {:22} Time To Full Charge: {:02.0f}:{:02.0f}'
