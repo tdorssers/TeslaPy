@@ -452,7 +452,7 @@ class Vehicle(JsonDict):
 
     def get_service_scheduling_data(self):
         """ Retrieves next service appointment for this vehicle """
-        response = self.api('SERVICE_SELF_SCHEDULING_ELIGIBILITY')['response']
+        response = self.api('GET_UPCOMING_SERVICE_VISIT_DATA')['response']
         return next((enabled for enabled in response['enabled_vins']
                      if enabled['vin'] == self['vin']), {})
 
