@@ -298,7 +298,10 @@ class Dashboard(Frame):
         limit = ve['speed_limit_mode']['current_limit_mph']
         self.current_limit.text(app.vehicle.dist_units(limit, True))
         self.speed_limit_pin.text(str(ve['speed_limit_mode']['pin_code_set']))
-        self.sentry_mode.text(str(ve['sentry_mode']))
+        try:
+            self.sentry_mode.text(str(ve['sentry_mode']))
+        except:
+            self.sentry_mode.text('Does not exist')
         self.valet_mode.text(str(ve['valet_mode']))
         self.valet_pin.text(str(not 'valet_pin_needed' in ve))
         status = ve['software_update']['status'] or 'unavailable'
