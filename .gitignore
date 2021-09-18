@@ -6,3 +6,4 @@ gui.ini
 build/
 dist/
 TeslaPy.egg-info/
+geckodriver.log

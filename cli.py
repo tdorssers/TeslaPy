@@ -17,12 +17,15 @@ from teslapy import Tesla, Vehicle
 raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
 
 def custom_auth(url):
-    with webdriver.Chrome() as browser:
+    global args
+    with [webdriver.Chrome, webdriver.Edge, webdriver.Firefox, webdriver.Opera,
+          webdriver.Safari][args.web]() as browser:
         browser.get(url)
         WebDriverWait(browser, 300).until(EC.url_contains('void/callback'))
         return browser.current_url
 
 def main():
+    global args
     parser = argparse.ArgumentParser(description='Tesla Owner API CLI')
     parser.add_argument('-e', dest='email', help='login email', required=True)
     parser.add_argument('-f', dest='filter', help='filter on id, vin, etc.')
@@ -56,6 +59,11 @@ def main():
                         help='get service self scheduling eligibility')
     parser.add_argument('--verify', action='store_false',
                         help='disable verify SSL certificate')
+    parser.add_argument('--chrome', dest='web', const=0, default=0,
+                        action='store_const', help='use Chrome (default)')
+    for c, s in enumerate(('edge', 'firefox', 'opera', 'safari'), start=1):
+        parser.add_argument('--' + s, dest='web', const=c, action='store_const',
+                            help='use %s browser' % s.title())
     parser.add_argument('--proxy', help='proxy server URL')
     args = parser.parse_args()
     default_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

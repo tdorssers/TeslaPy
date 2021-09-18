@@ -14,7 +14,6 @@ try:
     from selenium import webdriver
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.common.exceptions import WebDriverException
 except ImportError:
     webdriver = None
 try:
@@ -444,6 +443,11 @@ class App(Tk):
         opt_menu.add_checkbutton(label='Verify SSL', variable=self.verify,
                                  command=self.apply_settings)
         opt_menu.add_command(label='Proxy URL', command=self.set_proxy)
+        web_menu = Menu(menu, tearoff=0)
+        opt_menu.add_cascade(label='Web browser', menu=web_menu)
+        self.browser = IntVar()
+        for v, l in enumerate(('Chrome', 'Edge', 'Firefox', 'Opera', 'Safari')):
+            web_menu.add_radiobutton(label=l, value=v, variable=self.browser)
         menu.add_cascade(label='Options', menu=opt_menu)
         help_menu = Menu(menu, tearoff=0)
         help_menu.add_command(label='About', command=self.about)
@@ -465,6 +469,7 @@ class App(Tk):
             self.email = config.get('app', 'email')
             self.verify.set(config.get('app', 'verify'))
             self.proxy = config.get('app', 'proxy')
+            self.browser.set(config.get('app', 'browser'))
             self.auto_refresh.set(config.get('display', 'auto_refresh'))
             self.debug.set(config.get('display', 'debug'))
         except (NoSectionError, NoOptionError, ParsingError):
@@ -482,7 +487,9 @@ class App(Tk):
     def custom_auth(self, url):
         """ Automated or manual authentication """
         if webdriver:
-            with webdriver.Chrome() as browser:
+            with [webdriver.Chrome, webdriver.Edge,
+                  webdriver.Firefox, webdriver.Opera,
+                  webdriver.Safari][self.browser.get()]() as browser:
                 browser.get(url)
                 wait = WebDriverWait(browser, 300)
                 wait.until(EC.url_contains('void/callback'))
@@ -876,6 +883,7 @@ class App(Tk):
             config.set('app', 'email', self.email)
             config.set('app', 'proxy', self.proxy)
             config.set('app', 'verify', self.verify.get())
+            config.set('app', 'browser', self.browser.get())
             config.set('display', 'auto_refresh', self.auto_refresh.get())
             config.set('display', 'debug', self.debug.get())
             with open('gui.ini', 'w') as configfile:
@@ -977,8 +985,7 @@ class LoginThread(threading.Thread):
         try:
             self.tesla.fetch_token()
             self.vehicles = self.tesla.vehicle_list()
-        except (teslapy.RequestException, teslapy.OAuth2Error,
-                WebDriverException) as e:
+        except Exception as e:
             self.exception = str(e).replace('\n', '')
 
 class StatusThread(threading.Thread):

@@ -218,14 +218,15 @@ As of September 3, 2021, Tesla has added ReCaptcha to the login form. This cause
 
 ## Demo applications
 
-The source repository contains three demo applications.
+The source repository contains three demo applications that use [selenium](https://pypi.org/project/selenium/) to automate weblogin. Selenium 4 is required for Edge Chromium.
 
 [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) is a simple CLI application that can use almost all functionality of the TeslaPy module. The filter option allows you to select a product if more than one product is linked to your account. API output is JSON formatted:
 
 ```
 usage: cli.py [-h] -e EMAIL [-f FILTER] [-a API] [-k KEYVALUE] [-c COMMAND]
               [-l] [-o] [-v] [-w] [-g] [-b] [-n] [-m] [-s] [-d] [-r]
-              [--service] [--verify] [--proxy PROXY]
+              [--service] [--verify] [--chrome] [--edge] [--firefox] [--opera]
+              [--safari] [--proxy PROXY]
 
 Tesla Owner API CLI
 
@@ -249,10 +250,15 @@ optional arguments:
   -r, --stream   receive streaming vehicle data on-change
   --service      get service self scheduling eligibility
   --verify       disable verify SSL certificate
+  --chrome       use Chrome (default)
+  --edge         use Edge browser
+  --firefox      use Firefox browser
+  --opera        use Opera browser
+  --safari       use Safari browser
   --proxy PROXY  proxy server URL
 ```
 
-Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) using a cached token:
+Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py):
 
 `python cli.py -e elon@tesla.com -w -a ACTUATE_TRUNK -k which_trunk=front`
 
