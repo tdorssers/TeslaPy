@@ -11,11 +11,11 @@ import geopy.geocoders  # 1.14.0 or higher required
 from geopy.geocoders import Nominatim
 from geopy.exc import *
 try:
-    from selenium import webdriver
+    from selenium import webdriver  # 3.13.0 or higher required
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.support.ui import WebDriverWait
 except ImportError:
-    webdriver = None
+    webdriver = None  # Optional import
 try:
     from Tkinter import *
     from tkSimpleDialog import *
@@ -444,7 +444,8 @@ class App(Tk):
                                  command=self.apply_settings)
         opt_menu.add_command(label='Proxy URL', command=self.set_proxy)
         web_menu = Menu(menu, tearoff=0)
-        opt_menu.add_cascade(label='Web browser', menu=web_menu)
+        opt_menu.add_cascade(label='Web browser', menu=web_menu,
+                             state=NORMAL if webdriver else DISABLED)
         self.browser = IntVar()
         for v, l in enumerate(('Chrome', 'Edge', 'Firefox', 'Opera', 'Safari')):
             web_menu.add_radiobutton(label=l, value=v, variable=self.browser)

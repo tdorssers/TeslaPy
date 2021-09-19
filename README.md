@@ -152,6 +152,8 @@ with teslapy.Tesla('elon@tesla.com', cache_loader=db_load, cache_dumper=db_dump)
 
 Take a look at [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) for more code examples.
 
+## Commands
+
 These are the major commands:
 
 | Endpoint | Parameters | Value |
@@ -218,7 +220,7 @@ As of September 3, 2021, Tesla has added ReCaptcha to the login form. This cause
 
 ## Demo applications
 
-The source repository contains three demo applications that use [selenium](https://pypi.org/project/selenium/) to automate weblogin. Selenium 4 is required for Edge Chromium.
+The source repository contains three demo applications that *optionally* use [selenium](https://pypi.org/project/selenium/) to automate weblogin. Version 3.13.0 or higher is required and version 4.0.0 or higher is required for Edge Chromium.
 
 [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) is a simple CLI application that can use almost all functionality of the TeslaPy module. The filter option allows you to select a product if more than one product is linked to your account. API output is JSON formatted:
 
@@ -266,7 +268,7 @@ Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.p
 
 ![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/menu.png)
 
-[gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) is a graphical interface using `tkinter`. API calls are performed asynchronously using threading. The GUI supports auto refreshing of the vehicle data and the GUI displays a composed vehicle image. Note that the vehicle will not go to sleep, if auto refresh is enabled. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address. If Tcl/Tk GUI toolkit version of your Python installation is lower than 8.6 then [pillow](https://pypi.org/project/Pillow/) is required to display the vehicle image.
+[gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) is a graphical user interface using `tkinter`. API calls are performed asynchronously using threading. The GUI supports auto refreshing of the vehicle data and displays a composed vehicle image. Note that the vehicle will not go to sleep, if auto refresh is enabled. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address. If Tcl/Tk GUI toolkit version of your Python installation is lower than 8.6 then [pillow](https://pypi.org/project/Pillow/) is required to display the vehicle image. User preferences, such as which web browser to use for authentication, persist upon application restart.
 
 ![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/gui.png)
 
@@ -561,3 +563,7 @@ Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on y
 and install [ChromeDriver](https://sites.google.com/chromium.org/driver/) to use Selenium or on Ubuntu as follows:
 
 `sudo apt-get install python3-requests-oauthlib python3-geopy python3-selenium python3-websocket`
+
+If you prefer Firefox, install [GeckoDriver](https://github.com/mozilla/geckodriver/releases) or on Ubuntu as follows:
+
+`sudo apt-get install firefox-geckodriver`

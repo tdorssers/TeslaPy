@@ -10,11 +10,11 @@ import geopy.geocoders
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
 try:
-    from selenium import webdriver
+    from selenium import webdriver  # 3.13.0 or higher required
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.support.ui import WebDriverWait
 except ImportError:
-    webdriver = None
+    webdriver = None  # Optional import
 from teslapy import Tesla
 
 raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
@@ -41,7 +41,7 @@ def show_vehicle_data(vehicle):
     # Climate state
     fmt = 'Outside Temperature: {:17} Inside Temperature: {}'
     print(fmt.format(vehicle.temp_units(cl['outside_temp']),
-                    vehicle.temp_units(cl['inside_temp'])))
+                     vehicle.temp_units(cl['inside_temp'])))
     fmt = 'Driver Temperature Setting: {:10} Passenger Temperature Setting: {}'
     print(fmt.format(vehicle.temp_units(cl['driver_temp_setting']),
                      vehicle.temp_units(cl['passenger_temp_setting'])))
@@ -77,7 +77,7 @@ def show_vehicle_data(vehicle):
     print(fmt.format(str(ve['speed_limit_mode']['active']), limit))
     fmt = 'Speed Limit Pin Set: {:17} Sentry Mode: {}'
     print(fmt.format(str(ve['speed_limit_mode']['pin_code_set']),
-                        str(ve.get('sentry_mode'))))
+                     str(ve.get('sentry_mode'))))
     fmt = 'Valet Mode: {:26} Valet Pin Set: {}'
     print(fmt.format(str(ve['valet_mode']), str(not 'valet_pin_needed' in ve)))
     print('-'*80)
@@ -237,27 +237,14 @@ def menu(vehicle):
                 print('Not available')
 
 def custom_auth(url):
-    global args
     with [webdriver.Chrome, webdriver.Edge, webdriver.Firefox, webdriver.Opera,
           webdriver.Safari][args.web]() as browser:
+        logging.info('Selenium opened %s', browser.capabilities['browserName'])
         browser.get(url)
         WebDriverWait(browser, 300).until(EC.url_contains('void/callback'))
         return browser.current_url
 
 def main():
-    global args
-    parser = argparse.ArgumentParser(description='Tesla Owner API Menu')
-    parser.add_argument('-d', '--debug', action='store_true',
-                        help='set logging level to debug')
-    parser.add_argument('--verify', action='store_false',
-                        help='disable verify SSL certificate')
-    parser.add_argument('--chrome', dest='web', const=0, default=0,
-                        action='store_const', help='use Chrome (default)')
-    for c, s in enumerate(('edge', 'firefox', 'opera', 'safari'), start=1):
-        parser.add_argument('--' + s, dest='web', const=c, action='store_const',
-                            help='use %s browser' % s.title())
-    parser.add_argument('--proxy', help='proxy server URL')
-    args = parser.parse_args()
     default_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
                         format=default_format)
@@ -288,4 +275,17 @@ def main():
         menu(vehicles[idx])
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Tesla Owner API Menu')
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help='set logging level to debug')
+    parser.add_argument('--verify', action='store_false',
+                        help='disable verify SSL certificate')
+    if webdriver:
+        parser.add_argument('--chrome', action='store_const', dest='web',
+                            const=0, default=0, help='use Chrome (default)')
+        for c, s in enumerate(('edge', 'firefox', 'opera', 'safari'), start=1):
+            parser.add_argument('--' + s, action='store_const', dest='web',
+                                const=c, help='use %s browser' % s.title())
+    parser.add_argument('--proxy', help='proxy server URL')
+    args = parser.parse_args()
     main()
