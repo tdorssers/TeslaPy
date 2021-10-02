@@ -2,12 +2,15 @@
 
 A Python implementation based on [unofficial documentation](https://tesla-api.timdorr.com/) of the client side interface to the Tesla Motors Owner API, which provides functionality to monitor and control Tesla products remotely.
 
+[![Version](https://img.shields.io/pypi/v/TeslaPy)](https://pypi.org/project/TeslaPy)
+[![Downloads](https://pepy.tech/badge/TeslaPy/month)](https://pepy.tech/project/TeslaPy)
+
 ## Overview
 
 This module depends on Python [requests](https://pypi.org/project/requests/), [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [websocket-client](https://pypi.org/project/websocket-client/). The `Tesla` class extends `requests.Session` and therefore inherits methods like `get()` and `post()` that can be used to perform API calls. All calls to the Owner API are intercepted by the `request()` method to add the JSON Web Token (JWT) bearer, which is acquired after authentication. Module characteristics:
 
 * It implements Tesla's new [OAuth 2](https://oauth.net/2/) Single Sign-On service.
-* Acquired tokens are cached to disk (*cache.json*) for persistence.
+* Acquired tokens are stored in current working directory in *cache.json* file for persistence by default.
 * The cache stores tokens of each authorized identity (email).
 * Authentication is only needed when a new token is requested (usually once).
 * The token is automatically refreshed when expired without the need to reauthenticate.
@@ -212,9 +215,7 @@ All `requests.exceptions` and `oauthlib.oauth2.rfc6749.errors` classes are impor
 
 Additionally, `sync_wake_up()` raises `teslapy.VehicleError` when the vehicle does not come online within the specified timeout. And `command()` also raises `teslapy.VehicleError` when the vehicle command response result is `False`. For instance, if one of the media endpoints is called and there is no user present in the vehicle, the following exception is raised: `VehicleError: user_not_present`.
 
-When the `passcode_getter` or `factor_selector` function return an empty string and your account has MFA enabled, then the module will cancel the transaction and this exception will be raised: `CustomOAuth2Error: (login_cancelled) User cancelled login`.
-
-If you get a `requests.exceptions.HTTPError: 400 Client Error: endpoint_deprecated:_please_update_your_app for url: https://owner-api.teslamotors.com/oauth/token` then you are probably using an old version of this module. As of January 29, 2021, Tesla updated this endpoint to follow [RFC 7523](https://tools.ietf.org/html/rfc7523) and requires the use of the SSO service (auth.tesla.com) for authentication.
+As of January 29, 2021, Tesla updated this endpoint to follow [RFC 7523](https://tools.ietf.org/html/rfc7523) and requires the use of the SSO service (auth.tesla.com) for authentication. If you get a `requests.exceptions.HTTPError: 400 Client Error: endpoint_deprecated:_please_update_your_app for url: https://owner-api.teslamotors.com/oauth/token` then you are probably using an old version of this module.
 
 As of September 3, 2021, Tesla has added ReCaptcha to the login form. This caused the headless login implemented by TeslaPy to break. If you get a `ValueError: Credentials rejected. Recaptcha is required` and you are using correct credentials then you are probably using an old version of this module.
 
@@ -271,6 +272,14 @@ Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.p
 [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) is a graphical user interface using `tkinter`. API calls are performed asynchronously using threading. The GUI supports auto refreshing of the vehicle data and displays a composed vehicle image. Note that the vehicle will not go to sleep, if auto refresh is enabled. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address. If Tcl/Tk GUI toolkit version of your Python installation is lower than 8.6 then [pillow](https://pypi.org/project/Pillow/) is required to display the vehicle image. User preferences, such as which web browser to use for authentication, persist upon application restart.
 
 ![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/gui.png)
+
+The demo applications can be containerized using the provided Dockerfile. A bind volume is used to store *cache.json* and *gui.ini* in the current directory on the host machine:
+
+```
+sudo docker build -t teslapy .
+xhost +local:*
+sudo docker run -ti --net=host --privileged -v "$(pwd)":/home/tsla teslapy
+```
 
 ## Vehicle data
 
@@ -556,7 +565,7 @@ TeslaPy is available on PyPI:
 
 `python -m pip install teslapy`
 
-Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/), [geopy](https://pypi.org/project/geopy/), [selenium](https://pypi.org/project/selenium/) and [websocket-client](https://pypi.org/project/websocket-client/) using [PIP](https://pypi.org/project/pip/) as follows:
+Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/), [geopy](https://pypi.org/project/geopy/), [selenium](https://pypi.org/project/selenium/) (optional) and [websocket-client](https://pypi.org/project/websocket-client/) using [PIP](https://pypi.org/project/pip/) as follows:
 
 `python -m pip install requests_oauthlib geopy selenium websocket-client`
 

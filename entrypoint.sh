@@ -4,27 +4,26 @@
 set -e
 
 run_cli() {
-        python cli.py $@
+        python /app/cli.py $@
 }
 
 run_menu() {
-        python menu.py $@
+        python /app/menu.py $@
 }
 
 run_gui() {
-        python gui.py $@
+        python /app/gui.py $@
 }
 
 print_usage() {
 echo "
-
 usage:	$0 COMMAND
 
 commands:
-  cli			run the CLI script
-  menu			run the menu version
-  gui			run the GUI (make sure you have X11 running and accessible)
-  help		        Print this help
+  cli		run the CLI script
+  menu		run the menu version
+  gui		run the GUI (make sure you have X11 running and accessible)
+  help		Print this help
 "
 }
 

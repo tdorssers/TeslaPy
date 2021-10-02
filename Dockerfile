@@ -1,22 +1,24 @@
-FROM python:3.7-slim
+FROM python:3.9-slim
 
-ADD requirements.txt /
-
-RUN apt-get update && apt-get install -y --no-install-recommends tk \
+RUN apt-get update && apt-get install -y --no-install-recommends tk chromium-driver \
         && apt-get clean \
         && rm -rf /var/lib/apt/lists/*
 
-RUN pip install -r requirements.txt
+ADD requirements.txt /app/
+RUN pip install -r /app/requirements.txt
 
-COPY teslapy /teslapy/
-COPY cli.py /
-COPY menu.py /
-COPY gui.py /
+COPY teslapy /app/teslapy/
+COPY cli.py /app
+COPY menu.py /app
+COPY gui.py /app
 
-COPY entrypoint.sh /
+COPY entrypoint.sh /app
 
-ENV DISPLAY=172.16.247.1:0.0
+WORKDIR /home/tsla
+RUN useradd tsla && chown tsla:tsla /home/tsla
+USER tsla
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENV DISPLAY=:0
+
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["help"]
-
