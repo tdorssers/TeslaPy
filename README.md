@@ -169,9 +169,10 @@ These are the major commands:
 | CLIMATE_OFF | | |
 | MAX_DEFROST | `on` | `true` or `false` |
 | CHANGE_CLIMATE_TEMPERATURE_SETTING | `driver_temp`, `passenger_temp` | temperature in celcius |
+| CHARGING_AMPS <sup>1</sup> | `charging_amps` | amperage |
 | CHANGE_CHARGE_LIMIT | `percent` | percentage |
 | CHANGE_SUNROOF_STATE | `state` | `vent` or `close` |
-| WINDOW_CONTROL <sup>1</sup> | `command`, `lat`, `lon` | `vent` or `close`, `0`, `0` |
+| WINDOW_CONTROL <sup>2</sup> | `command`, `lat`, `lon` | `vent` or `close`, `0`, `0` |
 | ACTUATE_TRUNK | `which_trunk` | `rear` or `front` |
 | REMOTE_START | `password` | password |
 | TRIGGER_HOMELINK | `lat`, `lon` | current lattitude and logitude |
@@ -198,7 +199,9 @@ These are the major commands:
 | REMOTE_SEAT_HEATER_REQUEST | `heater`, `level` | seat 0-5, level 0-3 |
 | REMOTE_STEERING_WHEEL_HEATER_REQUEST | `on` | `true` or `false` |
 
-<sup>1</sup> `close` requires `lat` and `lon` values to be near the current location of the car.
+<sup>1</sup> requires car version 2021.36 or higher.
+
+<sup>2</sup> `close` requires `lat` and `lon` values to be near the current location of the car.
 
 ## Exceptions
 
