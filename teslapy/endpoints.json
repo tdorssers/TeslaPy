@@ -114,6 +114,16 @@
     "URI": "api/1/vehicles/{vehicle_id}/command/set_charge_limit",
     "AUTH": true
   },
+  "CHANGE_CHARGE_MAX": {
+    "TYPE": "POST",
+    "URI": "api/1/vehicles/{vehicle_id}/command/charge_max_range",
+    "AUTH": true
+  },
+  "CHANGE_CHARGE_STANDARD": {
+    "TYPE": "POST",
+    "URI": "api/1/vehicles/{vehicle_id}/command/charge_standard",
+    "AUTH": true
+  },
   "CHANGE_SUNROOF_STATE": {
     "TYPE": "POST",
     "URI": "api/1/vehicles/{vehicle_id}/command/sun_roof_control",
