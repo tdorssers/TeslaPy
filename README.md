@@ -169,6 +169,7 @@ These are the major commands:
 | CLIMATE_OFF | | |
 | MAX_DEFROST | `on` | `true` or `false` |
 | CHANGE_CLIMATE_TEMPERATURE_SETTING | `driver_temp`, `passenger_temp` | temperature in celcius |
+| SCHEDULED_CHARGING <sup>1</sup> | `enable`, `time` | `true` or `false`, minutes past midnight |
 | CHARGING_AMPS <sup>1</sup> | `charging_amps` | amperage |
 | CHANGE_CHARGE_LIMIT | `percent` | percentage |
 | CHANGE_SUNROOF_STATE | `state` | `vent` or `close` |
