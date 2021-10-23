@@ -7,7 +7,7 @@ A Python implementation based on [unofficial documentation](https://tesla-api.ti
 
 ## Overview
 
-This module depends on Python [requests](https://pypi.org/project/requests/), [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [websocket-client](https://pypi.org/project/websocket-client/). The `Tesla` class extends `requests.Session` and therefore inherits methods like `get()` and `post()` that can be used to perform API calls. All calls to the Owner API are intercepted by the `request()` method to add the JSON Web Token (JWT) bearer, which is acquired after authentication. Module characteristics:
+This module depends on Python [requests](https://pypi.org/project/requests/), [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [websocket-client](https://pypi.org/project/websocket-client/). The `Tesla` class extends `requests_oauthlib.OAuth2Session` which extends `requests.Session` and therefore inherits methods like `get()` and `post()` that can be used to perform API calls. Module characteristics:
 
 * It implements Tesla's new [OAuth 2](https://oauth.net/2/) Single Sign-On service.
 * Acquired tokens are stored in current working directory in *cache.json* file for persistence by default.
@@ -32,14 +32,16 @@ TeslaPy 2.0.0+ no longer implements headless authentication. The constructor dif
 | `cache_loader` | (optional) function that returns the cache dict |
 | `cache_dumper` | (optional) function with one argument, the cache dict |
 
+TeslaPy 2.1.0+ no longer implements [RFC 7523](https://tools.ietf.org/html/rfc7523) and uses the SSO token for all API requests.
+
 To authenticate, the SSO page opens in the system's default web browser. After successful authentication, a *Page not found* will be displayed and the URL should start with `https://auth.tesla.com/void/callback`, which is the redirected URL. The class will use `stdio` to get the full redirected URL from the web browser by default. You need to copy and paste the full URL from the web browser to the console to continue aquirering API tokens. You can use a pluggable authenticator method to automate this for example using [selenium](https://pypi.org/project/selenium/).
 
-The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
+The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. `api()` substitutes path variables in the URI and calls `fetch_token()` when needed. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
 | Call | Description |
 | --- | --- |
-| `fetch_token()` | requests a new JWT bearer token using Authorization Code grant with [PKCE](https://oauth.net/2/pkce/) extension |
-| `refresh_token()` | requests a new JWT bearer token using [Refresh Token](https://oauth.net/2/grant-types/refresh-token/) grant |
+| `request()` | performs API call using relative or absolute URL, serialization and error message handling |
+| `fetch_token()` | requests a SSO token using Authorization Code grant with [PKCE](https://oauth.net/2/pkce/) extension |
 | `vehicle_list()` | returns a list of Vehicle objects |
 | `battery_list()` | returns a list of Battery objects |
 | `solar_list()` | returns a list of SolarPanel objects |
@@ -99,7 +101,6 @@ Basic usage of the module:
 ```python
 import teslapy
 with teslapy.Tesla('elon@tesla.com') as tesla:
-	tesla.fetch_token()
 	vehicles = tesla.vehicle_list()
 	vehicles[0].sync_wake_up()
 	vehicles[0].command('ACTUATE_TRUNK', which_trunk='front')
@@ -169,8 +170,9 @@ These are the major commands:
 | CLIMATE_OFF | | |
 | MAX_DEFROST | `on` | `true` or `false` |
 | CHANGE_CLIMATE_TEMPERATURE_SETTING | `driver_temp`, `passenger_temp` | temperature in celcius |
+| SCHEDULED_DEPARTURE <sup>1</sup> | `enable`, `departure_time`, `preconditioning_enabled`, `preconditioning_weekdays_only`, `off_peak_charging_enabled`, `off_peak_charging_weekdays_only`, `end_off_peak_time` | `true` or `false`, minutes past midnight |
 | SCHEDULED_CHARGING <sup>1</sup> | `enable`, `time` | `true` or `false`, minutes past midnight |
-| CHARGING_AMPS <sup>1</sup> | `charging_amps` | amperage |
+| CHARGING_AMPS <sup>1</sup> | `charging_amps` | between 5-32 |
 | CHANGE_CHARGE_LIMIT | `percent` | percentage |
 | CHANGE_SUNROOF_STATE | `state` | `vent` or `close` |
 | WINDOW_CONTROL <sup>2</sup> | `command`, `lat`, `lon` | `vent` or `close`, `0`, `0` |
@@ -199,6 +201,8 @@ These are the major commands:
 | SET_SENTRY_MODE | `on` | `true` or `false` |
 | REMOTE_SEAT_HEATER_REQUEST | `heater`, `level` | seat 0-5, level 0-3 |
 | REMOTE_STEERING_WHEEL_HEATER_REQUEST | `on` | `true` or `false` |
+| USER | `vin`, `deviceCountry`, `deviceLanguage` | VIN, uppercase two letter country code, supported two letter language code |
+| USER_ACCOUNT_GET_DETAILS | `vin`, `deviceCountry`, `deviceLanguage` | VIN, uppercase two letter country code, supported two letter language code |
 
 <sup>1</sup> requires car version 2021.36 or higher.
 
