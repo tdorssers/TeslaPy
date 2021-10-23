@@ -67,7 +67,7 @@ def main():
                 for key, value in args.keyvalue or []:
                     try:
                         data[key] = ast.literal_eval(value)
-                    except ValueError:
+                    except (SyntaxError, ValueError):
                         data[key] = value
                 print(product.api(args.api, **data))
 
