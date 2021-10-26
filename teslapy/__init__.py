@@ -54,6 +54,7 @@ class Tesla(OAuth2Session):
     verify: (optional) Verify SSL certificate.
     proxy: (optional) URL of proxy server.
     retry: (optional) Number of connection retries or `Retry` instance.
+    timeout: (optional) Connect/read timeout.
     user_agent: (optional) The User-Agent string.
     authenticator: (optional) Function with one argument, the authorization URL,
                    that returns the redirected URL.
@@ -62,7 +63,7 @@ class Tesla(OAuth2Session):
     cache_dumper: (optional) Function with one argument, the cache dict.
     """
 
-    def __init__(self, email, verify=True, proxy=None, retry=0,
+    def __init__(self, email, verify=True, proxy=None, retry=0, timeout=10,
                  user_agent=__name__ + '/' + __version__, authenticator=None,
                  cache_file='cache.json', cache_loader=None, cache_dumper=None):
         super(Tesla, self).__init__(client_id=SSO_CLIENT_ID)
@@ -73,6 +74,7 @@ class Tesla(OAuth2Session):
         self.cache_loader = cache_loader or self._cache_load
         self.cache_dumper = cache_dumper or self._cache_dump
         self.cache_file = cache_file
+        self.timeout = timeout
         self.endpoints = {}
         self._sso_base = SSO_BASE_URL
         # Set OAuth2Session properties
@@ -104,9 +106,9 @@ class Tesla(OAuth2Session):
             return super(Tesla, self).request(method, url, **kwargs)
         # Construct URL and send request with optional serialized data
         url = urljoin(BASE_URL, url)
-        kwargs.setdefault('timeout', 10)
-        if serialize:
-            kwargs.setdefault('json', kwargs.pop('data', None))
+        kwargs.setdefault('timeout', self.timeout)
+        if serialize and 'data' in kwargs:
+            kwargs['json'] = kwargs.pop('data')
         response = super(Tesla, self).request(method, url, **kwargs)
         # Error message handling
         if serialize and 400 <= response.status_code < 600:
@@ -513,7 +515,7 @@ class Product(JsonDict):
         """ Retrieve live status of product
         kind: A telemetry type of 'backup', 'energy', 'power',
               'self_consumption', 'time_of_use_energy',
-              'time_of_use_self_consumption' and 'savings'
+              'time_of_use_self_consumption', 'savings' and 'soe'
         period: 'day', 'month', 'year', or 'lifetime'
         end_date: The final day in the data requested in the json format
                   '2021-02-28T07:59:59.999Z'

@@ -26,6 +26,7 @@ TeslaPy 2.0.0+ no longer implements headless authentication. The constructor dif
 | `verify` | (optional) verify SSL certificate |
 | `proxy` | (optional) URL of proxy server |
 | `retry` | (optional) number of connection retries or `Retry` instance |
+| `timeout` | (optional) Connect/read timeout |
 | `user_agent` | (optional) the User-Agent string |
 | `authenticator` | (optional) Function with one argument, the authorization URL, that returns the redirected URL |
 | `cache_file` | (optional) path to cache file used by default loader and dumper |
