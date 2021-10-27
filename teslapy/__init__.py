@@ -157,9 +157,13 @@ class Tesla(OAuth2Session):
     @staticmethod
     def _authenticate(url):
         """ Default authenticator method """
-        logger.debug('Opening %s with default browser', url)
         print('Use browser to login. Page Not Found will be shown at success.')
-        webbrowser.open(url)
+        try:
+            webbrowser.get()
+            logger.debug('Opening %s with default browser', url)
+            webbrowser.open(url)
+        except webbrowser.Error:
+            print('Open this URL to authenticate: ' + url)
         return input('Enter URL after authentication: ')
 
     def _cache_load(self):
