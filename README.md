@@ -173,7 +173,7 @@ These are the major commands:
 | CHANGE_CLIMATE_TEMPERATURE_SETTING | `driver_temp`, `passenger_temp` | temperature in celcius |
 | SCHEDULED_DEPARTURE <sup>1</sup> | `enable`, `departure_time`, `preconditioning_enabled`, `preconditioning_weekdays_only`, `off_peak_charging_enabled`, `off_peak_charging_weekdays_only`, `end_off_peak_time` | `true` or `false`, minutes past midnight |
 | SCHEDULED_CHARGING <sup>1</sup> | `enable`, `time` | `true` or `false`, minutes past midnight |
-| CHARGING_AMPS <sup>1</sup> | `charging_amps` | between 5-32 |
+| CHARGING_AMPS <sup>1</sup> | `charging_amps` | between 0-32 |
 | CHANGE_CHARGE_LIMIT | `percent` | percentage |
 | CHANGE_SUNROOF_STATE | `state` | `vent` or `close` |
 | WINDOW_CONTROL <sup>2</sup> | `command`, `lat`, `lon` | `vent` or `close`, `0`, `0` |
@@ -205,7 +205,7 @@ These are the major commands:
 | USER | `vin`, `deviceCountry`, `deviceLanguage` | VIN, uppercase two letter country code, supported two letter language code |
 | USER_ACCOUNT_GET_DETAILS | `vin`, `deviceCountry`, `deviceLanguage` | VIN, uppercase two letter country code, supported two letter language code |
 
-<sup>1</sup> requires car version 2021.36 or higher.
+<sup>1</sup> requires car version 2021.36 or higher. CHARGING_AMPS can be set to less than 5, by calling the API twice.
 
 <sup>2</sup> `close` requires `lat` and `lon` values to be near the current location of the car.
 
