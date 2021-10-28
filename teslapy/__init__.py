@@ -158,11 +158,9 @@ class Tesla(OAuth2Session):
     def _authenticate(url):
         """ Default authenticator method """
         print('Use browser to login. Page Not Found will be shown at success.')
-        try:
-            webbrowser.get()
-            logger.debug('Opening %s with default browser', url)
-            webbrowser.open(url)
-        except webbrowser.Error:
+        if webbrowser.open(url):
+            logger.debug('Opened %s with default browser', url)
+        else:
             print('Open this URL to authenticate: ' + url)
         return input('Enter URL after authentication: ')
 
