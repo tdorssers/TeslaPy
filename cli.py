@@ -31,6 +31,8 @@ def main():
     with Tesla(args.email, verify=args.verify, proxy=args.proxy) as tesla:
         if webdriver:
             tesla.authenticator = custom_auth
+        if args.timeout:
+            tesla.timeout = args.timeout
         tesla.fetch_token()
         selected = prod = tesla.vehicle_list() + tesla.battery_list()
         if args.filter:
@@ -105,6 +107,7 @@ if __name__ == "__main__":
                         help='get service self scheduling eligibility')
     parser.add_argument('--verify', action='store_false',
                         help='disable verify SSL certificate')
+    parser.add_argument('--timeout', type=int, help='connect/read timeout')
     if webdriver:
         parser.add_argument('--chrome', action='store_const', dest='web',
                             const=0, default=0, help='use Chrome (default)')

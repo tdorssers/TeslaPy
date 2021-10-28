@@ -258,6 +258,8 @@ def main():
     with Tesla(email, verify=args.verify, proxy=args.proxy) as tesla:
         if webdriver:
             tesla.authenticator = custom_auth
+        if args.timeout:
+            tesla.timeout = args.timeout
         tesla.fetch_token()
         vehicles = tesla.vehicle_list()
         print('-'*80)
@@ -280,6 +282,7 @@ if __name__ == "__main__":
                         help='set logging level to debug')
     parser.add_argument('--verify', action='store_false',
                         help='disable verify SSL certificate')
+    parser.add_argument('--timeout', type=int, help='connect/read timeout')
     if webdriver:
         parser.add_argument('--chrome', action='store_const', dest='web',
                             const=0, default=0, help='use Chrome (default)')
