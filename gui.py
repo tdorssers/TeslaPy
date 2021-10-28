@@ -81,6 +81,68 @@ class ControlDialog(Dialog):
     def apply(self):
         self.result = self.state.get()
 
+class ChargingDialog(Dialog):
+    """ Display dialog box to get scheduled charging parameters """
+
+    def __init__ (self, master, title='Scheduled charging'):
+        Dialog.__init__(self, master, title)
+
+    def body(self, master):
+        self.enable = BooleanVar()
+        Checkbutton(master, text='Enable', variable=self.enable).pack()
+        self.time = StringVar()
+        self.time.set('0:00')
+        Label(master, text='Time:').pack(side=LEFT)
+        Entry(master, textvariable=self.time).pack(side=LEFT)
+
+    def apply(self):
+        parts = self.time.get().split(':')
+        self.result = {'enable': self.enable.get(),
+                       'time': int(parts[0]) * 60 + int(parts[1])}
+
+class DepartureDialog(Dialog):
+    """ Display dialog box to get scheduled departure parameters """
+
+    def __init__ (self, master, title='Scheduled departure'):
+        Dialog.__init__(self, master, title)
+
+    def body(self, master):
+        self.depart_time = StringVar()
+        self.depart_time.set('8:00')
+        Label(master, text='Departure Time:').grid()
+        Entry(master, textvariable=self.depart_time).grid(row=0, column=1)
+        self.enable = BooleanVar()
+        Checkbutton(master, text='Enable', variable=self.enable).grid(row=0, column=2)
+        group = LabelFrame(master, text='Preconditioning')
+        self.hvac = BooleanVar()
+        Checkbutton(group, text='Enable', variable=self.hvac).pack(side=LEFT)
+        self.hvac_weekdays = BooleanVar()
+        Checkbutton(group, text='Weekdays',
+                    variable=self.hvac_weekdays).pack(side=RIGHT)
+        group.grid(columnspan=3, sticky=EW, padx=5)
+        group = LabelFrame(master, text='Off Peak Charging')
+        self.off_peak = BooleanVar()
+        Checkbutton(group, text='Enable', variable=self.off_peak).grid(sticky=W)
+        self.off_peak_weekdays = BooleanVar()
+        Checkbutton(group, text='Weekdays',
+                    variable=self.off_peak_weekdays).grid(row=0, column=1, sticky=E)
+        self.end_time = StringVar()
+        self.end_time.set('6:00')
+        Label(group, text='Off Peak End Time:').grid()
+        Entry(group, textvariable=self.end_time).grid(row=1, column=1, padx=5, pady=5)
+        group.grid(columnspan=3, sticky=EW, padx=5)
+
+    def apply(self):
+        depart = self.depart_time.get().split(':')
+        end = self.end_time.get().split(':')
+        self.result = {'enable': self.enable.get(),
+                       'departure_time': int(depart[0]) * 60 + int(depart[1]),
+                       'preconditioning_enabled': self.hvac.get(),
+                       'preconditioning_weekdays_only': self.hvac_weekdays.get(),
+                       'off_peak_charging_enabled': self.off_peak.get(),
+                       'off_peak_charging_weekdays_only': self.off_peak_weekdays.get(),
+                       'end_off_peak_time': int(end[0]) * 60 + int(end[1])}
+
 class StatusBar(Frame):
     """ Status bar widget with transient and permanent status messages """
 
@@ -136,126 +198,102 @@ class Dashboard(Frame):
         self.vehicle_image = Label(right)
         self.vehicle_image.pack()
         # Climate state on left frame
-        group = LabelFrame(left, text='Climate State', padx=5, pady=5)
-        group.pack(padx=5, pady=5, fill=X)
-        lst = ['Outside Temperature:', 'Inside Temperature:',
-               'Driver Temperature Setting:', 'Passenger Temperature Setting:',
-               'Is Climate On:', 'Fan Speed:', 'Driver Seat Heater:',
-               'Passenger Seat Heater:', 'Is Front Defroster On:',
-               'Is Rear Defroster On:']
-        for i, t in enumerate(lst):
-            Label(group, text=t).grid(row=i // 2, column=i % 2 * 2, sticky=E)
-        self.outside_temp = LabelVarGrid(group, row=0, column=1, sticky=W)
-        self.inside_temp = LabelVarGrid(group, row=0, column=3, sticky=W)
-        self.driver_temp = LabelVarGrid(group, row=1, column=1, sticky=W)
-        self.passenger_temp = LabelVarGrid(group, row=1, column=3, sticky=W)
-        self.is_climate_on = LabelVarGrid(group, row=2, column=1, sticky=W)
-        self.fan_status = LabelVarGrid(group, row=2, column=3, sticky=W)
-        self.driver_heater = LabelVarGrid(group, row=3, column=1, sticky=W)
-        self.passenger_heater = LabelVarGrid(group, row=3, column=3, sticky=W)
-        self.front_defroster = LabelVarGrid(group, row=4, column=1, sticky=W)
-        self.rear_defroster = LabelVarGrid(group, row=4, column=3, sticky=W)
+        self.layout(left, 'Climate State',
+                    [('outside_temp', 'Outside Temperature:'),
+                     ('inside_temp', 'Inside Temperature:'),
+                     ('driver_temp', 'Driver Temperature Setting:'),
+                     ('passenger_temp', 'Passenger Temperature Setting:'),
+                     ('is_climate_on', 'Is Climate On:'),
+                     ('fan_status', 'Fan Speed:'),
+                     ('driver_heater', 'Driver Seat Heater:'),
+                     ('passenger_heater', 'Passenger Seat Heater:'),
+                     ('front_defroster', 'Is Front Defroster On:'),
+                     ('rear_defroster', 'Is Rear Defroster On:')])
         # Vehicle state on left frame
-        group = LabelFrame(left, text='Vehicle State', padx=5, pady=5)
-        group.pack(padx=5, pady=5, fill=X)
-        lst = ['Vehicle Name:', 'Odometer:', 'Car Version:', 'Locked:',
-               'Driver Front Door:', 'Passenger Front Door:',
-               'Driver Rear Door:', 'Passenger Rear Door:',
-               'Driver Front Window:', 'Passenger Front Window:',
-               'Driver Rear Window:', 'Passenger Rear Window:', 'Front Trunk:',
-               'Rear Trunk:', 'Remote Start:', 'Is User Present:',
-               'Speed Limit Mode:', 'Current Limit:', 'Speed Limit Pin Set:',
-               'Sentry Mode:', 'Valet Mode:', 'Valet Pin Set:',
-               'Software Update:', 'Expected Duration:', 'Update Version:',
-               'Install Percentage:']
-        for i, t in enumerate(lst):
-            Label(group, text=t).grid(row=i // 2, column=i % 2 * 2, sticky=E)
-        self.vehicle_name = LabelVarGrid(group, row=0, column=1, sticky=W)
-        self.odometer = LabelVarGrid(group, row=0, column=3, sticky=W)
-        self.car_version = LabelVarGrid(group, row=1, column=1, sticky=W)
-        self.locked = LabelVarGrid(group, row=1, column=3, sticky=W)
-        self.df = LabelVarGrid(group, row=2, column=1, sticky=W)
-        self.pf = LabelVarGrid(group, row=2, column=3, sticky=W)
-        self.dr = LabelVarGrid(group, row=3, column=1, sticky=W)
-        self.pr = LabelVarGrid(group, row=3, column=3, sticky=W)
-        self.fd = LabelVarGrid(group, row=4, column=1, sticky=W)
-        self.fp = LabelVarGrid(group, row=4, column=3, sticky=W)
-        self.rd = LabelVarGrid(group, row=5, column=1, sticky=W)
-        self.rp = LabelVarGrid(group, row=5, column=3, sticky=W)
-        self.ft = LabelVarGrid(group, row=6, column=1, sticky=W)
-        self.rt = LabelVarGrid(group, row=6, column=3, sticky=W)
-        self.remote_start = LabelVarGrid(group, row=7, column=1, sticky=W)
-        self.user_present = LabelVarGrid(group, row=7, column=3, sticky=W)
-        self.speed_limit = LabelVarGrid(group, row=8, column=1, sticky=W)
-        self.current_limit = LabelVarGrid(group, row=8, column=3, sticky=W)
-        self.speed_limit_pin = LabelVarGrid(group, row=9, column=1, sticky=W)
-        self.sentry_mode = LabelVarGrid(group, row=9, column=3, sticky=W)
-        self.valet_mode = LabelVarGrid(group, row=10, column=1, sticky=W)
-        self.valet_pin = LabelVarGrid(group, row=10, column=3, sticky=W)
-        self.sw_update = LabelVarGrid(group, row=11, column=1, sticky=W)
-        self.sw_duration = LabelVarGrid(group, row=11, column=3, sticky=W)
-        self.update_ver = LabelVarGrid(group, row=12, column=1, sticky=W)
-        self.inst_perc = LabelVarGrid(group, row=12, column=3, sticky=W)
+        self.layout(left, 'Vehicle State',
+                    [('vehicle_name', 'Vehicle Name:'),
+                     ('odometer', 'Odometer:'),
+                     ('car_version', 'Car Version:'),
+                     ('locked', 'Locked:'),
+                     ('df', 'Driver Front Door:'),
+                     ('pf', 'Passenger Front Door:'),
+                     ('dr', 'Driver Rear Door:'),
+                     ('pr', 'Passenger Rear Door:'),
+                     ('fd', 'Driver Front Window:'),
+                     ('fp', 'Passenger Front Window:'),
+                     ('rd', 'Driver Rear Window:'),
+                     ('rp', 'Passenger Rear Window:'),
+                     ('ft', 'Front Trunk:'),
+                     ('rt', 'Rear Trunk:'),
+                     ('remote_start', 'Remote Start:'),
+                     ('user_present', 'Is User Present:'),
+                     ('speed_limit', 'Speed Limit Mode:'),
+                     ('current_limit', 'Current Limit:'),
+                     ('speed_limit_pin', 'Speed Limit Pin Set:'),
+                     ('sentry_mode', 'Sentry Mode:'),
+                     ('valet_mode', 'Valet Mode:'),
+                     ('valet_pin', 'Valet Pin Set:'),
+                     ('sw_update', 'Software Update:'),
+                     ('sw_duration', 'Expected Duration:'),
+                     ('update_ver', 'Update Version:'),
+                     ('inst_perc', 'Install Percentage:')])
         # Drive state on right frame
-        group = LabelFrame(right, text='Drive State', padx=5, pady=5)
-        group.pack(padx=5, pady=5, fill=X)
-        lst = ['Power:', 'Speed:', 'Shift State:', 'Heading:', 'GPS:']
-        for i, t in enumerate(lst):
-            Label(group, text=t).grid(row=i // 2, column=i % 2 * 2, sticky=E)
-        self.power = LabelVarGrid(group, row=0, column=1, sticky=W)
-        self.speed = LabelVarGrid(group, row=0, column=3, sticky=W)
-        self.shift_state = LabelVarGrid(group, row=1, column=1, sticky=W)
-        self.heading = LabelVarGrid(group, row=1, column=3, sticky=W)
+        group = self.layout(right, 'Drive State',
+                            [('power', 'Power:'),
+                             ('speed', 'Speed:'),
+                             ('shift_state', 'Shift State:'),
+                             ('heading', 'Heading:')])
+        Label(group, text='GPS:').grid(row=2, column=0, sticky=E)
         self.gps = LabelVarGrid(group, row=2, column=1, columnspan=3, sticky=W)
         self.gps.config(wraplength=330, justify=LEFT)
         # Charging state on right frame
-        group = LabelFrame(right, text='Charging State', padx=5, pady=5)
-        group.pack(padx=5, pady=5, fill=X)
-        lst = ['Charging State:', 'Time To Full Charge:', 'Charger Voltage:',
-               'Charger Actual Current:', 'Charger Power:', 'Charge Rate:',
-               'Battery Level:', 'Battery Range:', 'Charge Energy Added:',
-               'Charge Range Added:', 'Charge Limit SOC:',
-               'Estimated Battery Range:', 'Charge Port Door Open:',
-               'Charge Port Latch:', 'Fast Charger:', 'Trip Charging:',
-               'Scheduled Charging:', 'Charging Start Time:']
-        for i, t in enumerate(lst):
-            Label(group, text=t).grid(row=i // 2, column=i % 2 * 2, sticky=E)
-        self.charging_state = LabelVarGrid(group, row=0, column=1, sticky=W)
-        self.time_to_full = LabelVarGrid(group, row=0, column=3, sticky=W)
-        self.charger_voltage = LabelVarGrid(group, row=1, column=1, sticky=W)
-        self.charger_current = LabelVarGrid(group, row=1, column=3, sticky=W)
-        self.charger_power = LabelVarGrid(group, row=2, column=1, sticky=W)
-        self.charge_rate = LabelVarGrid(group, row=2, column=3, sticky=W)
-        self.battery_level = LabelVarGrid(group, row=3, column=1, sticky=W)
-        self.battery_range = LabelVarGrid(group, row=3, column=3, sticky=W)
-        self.energy_added = LabelVarGrid(group, row=4, column=1, sticky=W)
-        self.range_added = LabelVarGrid(group, row=4, column=3, sticky=W)
-        self.charge_limit_soc = LabelVarGrid(group, row=5, column=1, sticky=W)
-        self.est_battery_range = LabelVarGrid(group, row=5, column=3, sticky=W)
-        self.charge_port_door = LabelVarGrid(group, row=6, column=1, sticky=W)
-        self.charge_port_latch = LabelVarGrid(group, row=6, column=3, sticky=W)
-        self.fast_charger = LabelVarGrid(group, row=7, column=1, sticky=W)
-        self.trip_charging = LabelVarGrid(group, row=7, column=3, sticky=W)
-        self.charging_pending = LabelVarGrid(group, row=8, column=1, sticky=W)
-        self.charging_start = LabelVarGrid(group, row=8, column=3, sticky=W)
+        self.layout(right, 'Charging State',
+                    [('charging_state', 'Charging State:'),
+                     ('time_to_full', 'Time To Full Charge:'),
+                     ('charger_voltage', 'Charger Voltage:'),
+                     ('charger_request', 'Requested Current:'),
+                     ('charger_current', 'Charger Actual Current:'),
+                     ('charger_power', 'Charger Power:'),
+                     ('battery_level', 'Battery Level:'),
+                     ('charge_rate', 'Charge Rate:'),
+                     ('battery_range', 'Battery Range:'),
+                     ('energy_added', 'Charge Energy Added:'),
+                     ('range_added', 'Charge Range Added:'),
+                     ('charge_limit_soc', 'Charge Limit SOC:'),
+                     ('est_battery_range', 'Estimated Battery Range:'),
+                     ('charge_port_door', 'Charge Port Door Open:'),
+                     ('charge_port_latch', 'Charge Port Latch:'),
+                     ('fast_charger', 'Fast Charger:'),
+                     ('trip_charging', 'Trip Charging:'),
+                     ('charging_pending', 'Scheduled Charging:'),
+                     ('charging_start', 'Charging Start Time:'),
+                     ('scheduled_charging', 'Scheduled Charging Mode:'),
+                     ('departure_time', 'Scheduled Departure:'),
+                     ('off_peak_charge', 'Off Peak Charging:'),
+                     ('off_peak_times', 'Off Peak Charging Times:'),
+                     ('off_peak_end_time', 'Off Peak End Time:'),
+                     ('preconditioning', 'Preconditioning:'),
+                     ('preconditioning_times', 'Preconditioning Times:')])
         # Vehicle config on left frame
-        group = LabelFrame(left, text='Vehicle Config', padx=5, pady=5)
+        self.layout(left, 'Vehicle Config',
+                    [('car_type', 'Car Type:'),
+                     ('exterior_color', 'Exterior Color:'),
+                     ('wheel_type', 'Wheel Type:'),
+                     ('spoiler_type', 'Spoiler Type:'),
+                     ('roof_color', 'Roof Color:'),
+                     ('charge_port_type', 'Charge Port Type:')])
+        # Service on left frame
+        self.layout(left, 'Service', [('next_appt', 'Next appointment:')])
+
+    def layout(self, master, text, labels):
+        """ Group four columns of widgets from list of tupels """
+        group = LabelFrame(master, text=text, padx=5, pady=5)
         group.pack(padx=5, pady=5, fill=X)
-        lst = ['Car Type:', 'Exterior Color:', 'Wheel Type:', 'Spoiler Type:',
-               'Roof Color:', 'Charge Port Type:']
-        for i, t in enumerate(lst):
-            Label(group, text=t).grid(row=i // 2, column=i % 2 * 2, sticky=E)
-        self.car_type = LabelVarGrid(group, row=0, column=1, sticky=W)
-        self.exterior_color = LabelVarGrid(group, row=0, column=3, sticky=W)
-        self.wheel_type = LabelVarGrid(group, row=1, column=1, sticky=W)
-        self.spoiler_type = LabelVarGrid(group, row=1, column=3, sticky=W)
-        self.roof_color = LabelVarGrid(group, row=2, column=1, sticky=W)
-        self.charge_port_type = LabelVarGrid(group, row=2, column=3, sticky=W)
-        # Service on right frame
-        group = LabelFrame(right, text='Service', padx=5, pady=5)
-        group.pack(padx=5, pady=5, fill=X)
-        Label(group, text='Next appointment:').grid(row=0, sticky=E)
-        self.next_appt = LabelVarGrid(group, row=0, column=1, sticky=W)
+        for i, (name, txt) in enumerate(labels):
+            Label(group, text=txt).grid(row=i // 2, column=i % 2 * 2, sticky=E)
+            w = LabelVarGrid(group, row=i // 2, column=i % 2 * 2 + 1, sticky=W)
+            setattr(self, name, w)  # Set named widget to dashboard
+        return group
 
     def update_widgets(self):
         """ Set values of dashboard widgets """
@@ -264,6 +302,7 @@ class Dashboard(Frame):
         dr = app.vehicle['drive_state']
         ch = app.vehicle['charge_state']
         co = app.vehicle['vehicle_config']
+        # pylint: disable=E1101
         # Climate state
         self.outside_temp.text(app.vehicle.temp_units(cl['outside_temp']))
         self.inside_temp.text(app.vehicle.temp_units(cl['inside_temp']))
@@ -323,17 +362,18 @@ class Dashboard(Frame):
         self.time_to_full.text('{:02.0f}:{:02.0f}'.format(*ttfc))
         volt = 0 if ch['charger_voltage'] is None else ch['charger_voltage']
         self.charger_voltage.text('%d V' % volt)
+        self.charger_request.text('%d A' % ch['charge_current_request'])
         ph = '3 x ' if ch['charger_phases'] == 2 else ''
         amps = 0 if ch['charger_actual_current'] is None else ch['charger_actual_current']
         self.charger_current.text('%s%d A' % (ph, amps))
         charger_power = 0 if ch['charger_power'] is None else ch['charger_power']
         self.charger_power.text('%d kW' % charger_power)
-        self.charge_rate.text(app.vehicle.dist_units(ch['charge_rate'], True))
         if ch['usable_battery_level'] < ch['battery_level']:
             usable = ' (%d %% usable)' % ch['usable_battery_level']
         else:
             usable = ''
         self.battery_level.text('%d %%%s' % (ch['battery_level'], usable))
+        self.charge_rate.text(app.vehicle.dist_units(ch['charge_rate'], True))
         self.battery_range.text(app.vehicle.dist_units(ch['battery_range']))
         self.energy_added.text('%.1f kWh' % ch['charge_energy_added'])
         self.range_added.text(app.vehicle.dist_units(ch['charge_miles_added_rated']))
@@ -349,6 +389,21 @@ class Dashboard(Frame):
             self.charging_start.text(time.strftime('%X', st))
         else:
             self.charging_start.text(None)
+        self.scheduled_charging.text(ch.get('scheduled_charging_mode'))
+        if ch.get('scheduled_departure_time'):
+            dt = time.localtime(ch['scheduled_departure_time'])
+            self.departure_time.text(time.strftime('%X', dt))
+        else:
+            self.departure_time.text(None)
+        self.off_peak_charge.text(str(ch.get('off_peak_charging_enabled')))
+        self.off_peak_times.text(ch.get('off_peak_charging_times'))
+        if 'off_peak_hours_end_time' in ch:
+            ophet = divmod(ch['off_peak_hours_end_time'], 60)
+            self.off_peak_end_time.text('{:02.0f}:{:02.0f}'.format(*ophet))
+        else:
+            self.off_peak_end_time.text(None)
+        self.preconditioning.text(str(ch.get('preconditioning_enabled')))
+        self.preconditioning_times.text(ch.get('preconditioning_times'))
         # Vehicle config
         self.car_type.text(co['car_type'])
         self.exterior_color.text(co['exterior_color'])
@@ -429,6 +484,12 @@ class App(Tk):
                                   command=self.window_control)
         self.cmd_menu.add_command(label='Max defrost', state=DISABLED,
                                   command=self.max_defrost)
+        self.cmd_menu.add_command(label='Set charge amps', state=DISABLED,
+                                  command=self.charging_amps)
+        self.cmd_menu.add_command(label='Scheduled charging', state=DISABLED,
+                                  command=self.scheduled_charging)
+        self.cmd_menu.add_command(label='Scheduled departure', state=DISABLED,
+                                  command=self.scheduled_departure)
         menu.add_cascade(label='Command', menu=self.cmd_menu)
         opt_menu = Menu(menu, tearoff=0)
         self.auto_refresh = BooleanVar()
@@ -590,6 +651,7 @@ class App(Tk):
         else:
             # Display service data
             nat = self.service_thread.data.get('next_appt_timestamp')
+            # pylint: disable=E1101
             self.dashboard.next_appt.text(nat)
 
     def show_status(self):
@@ -633,6 +695,7 @@ class App(Tk):
             self.update_scheduled = False
         if hasattr(self, 'vehicle') and self.vehicle['state'] != 'online':
             return
+        # pylint: disable=E0203
         if hasattr(self, 'update_thread') and self.update_thread.is_alive():
             return
         if hasattr(self, 'vehicle') and not self.update_scheduled:
@@ -857,6 +920,25 @@ class App(Tk):
         except KeyError:
             pass
 
+    def charging_amps(self):
+        """ Set charging amps """
+        # Get user input using a simple dialog box
+        temp = askinteger('Set', 'Amperage')
+        if temp:
+            self.cmd('CHARGING_AMPS', charging_amps=temp)
+
+    def scheduled_charging(self):
+        """ Set scheduled charging """
+        dlg = ChargingDialog(self)
+        if dlg.result:
+            self.cmd('SCHEDULED_CHARGING', **dlg.result)
+
+    def scheduled_departure(self):
+        """ Set scheduled departure """
+        dlg = DepartureDialog(self)
+        if dlg.result:
+            self.cmd('SCHEDULED_DEPARTURE', **dlg.result)
+
     def apply_settings(self):
         """ Set logging level and SSL context """
         level = logging.DEBUG if self.debug.get() else logging.WARNING
@@ -910,6 +992,11 @@ class UpdateThread(threading.Thread):
         try:
             self.vehicle.get_vehicle_data()
         except (teslapy.RequestException, ValueError) as e:
+            # Detect if vehicle went to sleep
+            try:
+                self.vehicle.get_vehicle_summary()
+            except (teslapy.RequestException, ValueError) as e:
+                pass
             UpdateThread.fail_cnt += 1  # Increase for consecutive errors
             self.exception = e
         else:
