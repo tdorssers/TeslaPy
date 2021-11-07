@@ -35,7 +35,7 @@ TeslaPy 2.0.0+ no longer implements headless authentication. The constructor dif
 
 TeslaPy 2.1.0+ no longer implements [RFC 7523](https://tools.ietf.org/html/rfc7523) and uses the SSO token for all API requests.
 
-To authenticate, the SSO page opens in the system's default web browser. After successful authentication, a *Page not found* will be displayed and the URL should start with `https://auth.tesla.com/void/callback`, which is the redirected URL. The class will use `stdio` to get the full redirected URL from the web browser by default. You need to copy and paste the full URL from the web browser to the console to continue aquirering API tokens. You can use a pluggable authenticator method to automate this for example using [selenium](https://pypi.org/project/selenium/).
+To authenticate, the SSO page opens in the system's default web browser. After successful authentication, a *Page not found* will be displayed and the URL should start with `https://auth.tesla.com/void/callback`, which is the redirected URL. The class will use `stdio` to get the full redirected URL from the web browser by default. You need to copy and paste the full URL from the web browser to the console to continue aquirering API tokens. You can use a pluggable authenticator method to automate this for example using [pywebview](https://pypi.org/project/pywebview/) or [selenium](https://pypi.org/project/selenium/).
 
 The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. `api()` substitutes path variables in the URI and calls `fetch_token()` when needed. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
@@ -108,7 +108,35 @@ with teslapy.Tesla('elon@tesla.com') as tesla:
 	print(vehicles[0].get_vehicle_data()['vehicle_state']['car_version'])
 ```
 
+### Authentication
+
 The `Tesla` class implements a pluggable authentication method. If you want to implement your own method to handle the SSO page and retrieve the redirected URL after authentication, you can pass a function as an argument to the constructor, that takes the authentication URL as an argument and returns the redirected URL. The `authenticator` argument is accessible as an attribute as well.
+
+#### pywebview
+
+Example using webview component that displays the SSO page in its own native GUI window.
+
+```python
+import webview
+
+def custom_auth(url):
+    result = ['']
+    window = webview.create_window('Login', url)
+    def on_loaded():
+        result[0] = window.get_current_url()
+        if 'void/callback' in result[0].split('?')[0]:
+            window.destroy()
+    window.loaded += on_loaded
+    webview.start()
+    return result[0]
+
+with teslapy.Tesla('elon@tesla.com', authenticator=custom_auth) as tesla:
+    tesla.fetch_token()
+```
+
+#### selenium
+
+Example using selenium to automate web browser interaction.
 
 ```python
 from selenium import webdriver
@@ -122,8 +150,10 @@ def custom_auth(url):
         return browser.current_url
 
 with teslapy.Tesla('elon@tesla.com', authenticator=custom_auth) as tesla:
-	tesla.fetch_token()
+    tesla.fetch_token()
 ```
+
+### Cache
 
 The `Tesla` class implements a pluggable cache method. If you don't want to use the default disk caching, you can pass a function to load and return the cache dict, and a function that takes a dict as an argument to dump the cache dict, as arguments to the constructor. The `cache_loader` and `cache_dumper` arguments are accessible as attributes as well.
 
@@ -152,7 +182,21 @@ def db_dump(cache):
     con.close()
 
 with teslapy.Tesla('elon@tesla.com', cache_loader=db_load, cache_dumper=db_dump) as tesla:
-	tesla.fetch_token()
+    tesla.fetch_token()
+```
+
+### Absolute URL
+
+The Safety Scores are obtained though another API. TeslaPy 2.1.0 introduced absolute URL support for accessing non-Owner API endpoints.
+
+```python
+from teslapy import Tesla
+
+with Tesla('elon@tesla.com') as tesla:
+    vehicles = tesla.vehicle_list()
+    url = 'https://akamai-apigateway-vfx.tesla.com/safety-rating/daily-metrics'
+    print(tesla.get(url, params={'vin': vehicles[0]['vin'], 'deviceLanguage': 'en',
+                                 'deviceCountry': 'US', 'timezone': 'UTC'}))
 ```
 
 Take a look at [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) for more code examples.
@@ -230,7 +274,7 @@ As of September 3, 2021, Tesla has added ReCaptcha to the login form. This cause
 
 ## Demo applications
 
-The source repository contains three demo applications that *optionally* use [selenium](https://pypi.org/project/selenium/) to automate weblogin. Version 3.13.0 or higher is required and version 4.0.0 or higher is required for Edge Chromium.
+The source repository contains three demo applications that *optionally* use [pywebview](https://pypi.org/project/pywebview/) version 3.0 or higher or [selenium](https://pypi.org/project/selenium/) version 3.13.0 or higher to automate weblogin. Selenium 4.0.0 or higher is required for Edge Chromium.
 
 [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) is a simple CLI application that can use almost all functionality of the TeslaPy module. The filter option allows you to select a product if more than one product is linked to your account. API output is JSON formatted:
 
@@ -262,7 +306,7 @@ optional arguments:
   -r, --stream   receive streaming vehicle data on-change
   --service      get service self scheduling eligibility
   --verify       disable verify SSL certificate
-  --chrome       use Chrome (default)
+  --chrome       use Chrome browser
   --edge         use Edge browser
   --firefox      use Firefox browser
   --opera        use Opera browser
@@ -574,13 +618,13 @@ TeslaPy is available on PyPI:
 
 `python -m pip install teslapy`
 
-Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/), [geopy](https://pypi.org/project/geopy/), [selenium](https://pypi.org/project/selenium/) (optional) and [websocket-client](https://pypi.org/project/websocket-client/) using [PIP](https://pypi.org/project/pip/) as follows:
+Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) 0.8.0+, [geopy](https://pypi.org/project/geopy/) 1.14.0+, [pywebview](https://pypi.org/project/pywebview/) 3.0+ (optional), [selenium](https://pypi.org/project/selenium/) 3.13.0+ (optional) and [websocket-client](https://pypi.org/project/websocket-client/) 0.59+ using [PIP](https://pypi.org/project/pip/) as follows:
 
-`python -m pip install requests_oauthlib geopy selenium websocket-client`
+`python -m pip install requests_oauthlib geopy pywebview selenium websocket-client`
 
-and install [ChromeDriver](https://sites.google.com/chromium.org/driver/) to use Selenium or on Ubuntu as follows:
+and install [ChromeDriver](https://sites.google.com/chromium.org/driver/) to use Selenium or on Ubuntu 21.04 or newer as follows:
 
-`sudo apt-get install python3-requests-oauthlib python3-geopy python3-selenium python3-websocket`
+`sudo apt-get install python3-requests-oauthlib python3-geopy python3-webview python3-selenium python3-websocket`
 
 If you prefer Firefox, install [GeckoDriver](https://github.com/mozilla/geckodriver/releases) or on Ubuntu as follows:
 

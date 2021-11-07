@@ -7,16 +7,32 @@ import ast
 import logging
 import argparse
 try:
-    from selenium import webdriver  # 3.13.0 or higher required
+    import webview  # Optional pywebview 3.0 or higher
+except ImportError:
+    webview = None
+try:
+    from selenium import webdriver  # Optional selenium 3.13.0 or higher
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.support.ui import WebDriverWait
 except ImportError:
-    webdriver = None  # Optional import
+    webdriver = None
 from teslapy import Tesla, Vehicle
 
 raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
 
 def custom_auth(url):
+    # Use pywebview if no web browser specified
+    if getattr(args, 'web', None) is None:
+        result = ['']
+        window = webview.create_window('Login', url)
+        def on_loaded():
+            result[0] = window.get_current_url()
+            if 'void/callback' in result[0].split('?')[0]:
+                window.destroy()
+        window.loaded += on_loaded
+        webview.start()
+        return result[0]
+    # Use selenium to control specified web browser
     with [webdriver.Chrome, webdriver.Edge, webdriver.Firefox, webdriver.Opera,
           webdriver.Safari][args.web]() as browser:
         logging.info('Selenium opened %s', browser.capabilities['browserName'])
@@ -29,7 +45,7 @@ def main():
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
                         format=default_format)
     with Tesla(args.email, verify=args.verify, proxy=args.proxy) as tesla:
-        if webdriver:
+        if (webdriver and args.web is not None) or webview:
             tesla.authenticator = custom_auth
         if args.timeout:
             tesla.timeout = args.timeout
@@ -109,11 +125,11 @@ if __name__ == "__main__":
                         help='disable verify SSL certificate')
     parser.add_argument('--timeout', type=int, help='connect/read timeout')
     if webdriver:
-        parser.add_argument('--chrome', action='store_const', dest='web',
-                            const=0, default=0, help='use Chrome (default)')
-        for c, s in enumerate(('edge', 'firefox', 'opera', 'safari'), start=1):
+        for c, s in enumerate(('chrome', 'edge', 'firefox', 'opera', 'safari')):
+            d, h = (0, ' (default)') if not webview and c == 0 else (None, '')
             parser.add_argument('--' + s, action='store_const', dest='web',
-                                const=c, help='use %s browser' % s.title())
+                                help='use %s browser' % s.title() + h,
+                                const=c, default=d)
     parser.add_argument('--proxy', help='proxy server URL')
     args = parser.parse_args()
     main()

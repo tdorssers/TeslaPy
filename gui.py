@@ -7,15 +7,20 @@ import time
 import logging
 import threading
 import webbrowser
+import multiprocessing
 import geopy.geocoders  # 1.14.0 or higher required
 from geopy.geocoders import Nominatim
 from geopy.exc import *
 try:
-    from selenium import webdriver  # 3.13.0 or higher required
+    import webview  # Optional pywebview 3.0 or higher
+except ImportError:
+    webview = None
+try:
+    from selenium import webdriver  # Optional selenium 3.13.0 or higher
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.support.ui import WebDriverWait
 except ImportError:
-    webdriver = None  # Optional import
+    webdriver = None
 try:
     from Tkinter import *
     from tkSimpleDialog import *
@@ -84,7 +89,7 @@ class ControlDialog(Dialog):
 class ChargingDialog(Dialog):
     """ Display dialog box to get scheduled charging parameters """
 
-    def __init__ (self, master, title='Scheduled charging'):
+    def __init__(self, master, title='Scheduled charging'):
         Dialog.__init__(self, master, title)
 
     def body(self, master):
@@ -103,7 +108,7 @@ class ChargingDialog(Dialog):
 class DepartureDialog(Dialog):
     """ Display dialog box to get scheduled departure parameters """
 
-    def __init__ (self, master, title='Scheduled departure'):
+    def __init__(self, master, title='Scheduled departure'):
         Dialog.__init__(self, master, title)
 
     def body(self, master):
@@ -419,6 +424,18 @@ class Dashboard(Frame):
                'WSW', 'W', 'WNW', 'NW', 'NNW', 'N']
         return lst[int(abs((deg - 11.25) % 360) / 22.5)]
 
+def show_webview(url):
+    """ Shows the SSO page in a webview and returns the redirected URL """
+    result = ['']
+    window = webview.create_window('Login', url)
+    def on_loaded():
+        result[0] = window.get_current_url()
+        if 'void/callback' in result[0].split('?')[0]:
+            window.destroy()
+    window.loaded += on_loaded
+    webview.start()  # Blocks the main thread until webview is closed
+    return result[0]
+
 class App(Tk):
     """ Main application class """
 
@@ -503,13 +520,17 @@ class App(Tk):
         self.verify.set(1)
         opt_menu.add_checkbutton(label='Verify SSL', variable=self.verify,
                                  command=self.apply_settings)
-        opt_menu.add_command(label='Proxy URL', command=self.set_proxy)
+        opt_menu.add_command(label='Set proxy URL', command=self.set_proxy)
         web_menu = Menu(menu, tearoff=0)
         opt_menu.add_cascade(label='Web browser', menu=web_menu,
                              state=NORMAL if webdriver else DISABLED)
         self.browser = IntVar()
         for v, l in enumerate(('Chrome', 'Edge', 'Firefox', 'Opera', 'Safari')):
             web_menu.add_radiobutton(label=l, value=v, variable=self.browser)
+        self.selenium = BooleanVar()
+        opt_menu.add_checkbutton(label='Use selenium', variable=self.selenium,
+                                 state=NORMAL if webdriver else DISABLED,
+                                 command=self.apply_settings)
         menu.add_cascade(label='Options', menu=opt_menu)
         help_menu = Menu(menu, tearoff=0)
         help_menu.add_command(label='About', command=self.about)
@@ -532,6 +553,7 @@ class App(Tk):
             self.verify.set(config.get('app', 'verify'))
             self.proxy = config.get('app', 'proxy')
             self.browser.set(config.get('app', 'browser'))
+            self.selenium.set(config.get('app', 'selenium'))
             self.auto_refresh.set(config.get('display', 'auto_refresh'))
             self.debug.set(config.get('display', 'debug'))
         except (NoSectionError, NoOptionError, ParsingError):
@@ -548,7 +570,11 @@ class App(Tk):
 
     def custom_auth(self, url):
         """ Automated or manual authentication """
-        if webdriver:
+        # Use pywebview if available and selenium not selected
+        if webview and not self.selenium.get():
+            return pool.apply(show_webview, (url, ))  # Run in separate process
+        # Use selenium if available and selected
+        if webdriver and self.selenium.get():
             with [webdriver.Chrome, webdriver.Edge,
                   webdriver.Firefox, webdriver.Opera,
                   webdriver.Safari][self.browser.get()]() as browser:
@@ -556,22 +582,24 @@ class App(Tk):
                 wait = WebDriverWait(browser, 300)
                 wait.until(EC.url_contains('void/callback'))
                 return browser.current_url
-        # Manual authentication
+        # Fallback to manual authentication
         webbrowser.open(url)
         # Ask user for callback URL in new dialog
-        result = ['not_set']
+        result = [None]
+        event = threading.Event()
         def show_dialog():
-            """ Inner function to show dialog """
+            """ Inner function to show dialog from main thread """
             result[0] = askstring('Login', 'URL after authentication:')
+            event.set()  # Signal completion
         self.after_idle(show_dialog)  # Start from main thread
-        while result[0] == 'not_set':
-            time.sleep(0.1)  # Block login thread until passcode is entered
+        event.wait()  # Block login thread until URL is entered
         return result[0]
 
     def login(self):
         """ Display login dialog and start new thread to get vehicle list """
-        prompt = 'Email:' if webdriver else 'Use browser to login.\n' \
-                 'Page Not Found will be shown at success.\n\nEmail:'
+        prompt = 'Email:' if (webdriver and self.selenium.get()) or \
+                 (webview and not self.selenium.get()) else 'Use browser' \
+                 ' to login.\nPage Not Found will be shown at success.\n\nEmail:'
         result = askstring('Login', prompt, initialvalue=self.email)
         if result:
             self.email = result
@@ -967,6 +995,7 @@ class App(Tk):
             config.set('app', 'proxy', self.proxy)
             config.set('app', 'verify', self.verify.get())
             config.set('app', 'browser', self.browser.get())
+            config.set('app', 'selenium', self.selenium.get())
             config.set('display', 'auto_refresh', self.auto_refresh.get())
             config.set('display', 'debug', self.debug.get())
             with open('gui.ini', 'w') as configfile:
@@ -1137,6 +1166,7 @@ class ServiceThread(threading.Thread):
             self.exception = e
 
 if __name__ == "__main__":
+    pool = multiprocessing.Pool(1)
     app = App()
     app.mainloop()
     app.destroy()
