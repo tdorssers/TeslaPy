@@ -63,7 +63,6 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner
 | `dist_units()` | converts distance or speed units to GUI setting of the vehicle |
 | `temp_units()` | converts temperature units to GUI setting of the vehicle |
 | `decode_vin()` | decodes the vehicle identification number to a dict |
-| `remote_start_drive()` | enables keyless drive (requires password to be set) |
 | `command()` | wrapper around `api()` for vehicle command response error handling |
 
 <sup>1</sup> Option codes appear to be deprecated. Vehicles return a generic set of codes related to a Model 3.
@@ -222,7 +221,7 @@ These are the major commands:
 | CHANGE_SUNROOF_STATE | `state` | `vent` or `close` |
 | WINDOW_CONTROL <sup>2</sup> | `command`, `lat`, `lon` | `vent` or `close`, `0`, `0` |
 | ACTUATE_TRUNK | `which_trunk` | `rear` or `front` |
-| REMOTE_START | `password` | password |
+| REMOTE_START | | |
 | TRIGGER_HOMELINK | `lat`, `lon` | current lattitude and logitude |
 | CHARGE_PORT_DOOR_OPEN | | |
 | CHARGE_PORT_DOOR_CLOSE | | |
@@ -249,7 +248,7 @@ These are the major commands:
 | USER | `vin`, `deviceCountry`, `deviceLanguage` | VIN, uppercase two letter country code, supported two letter language code |
 | USER_ACCOUNT_GET_DETAILS | `vin`, `deviceCountry`, `deviceLanguage` | VIN, uppercase two letter country code, supported two letter language code |
 
-<sup>1</sup> requires car version 2021.36 or higher. CHARGING_AMPS can be set to less than 5, by calling the API twice.
+<sup>1</sup> requires car version 2021.36 or higher. CHARGING_AMPS can be set to less than 5, by calling the API twice. Special thanks to [themonomers](https://github.com/themonomers) and [purcell-lab](https://github.com/purcell-lab).
 
 <sup>2</sup> `close` requires `lat` and `lon` values to be near the current location of the car.
 
@@ -280,9 +279,9 @@ The source repository contains three demo applications that *optionally* use [py
 
 ```
 usage: cli.py [-h] -e EMAIL [-f FILTER] [-a API] [-k KEYVALUE] [-c COMMAND]
-              [-l] [-o] [-v] [-w] [-g] [-b] [-n] [-m] [-s] [-d] [-r]
-              [--service] [--verify] [--chrome] [--edge] [--firefox] [--opera]
-              [--safari] [--proxy PROXY]
+              [-t TIMEOUT] [-p PROXY] [-l] [-o] [-v] [-w] [-g] [-b] [-n] [-m]
+              [-s] [-d] [-r] [-S] [-V] [--chrome] [--edge] [--firefox]
+              [--opera] [--safari]
 
 Tesla Owner API CLI
 
@@ -293,6 +292,8 @@ optional arguments:
   -a API         API call endpoint name
   -k KEYVALUE    API parameter (key=value)
   -c COMMAND     product command endpoint
+  -t TIMEOUT     connect/read timeout
+  -p PROXY       proxy server URL
   -l, --list     list all selected vehicles/batteries
   -o, --option   list vehicle option codes
   -v, --vin      vehicle identification number decode
@@ -301,17 +302,16 @@ optional arguments:
   -b, --battery  get detailed battery state and config
   -n, --nearby   list nearby charging sites
   -m, --mobile   get mobile enabled state
-  -s, --start    remote start drive
+  -s, --site     get current site generation data
   -d, --debug    set logging level to debug
   -r, --stream   receive streaming vehicle data on-change
-  --service      get service self scheduling eligibility
-  --verify       disable verify SSL certificate
-  --chrome       use Chrome browser
-  --edge         use Edge browser
-  --firefox      use Firefox browser
-  --opera        use Opera browser
-  --safari       use Safari browser
-  --proxy PROXY  proxy server URL
+  -S, --service  get service self scheduling eligibility
+  -V, --verify   disable verify SSL certificate
+  --chrome       use Chrome WebDriver
+  --edge         use Edge WebDriver
+  --firefox      use Firefox WebDriver
+  --opera        use Opera WebDriver
+  --safari       use Safari WebDriver
 ```
 
 Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py):

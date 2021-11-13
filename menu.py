@@ -206,7 +206,7 @@ def menu(vehicle):
             which_trunk = raw_input("Which trunk (front/rear):")
             vehicle.command('ACTUATE_TRUNK', which_trunk=which_trunk)
         elif opt == 10:
-            vehicle.remote_start_drive()
+            vehicle.command('REMOTE_START')
         elif opt == 11:
             limit = int(raw_input("Enter charge limit: "))
             vehicle.command('CHANGE_CHARGE_LIMIT', percent=limit)

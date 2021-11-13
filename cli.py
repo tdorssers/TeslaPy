@@ -16,7 +16,7 @@ try:
     from selenium.webdriver.support.ui import WebDriverWait
 except ImportError:
     webdriver = None
-from teslapy import Tesla, Vehicle
+from teslapy import Tesla, Vehicle, Battery, SolarPanel
 
 raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
 
@@ -72,22 +72,25 @@ def main():
                     print(product.get_nearby_charging_sites())
                 if args.mobile:
                     print(product.mobile_enabled())
-                if args.start:
-                    print(product.remote_start_drive())
                 if args.stream:
-                    product.stream(lambda x: print(x))
+                    product.stream(print)
                 if args.service:
                     print(product.get_service_scheduling_data())
-            elif args.battery:
+            elif isinstance(product, Battery) and args.battery:
                 print(product.get_battery_data())
-            if args.api:
+            elif isinstance(product, SolarPanel) and args.site:
+                print(product.get_site_data())
+            if args.api or args.command:
                 data = {}
                 for key, value in args.keyvalue or []:
                     try:
                         data[key] = ast.literal_eval(value)
                     except (SyntaxError, ValueError):
                         data[key] = value
-                print(product.api(args.api, **data))
+                if args.api:
+                    print(product.api(args.api, **data))
+                else:
+                    print(product.command(args.command, **data))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Tesla Owner API CLI')
@@ -97,6 +100,9 @@ if __name__ == "__main__":
     parser.add_argument('-k', dest='keyvalue', help='API parameter (key=value)',
                         action='append', type=lambda kv: kv.split('=', 1))
     parser.add_argument('-c', dest='command', help='product command endpoint')
+    parser.add_argument('-t', dest='timeout', type=int,
+                        help='connect/read timeout')
+    parser.add_argument('-p', dest='proxy', help='proxy server URL')
     parser.add_argument('-l', '--list', action='store_true',
                         help='list all selected vehicles/batteries')
     parser.add_argument('-o', '--option', action='store_true',
@@ -113,23 +119,21 @@ if __name__ == "__main__":
                         help='list nearby charging sites')
     parser.add_argument('-m', '--mobile', action='store_true',
                         help='get mobile enabled state')
-    parser.add_argument('-s', '--start', action='store_true',
-                        help='remote start drive')
+    parser.add_argument('-s', '--site', action='store_true',
+                        help='get current site generation data')
     parser.add_argument('-d', '--debug', action='store_true',
                         help='set logging level to debug')
     parser.add_argument('-r', '--stream', action='store_true',
                         help='receive streaming vehicle data on-change')
-    parser.add_argument('--service', action='store_true',
+    parser.add_argument('-S', '--service', action='store_true',
                         help='get service self scheduling eligibility')
-    parser.add_argument('--verify', action='store_false',
+    parser.add_argument('-V', '--verify', action='store_false',
                         help='disable verify SSL certificate')
-    parser.add_argument('--timeout', type=int, help='connect/read timeout')
     if webdriver:
         for c, s in enumerate(('chrome', 'edge', 'firefox', 'opera', 'safari')):
             d, h = (0, ' (default)') if not webview and c == 0 else (None, '')
             parser.add_argument('--' + s, action='store_const', dest='web',
-                                help='use %s browser' % s.title() + h,
+                                help='use %s WebDriver' % s.title() + h,
                                 const=c, default=d)
-    parser.add_argument('--proxy', help='proxy server URL')
     args = parser.parse_args()
     main()

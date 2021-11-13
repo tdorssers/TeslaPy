@@ -475,7 +475,7 @@ class App(Tk):
         self.cmd_menu.add_command(label='Actuate trunk', state=DISABLED,
                                   command=lambda: self.actuate_trunk('rear'))
         self.cmd_menu.add_command(label='Remote start drive', state=DISABLED,
-                                  command=self.remote_start_drive)
+                                  command=lambda: self.cmd('REMOTE_START'))
         self.cmd_menu.add_command(label='Set charge limit', state=DISABLED,
                                   command=self.set_charge_limit)
         self.cmd_menu.add_command(label='Open/close charge port', state=DISABLED,
@@ -886,13 +886,6 @@ class App(Tk):
     def actuate_trunk(self, which_trunk):
         """ Actuate trunk or frunk """
         self.cmd('ACTUATE_TRUNK', which_trunk=which_trunk)
-
-    def remote_start_drive(self):
-        """ Trigger remote start drive """
-        if self.password:
-            self.cmd('REMOTE_START', password=self.password)
-        else:
-            self.status.text('Password required')
 
     def set_charge_limit(self):
         """ Set charging limit """
