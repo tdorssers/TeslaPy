@@ -31,7 +31,6 @@ import websocket  # websocket-client v0.49.0 up to v0.58.0 is not supported
 requests.packages.urllib3.disable_warnings()
 
 BASE_URL = 'https://owner-api.teslamotors.com/'
-CLIENT_ID = 'e4a9949fcfa04068f59abb5a658f2bac0a3428e4652315490b659d5ab3f35a9e'
 SSO_BASE_URL = 'https://auth.tesla.com/'
 SSO_CLIENT_ID = 'ownerapi'
 STREAMING_BASE_URL = 'wss://streaming.vn.teslamotors.com/'
@@ -94,6 +93,7 @@ class Tesla(OAuth2Session):
 
     @property
     def expires_at(self):
+        """ Returns unix time when token needs refreshing """
         return self.token['expires_at']
 
     def request(self, method, url, serialize=True, **kwargs):
@@ -238,10 +238,11 @@ class Tesla(OAuth2Session):
         except KeyError as e:
             raise ValueError('%s requires path variable %s' % (name, e))
         # Perform request using given keyword arguments as parameters
-        method = endpoint['TYPE']
-        arg_name = 'params' if method == 'GET' else 'json'
+        arg_name = 'params' if endpoint['TYPE'] == 'GET' else 'json'
         serialize = endpoint.get('CONTENT') != 'HTML' and name != 'STATUS'
-        return self.request(method, uri, serialize, **{arg_name: kwargs})
+        return self.request(endpoint['TYPE'], uri, serialize,
+                            withhold_token=not endpoint['AUTH'],
+                            **{arg_name: kwargs})
 
     def vehicle_list(self):
         """ Returns a list of `Vehicle` objects """
@@ -300,7 +301,7 @@ class Vehicle(JsonDict):
             for key, value in data.items():
                 try:
                     data[key] = ast.literal_eval(value) if value else None
-                except ValueError:
+                except (SyntaxError, ValueError):
                     pass
             logger.debug('Update %s', json.dumps(data))
             if self.callback:
@@ -459,31 +460,54 @@ class Vehicle(JsonDict):
 
     def decode_vin(self):
         """ Returns decoded VIN as dict """
-        make = 'Model ' + self['vin'][3]
-        body = {'A': 'Hatchback 5 Dr / LHD', 'B': 'Hatchback 5 Dr / RHD',
-                'C': 'MPV / 5 Dr / LHD', 'D': 'MPV / 5 Dr / RHD',
-                'E': 'Sedan 4 Dr / LHD', 'F': 'Sedan 4 Dr / RHD',
-                'G': 'MPV / 5 Dr / LHD'}.get(self['vin'][4], 'Unknown')
-        batt = {'E': 'Electric', 'H': 'High Capacity', 'S': 'Standard Capacity',
-                'V': 'Ultra Capacity'}.get(self['vin'][6], 'Unknown')
-        drive = {'1': 'Single Motor', '2': 'Dual Motor',
-                 '3': 'Performance Single Motor', 'C': 'Base, Tier 2',
-                 '4': 'Performance Dual Motor', 'P': 'Performance, Tier 7',
-                 'A': 'Single Motor', 'B': 'Dual Motor',
-                 'F': 'Performance Dual Motor', 'G': 'Base, Tier 4',
+        make = 'Tesla Model ' + self['vin'][3]
+        body = {'A': 'Hatch back 5 Dr / LHD', 'B': 'Hatch back 5 Dr / RHD',
+                'C': 'Class E MPV / 5 Dr / LHD', 'E': 'Sedan 4 Dr / LHD',
+                'D': 'Class E MPV / 5 Dr / RHD', 'F': 'Sedan 4 Dr / RHD',
+                'G': 'Class D MPV / 5 Dr / LHD', 'H': 'Class D MPV / 5 Dr / RHD'
+                }.get(self['vin'][4], 'Unknown')
+        belt = {'1': 'Type 2 manual seatbelts (FR, SR*3) with front airbags, '
+                     'PODS, side inflatable restraints, knee airbags (FR)',
+                '3': 'Type 2 manual seatbelts (FR, SR*2) with front airbags, '
+                     'side inflatable restraints, knee airbags (FR)',
+                '4': 'Type 2 manual seatbelts (FR, SR*2) with front airbags, '
+                     'side inflatable restraints, knee airbags (FR)',
+                '5': 'Type 2 manual seatbelts (FR, SR*2) with front airbags, '
+                     'side inflatable restraints',
+                '6': 'Type 2 manual seatbelts (FR, SR*3) with front airbags, '
+                     'side inflatable restraints',
+                '7': 'Type 2 manual seatbelts (FR, SR*3) with front airbags, '
+                     'side inflatable restraints & active hood',
+                '8': 'Type 2 manual seatbelts (FR, SR*2) with front airbags, '
+                     'side inflatable restraints & active hood',
+                'A': 'Type 2 manual seatbelts (FR, SR*3, TR*2) with front '
+                     'airbags, PODS, side inflatable restraints, knee airbags (FR)',
+                'B': 'Type 2 manual seatbelts (FR, SR*2, TR*2) with front '
+                     'airbags, PODS, side inflatable restraints, knee airbags (FR)',
+                'C': 'Type 2 manual seatbelts (FR, SR*2, TR*2) with front '
+                     'airbags, PODS, side inflatable restraints, knee airbags (FR)',
+                'D': 'Type 2 Manual Seatbelts (FR, SR*3) with front airbag, '
+                     'PODS, side inflatable restraints, knee airbags (FR)'
+                }.get(self['vin'][5], 'Unknown')
+        batt = {'E': 'Electric (NMC)', 'F': 'Li-Phosphate (LFP)',
+                'H': 'High Capacity (NMC)', 'S': 'Standard (NMC)',
+                'V': 'Ultra Capacity (NMC)'}.get(self['vin'][6], 'Unknown')
+        drive = {'1': 'Single Motor - Standard', '2': 'Dual Motor - Standard',
+                 '3': 'Single Motor - Performance', '5': 'P2 Dual Motor',
+                 '4': 'Dual Motor - Performance', '6': 'P2 Tri Motor',
+                 'A': 'Single Motor', 'B': 'Dual Motor - Standard',
+                 'C': 'Dual Motor - Performance', 'D': 'Single Motor',
+                 'E': 'Dual Motor - Standard', 'F': 'Dual Motor - Performance',
+                 'P': 'Performance, Tier 7', 'G': 'Base, Tier 4',
                  'N': 'Base, Tier 7'}.get(self['vin'][7], 'Unknown')
         year = 2009 + '9ABCDEFGHJKLMNPRSTVWXY12345678'.index(self['vin'][9])
-        plant = {'C': 'Shanghai, China', 'F': 'Fremont, CA, USA',
-                 'P': 'Palo Alto, CA, USA'}.get(self['vin'][10], 'Unknown')
-        return JsonDict(manufacturer='Tesla Motors, Inc.',
-                        make=make, body_type=body, battery_type=batt,
+        plant = {'1': 'Menlo Park, CA, USA', '3': 'Hethel, UK',
+                 'B': 'Berlin, Germany', 'C': 'Shanghai, China',
+                 'F': 'Fremont, CA, USA', 'P': 'Palo Alto, CA, USA',
+                 'R': 'Research'}.get(self['vin'][10], 'Unknown')
+        return JsonDict(manufacturer='Tesla Motors, Inc.', make=make,
+                        body_type=body, belt_system=belt, battery_type=batt,
                         drive_unit=drive, year=str(year), plant_code=plant)
-
-    def remote_start_drive(self):
-        """ Enables keyless driving for two minutes """
-        if not self.tesla.password:
-            raise ValueError('`password` is not set')
-        return self.command('REMOTE_START', password=self.tesla.password)
 
     def command(self, name, **kwargs):
         """ Wrapper method for vehicle command response error handling """
