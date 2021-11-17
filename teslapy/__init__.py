@@ -76,6 +76,7 @@ class Tesla(OAuth2Session):
         self.timeout = timeout
         self.endpoints = {}
         self._sso_base = SSO_BASE_URL
+        self.code_verifier = None
         # Set OAuth2Session properties
         self.scope = ('openid', 'email', 'offline_access')
         self.redirect_uri = SSO_BASE_URL + 'void/callback'
@@ -123,35 +124,56 @@ class Tesla(OAuth2Session):
             return response.json(object_hook=JsonDict)
         return response.text
 
-    def fetch_token(self):
-        """ Overriddes base method to sign into Tesla's SSO service using
-        Authorization Code grant with PKCE extension. Raises HTTPError or
-        CustomOAuth2Error.
+    def authorization_url(self, url='oauth2/v3/authorize', **kwargs):
+        """ Overriddes base method to form an authorization URL with PKCE
+        extension for Tesla's SSO service. Raises HTTPError.
+
+        Return type: String
         """
         if self.authorized:
             return
         # Generate code verifier and challenge for PKCE (RFC 7636)
-        code_verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b'=')
-        unencoded_digest = hashlib.sha256(code_verifier).digest()
+        self.code_verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b'=')
+        unencoded_digest = hashlib.sha256(self.code_verifier).digest()
         code_challenge = base64.urlsafe_b64encode(unencoded_digest).rstrip(b'=')
         # Prepare for OAuth 2 Authorization Code Grant flow
-        url, _ = self.authorization_url(self._sso_base + 'oauth2/v3/authorize',
-                                        code_challenge=code_challenge,
-                                        code_challenge_method='S256',
-                                        login_hint=self.email)
+        url = urljoin(self._sso_base, url)
+        kwargs['code_challenge'] = code_challenge
+        kwargs['code_challenge_method'] = 'S256'
+        kwargs['login_hint'] = self.email
+        url, _ = super(Tesla, self).authorization_url(url, **kwargs)
         # Detect account's registered region
         response = self.get(url)
         response.raise_for_status()  # Raise HTTPError, if one occurred
         if response.history:
             self._sso_base = urljoin(response.url, '/')
             self.auto_refresh_url = self._sso_base + 'oauth2/v3/token'
-        # Open SSO page for user authorization through redirection
-        url = self.authenticator(response.url)
-        # Use authorization response code in redirected location to get token
-        super(Tesla, self).fetch_token(self._sso_base + 'oauth2/v3/token',
-                                       authorization_response=url,
-                                       include_client_id=True,
-                                       code_verifier=code_verifier)
+        return response.url
+
+    def fetch_token(self, token_url='oauth2/v3/token', **kwargs):
+        """ Overriddes base method to sign into Tesla's SSO service using
+        Authorization Code grant with PKCE extension. Raises HTTPError or
+        CustomOAuth2Error.
+        """
+        if self.authorized:
+            return
+        if not kwargs.get('authorization_response'):
+            # Open SSO page for user authorization through redirection
+            url = self.authorization_url()
+            kwargs['authorization_response'] = self.authenticator(url)
+        # Use authorization code in redirected location to get token
+        token_url = urljoin(self._sso_base, token_url)
+        kwargs['include_client_id'] = True
+        kwargs['code_verifier'] = self.code_verifier
+        super(Tesla, self).fetch_token(token_url, **kwargs)
+        self._token_updater()  # Save new token
+
+    def refresh_token(self, token_url='oauth2/v3/token', **kwargs):
+        """ Overriddes base method to refresh Tesla's SSO token """
+        if not self.authorized:
+            return
+        token_url = urljoin(self._sso_base, token_url)
+        super(Tesla, self).refresh_token(token_url, **kwargs)
         self._token_updater()  # Save new token
 
     @staticmethod
