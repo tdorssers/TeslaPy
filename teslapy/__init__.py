@@ -164,7 +164,7 @@ class Tesla(OAuth2Session):
         # Use authorization code in redirected location to get token
         token_url = urljoin(self._sso_base, token_url)
         kwargs['include_client_id'] = True
-        kwargs['code_verifier'] = self.code_verifier
+        kwargs.setdefault('code_verifier', self.code_verifier)
         super(Tesla, self).fetch_token(token_url, **kwargs)
         self._token_updater()  # Save new token
 
@@ -175,6 +175,17 @@ class Tesla(OAuth2Session):
         token_url = urljoin(self._sso_base, token_url)
         super(Tesla, self).refresh_token(token_url, **kwargs)
         self._token_updater()  # Save new token
+
+    def logout(self):
+        """ Sign out and remove token from cache """
+        if not self.authorized:
+            return
+        response = self.post(self._sso_base + 'oauth2/v3/logout',
+                             data={'client_id': SSO_CLIENT_ID})
+        response.raise_for_status()
+        self.token = {}
+        self._token_updater()
+        del self.access_token
 
     @staticmethod
     def _authenticate(url):
