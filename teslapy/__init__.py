@@ -95,7 +95,7 @@ class Tesla(OAuth2Session):
     @property
     def expires_at(self):
         """ Returns unix time when token needs refreshing """
-        return self.token['expires_at']
+        return self.token.get('expires_at')
 
     def request(self, method, url, serialize=True, **kwargs):
         """ Overriddes base method to support relative URLs, serialization and
@@ -176,16 +176,26 @@ class Tesla(OAuth2Session):
         super(Tesla, self).refresh_token(token_url, **kwargs)
         self._token_updater()  # Save new token
 
-    def logout(self):
-        """ Sign out and remove token from cache """
+    def logout(self, sign_out=False):
+        """ Removes token from cache, returns logout URL, and optionally logs
+        out of default browser.
+
+        Return type: String
+        """
         if not self.authorized:
             return
-        response = self.post(self._sso_base + 'oauth2/v3/logout',
-                             data={'client_id': SSO_CLIENT_ID})
-        response.raise_for_status()
+        url = self._sso_base + 'oauth2/v3/logout?client_id=' + SSO_CLIENT_ID
+        # Built-in sign out method
+        if sign_out:
+            if webbrowser.open(url):
+                logger.debug('Opened %s with default browser', url)
+            else:
+                print('Open this URL to sign out: ' + url)
+        # Empty token dict, update cache and remove access_token
         self.token = {}
         self._token_updater()
         del self.access_token
+        return url
 
     @staticmethod
     def _authenticate(url):
