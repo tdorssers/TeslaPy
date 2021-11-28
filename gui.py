@@ -447,6 +447,7 @@ class App(Tk):
         menu = Menu(self)
         app_menu = Menu(menu, tearoff=0)
         app_menu.add_command(label='Login', command=self.login)
+        app_menu.add_command(label='Logout', command=self.logout)
         app_menu.add_separator()
         app_menu.add_command(label='Exit', command=self.save_and_quit)
         menu.add_cascade(label='App', menu=app_menu)
@@ -639,6 +640,32 @@ class App(Tk):
                 self.select()
             else:
                 self.status.text('No vehicles')
+
+    def logout(self):
+        """ Sign out and redraw dashboard """
+        if not hasattr(self, 'login_thread'):
+            return
+        # Use pywebview if available and selenium not selected
+        if webview and not self.selenium.get():
+            # Run in separate process
+            pool.apply(show_webview, (self.login_thread.tesla.logout(), ))
+        # Do not sign out if selenium is available and selected
+        self.login_thread.tesla.logout(not (webdriver and self.selenium.get()))
+        del self.vehicle
+        # Redraw dashboard
+        self.dashboard.pack_forget()
+        self.dashboard = Dashboard(self)
+        self.dashboard.pack(pady=5, fill=X)
+        # Remove vehicles from menu
+        self.vehicle_menu.delete(3, END)
+        # Disable commands
+        for i in range(0, 2):
+            self.vehicle_menu.entryconfig(i, state=DISABLED)
+        for i in range(0, self.cmd_menu.index(END) + 1):
+            self.cmd_menu.entryconfig(i, state=DISABLED)
+        for i in range(0, self.media_menu.index(END) + 1):
+            self.media_menu.entryconfig(i, state=DISABLED)
+        self.status.text('Not logged in')
 
     def select(self):
         """ Select vehicle and start new thread to get vehicle image """

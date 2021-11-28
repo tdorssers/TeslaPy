@@ -56,7 +56,7 @@ def show_vehicle_data(vehicle):
     fmt = 'Is Front Defroster On: {:15} Is Rear Defroster On: {}'
     print(fmt.format(str(cl['is_front_defroster_on']),
                      str(cl['is_rear_defroster_on'])))
-    print('-'*80)
+    print('-' * 80)
     # Vehicle state
     fmt = 'Vehicle Name: {:24} Odometer: {}'
     print(fmt.format(ve['vehicle_name'], vehicle.dist_units(ve['odometer'])))
@@ -84,7 +84,7 @@ def show_vehicle_data(vehicle):
                      str(ve.get('sentry_mode'))))
     fmt = 'Valet Mode: {:26} Valet Pin Set: {}'
     print(fmt.format(str(ve['valet_mode']), str(not 'valet_pin_needed' in ve)))
-    print('-'*80)
+    print('-' * 80)
     # Drive state
     speed = 0 if dr['speed'] is None else dr['speed']
     fmt = 'Power: {:31} Speed: {}'
@@ -92,7 +92,7 @@ def show_vehicle_data(vehicle):
     fmt = 'Shift State: {:25} Heading: {}'
     print(fmt.format(str(dr['shift_state']), heading_to_str(dr['heading'])))
     print(u'GPS: {:.75}'.format(location))
-    print('-'*80)
+    print('-' * 80)
     # Charging state
     fmt = 'Charging State: {:22} Time To Full Charge: {:02.0f}:{:02.0f}'
     print(fmt.format(ch['charging_state'],
@@ -116,7 +116,7 @@ def show_vehicle_data(vehicle):
     fmt = 'Charge Port Door Open: {:15} Charge Port Latch: {}'
     print(fmt.format(str(ch['charge_port_door_open']),
                      str(ch['charge_port_latch'])))
-    print('-'*80)
+    print('-' * 80)
     # Vehicle config
     fmt = 'Car Type: {:28} Exterior Color: {}'
     print(fmt.format(co['car_type'], co['exterior_color']))
@@ -132,7 +132,7 @@ def show_charging_sites(vehicle):
     for site in sites['destination_charging']:
         print(fmt.format(site['name'],
                          vehicle.dist_units(site['distance_miles'])))
-    print('-'*80)
+    print('-' * 80)
     print('Superchargers:')
     fmt = '{:57} {} {}/{} stalls'
     for site in sites['superchargers']:
@@ -154,20 +154,20 @@ def menu(vehicle):
             if vehicle['state'] == 'online':
                 if not vehicle.mobile_enabled():
                     print('Mobile access is not enabled for this vehicle')
-                    print('-'*80)
+                    print('-' * 80)
                 show_vehicle_data(vehicle.get_vehicle_data())
             else:
                 print('Wake up vehicle to use remote functions/telemetry')
-        print('-'*80)
+        print('-' * 80)
         # Display 3 column menu
         for i, option in enumerate(lst, 1):
             print('{:2} {:23}'.format(i, option), end='' if i % 3 else '\n')
         if i % 3:
             print()
-        print('-'*80)
+        print('-' * 80)
         # Get user choice
         opt = int(raw_input("Choice (0 to quit): "))
-        print('-'*80)
+        print('-' * 80)
         # Check if vehicle is still online, otherwise force refresh
         if opt > 2:
             vehicle.get_vehicle_summary()
@@ -181,7 +181,7 @@ def menu(vehicle):
         elif opt == 2:
             print('Please wait...')
             vehicle.sync_wake_up()
-            print('-'*80)
+            print('-' * 80)
         elif opt == 3:
             show_charging_sites(vehicle)
         elif opt == 4:
@@ -242,7 +242,7 @@ def menu(vehicle):
 
 def custom_auth(url):
     # Use pywebview if no web browser specified
-    if getattr(args, 'web', None) is None:
+    if webview and not (webdriver and args.web is not None):
         result = ['']
         window = webview.create_window('Login', url)
         def on_loaded():
@@ -272,24 +272,23 @@ def main():
         geopy.geocoders.options.default_ssl_context = ctx
     email = raw_input('Enter email: ')
     with Tesla(email, verify=args.verify, proxy=args.proxy) as tesla:
-        if webdriver:
+        if (webdriver and args.web is not None) or webview:
             tesla.authenticator = custom_auth
         if args.timeout:
             tesla.timeout = args.timeout
-        tesla.fetch_token()
         vehicles = tesla.vehicle_list()
-        print('-'*80)
+        print('-' * 80)
         fmt = '{:2} {:25} {:25} {:25}'
         print(fmt.format('ID', 'Display name', 'VIN', 'State'))
         for i, vehicle in enumerate(vehicles):
             print(fmt.format(i, vehicle['display_name'], vehicle['vin'],
                              vehicle['state']))
-        print('-'*80)
+        print('-' * 80)
         idx = int(raw_input("Select vehicle: "))
-        print('-'*80)
+        print('-' * 80)
         print('VIN decode:', ', '.join(vehicles[idx].decode_vin().values()))
         print('Option codes:', ', '.join(vehicles[idx].option_code_list()))
-        print('-'*80)
+        print('-' * 80)
         menu(vehicles[idx])
 
 if __name__ == "__main__":

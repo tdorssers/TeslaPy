@@ -22,7 +22,7 @@ raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
 
 def custom_auth(url):
     # Use pywebview if no web browser specified
-    if getattr(args, 'web', None) is None:
+    if webview and not (webdriver and args.web is not None):
         result = ['']
         window = webview.create_window('Login', url)
         def on_loaded():
@@ -49,7 +49,6 @@ def main():
             tesla.authenticator = custom_auth
         if args.timeout:
             tesla.timeout = args.timeout
-        tesla.fetch_token()
         selected = prod = tesla.vehicle_list() + tesla.battery_list()
         if args.filter:
             selected = [p for p in prod for v in p.values() if v == args.filter]
@@ -91,6 +90,12 @@ def main():
                     print(product.api(args.api, **data))
                 else:
                     print(product.command(args.command, **data))
+        if args.logout:
+            if webview and not (webdriver and args.web is not None):
+                window = webview.create_window('Logout', tesla.logout())
+                webview.start()
+            else:
+                tesla.logout(not (webdriver and args.web is not None))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Tesla Owner API CLI')
@@ -129,6 +134,8 @@ if __name__ == "__main__":
                         help='get service self scheduling eligibility')
     parser.add_argument('-V', '--verify', action='store_false',
                         help='disable verify SSL certificate')
+    parser.add_argument('-L', '--logout', action='store_true',
+                        help='clear token from cache and logout')
     if webdriver:
         for c, s in enumerate(('chrome', 'edge', 'firefox', 'opera', 'safari')):
             d, h = (0, ' (default)') if not webview and c == 0 else (None, '')

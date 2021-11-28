@@ -42,7 +42,10 @@ The convenience method `api()` uses named endpoints listed in *endpoints.json* t
 | Call | Description |
 | --- | --- |
 | `request()` | performs API call using relative or absolute URL, serialization and error message handling |
+| `authorization_url()` | forms authorization URL with [PKCE](https://oauth.net/2/pkce/) extension |
 | `fetch_token()` | requests a SSO token using Authorization Code grant with [PKCE](https://oauth.net/2/pkce/) extension |
+| `refresh_token()` | requests a SSO token using [Refresh Token](https://oauth.net/2/grant-types/refresh-token/) grant |
+| `logout()` | removes token from cache, returns logout URL and optionally signs out using system's default web browser |
 | `vehicle_list()` | returns a list of Vehicle objects |
 | `battery_list()` | returns a list of Battery objects |
 | `solar_list()` | returns a list of SolarPanel objects |
@@ -150,6 +153,43 @@ def custom_auth(url):
 
 with teslapy.Tesla('elon@tesla.com', authenticator=custom_auth) as tesla:
     tesla.fetch_token()
+```
+
+#### Alternative
+
+TeslaPy 2.2.0 introduced the `authorization_url()` method to get the SSO page URL and supply the redirected URL as keyword argument `authorization_response` to `fetch_token()` after authentication.
+
+```python
+import teslapy
+tesla = teslapy.Tesla('elon@tesla.com')
+if not tesla.authorized:
+    print('Use browser to login. Page Not Found will be shown at success.')
+    print('Open this URL: ' + tesla.authorization_url())
+    tesla.fetch_token(authorization_response=input('Enter URL after authentication: '))
+vehicles = tesla.vehicle_list()
+print(vehicles[0])
+tesla.close()
+```
+
+#### Logout
+
+To use your systems's default web browser to sign out of the SSO page and clear the token from cache:
+
+```python
+tesla.logout(sign_out=True)
+```
+
+If using pywebview, you can clear the token from cache and get the logout URL to display a sign out window:
+
+```python
+window = webview.create_window('Logout', tesla.logout())
+window.start()
+```
+
+Selenium does not store cookies, just clear the token from cache:
+
+```python
+tesla.logout()
 ```
 
 ### Cache
@@ -307,6 +347,7 @@ optional arguments:
   -r, --stream   receive streaming vehicle data on-change
   -S, --service  get service self scheduling eligibility
   -V, --verify   disable verify SSL certificate
+  -L, --logout   clear token from cache and logout
   --chrome       use Chrome WebDriver
   --edge         use Edge WebDriver
   --firefox      use Firefox WebDriver
@@ -622,7 +663,7 @@ Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on y
 
 `python -m pip install requests_oauthlib geopy pywebview selenium websocket-client`
 
-and install [ChromeDriver](https://sites.google.com/chromium.org/driver/) to use Selenium or on Ubuntu 21.04 or newer as follows:
+and install [ChromeDriver](https://sites.google.com/chromium.org/driver/) to use Selenium or on Ubuntu as follows:
 
 `sudo apt-get install python3-requests-oauthlib python3-geopy python3-webview python3-selenium python3-websocket`
 
