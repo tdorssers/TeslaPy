@@ -6,7 +6,7 @@ for reuse and refreshed automatically. The vehicle option codes are loaded from
 
 # Author: Tim Dorssers
 
-__version__ = '2.1.0'
+__version__ = '2.2.0'
 
 import os
 import ast
@@ -157,7 +157,7 @@ class Tesla(OAuth2Session):
         """
         if self.authorized:
             return
-        if not kwargs.get('authorization_response'):
+        if kwargs.get('authorization_response') is None:
             # Open SSO page for user authorization through redirection
             url = self.authorization_url()
             kwargs['authorization_response'] = self.authenticator(url)
