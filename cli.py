@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """ Tesla Owner API CLI application using TeslaPy module """
 
 # Author: Tim Dorssers
@@ -87,7 +88,18 @@ def main():
                     except (SyntaxError, ValueError):
                         data[key] = value
                 if args.api:
-                    print(product.api(args.api, **data))
+                    for commandargs in args.api:
+                        command = commandargs.pop(0)
+                        command_data = {}
+                        for keyvalue in commandargs or []:
+                            key, value = keyvalue.split('=', 1)
+                            try:
+                                command_data[key] = ast.literal_eval(value)
+                            except (SyntaxError, ValueError):
+                                command_data[key] = value
+                        if not command_data:
+                            command_data = data
+                        print(product.api(command, **command_data))
                 else:
                     print(product.command(args.command, **data))
         if args.logout:
@@ -101,7 +113,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Tesla Owner API CLI')
     parser.add_argument('-e', dest='email', help='login email', required=True)
     parser.add_argument('-f', dest='filter', help='filter on id, vin, etc.')
-    parser.add_argument('-a', dest='api', help='API call endpoint name')
+    parser.add_argument('-a', dest='api', help='API call endpoint name',
+                        metavar=('API', 'KEYVALUE'), action='append', nargs='+')
     parser.add_argument('-k', dest='keyvalue', help='API parameter (key=value)',
                         action='append', type=lambda kv: kv.split('=', 1))
     parser.add_argument('-c', dest='command', help='product command endpoint')
