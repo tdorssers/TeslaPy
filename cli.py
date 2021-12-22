@@ -76,6 +76,8 @@ def main():
                     product.stream(print)
                 if args.service:
                     print(product.get_service_scheduling_data())
+                if args.history:
+                    print(product.get_charge_history())
             elif isinstance(product, Battery) and args.battery:
                 print(product.get_battery_data())
             elif isinstance(product, SolarPanel) and args.site:
@@ -102,6 +104,8 @@ def main():
                         print(product.api(command, **command_data))
                 else:
                     print(product.command(args.command, **data))
+            if args.user:
+                print(product.get_user_details())
         if args.logout:
             if webview and not (webdriver and args.web is not None):
                 window = webview.create_window('Logout', tesla.logout())
@@ -145,10 +149,14 @@ if __name__ == "__main__":
                         help='receive streaming vehicle data on-change')
     parser.add_argument('-S', '--service', action='store_true',
                         help='get service self scheduling eligibility')
+    parser.add_argument('-H', '--history', action='store_true',
+                        help='get charging history data')
     parser.add_argument('-V', '--verify', action='store_false',
                         help='disable verify SSL certificate')
     parser.add_argument('-L', '--logout', action='store_true',
                         help='clear token from cache and logout')
+    parser.add_argument('-u', '--user', action='store_true',
+                        help='get user account details')
     if webdriver:
         for c, s in enumerate(('chrome', 'edge', 'firefox', 'opera', 'safari')):
             d, h = (0, ' (default)') if not webview and c == 0 else (None, '')

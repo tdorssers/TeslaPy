@@ -61,6 +61,9 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner
 | `get_vehicle_data()` | gets a rollup of all the data request endpoints plus vehicle config |
 | `get_nearby_charging_sites()` | lists nearby Tesla-operated charging stations |
 | `get_service_scheduling_data()` | retrieves next service appointment for this vehicle |
+| `get_charge_history()` | lists vehicle charging history data points |
+| `get_user()` | gets user account data |
+| `get_user_details()` | get user account details |
 | `mobile_enabled()` | checks if mobile access is enabled in the vehicle |
 | `compose_image()` <sup>2</sup> | composes a vehicle image based on vehicle option codes |
 | `dist_units()` | converts distance or speed units to GUI setting of the vehicle |
@@ -285,8 +288,6 @@ These are the major commands:
 | SET_SENTRY_MODE | `on` | `true` or `false` |
 | REMOTE_SEAT_HEATER_REQUEST | `heater`, `level` | seat 0-5, level 0-3 |
 | REMOTE_STEERING_WHEEL_HEATER_REQUEST | `on` | `true` or `false` |
-| USER | `vin`, `deviceCountry`, `deviceLanguage` | VIN, uppercase two letter country code, supported two letter language code |
-| USER_ACCOUNT_GET_DETAILS | `vin`, `deviceCountry`, `deviceLanguage` | VIN, uppercase two letter country code, supported two letter language code |
 
 <sup>1</sup> requires car version 2021.36 or higher. CHARGING_AMPS can be set to less than 5, by calling the API twice. Special thanks to [themonomers](https://github.com/themonomers) and [purcell-lab](https://github.com/purcell-lab).
 
@@ -318,41 +319,44 @@ The source repository contains three demo applications that *optionally* use [py
 [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py) is a simple CLI application that can use almost all functionality of the TeslaPy module. The filter option allows you to select a product if more than one product is linked to your account. API output is JSON formatted:
 
 ```
-usage: cli.py [-h] -e EMAIL [-f FILTER] [-a API] [-k KEYVALUE] [-c COMMAND]
-              [-t TIMEOUT] [-p PROXY] [-l] [-o] [-v] [-w] [-g] [-b] [-n] [-m]
-              [-s] [-d] [-r] [-S] [-V] [--chrome] [--edge] [--firefox]
-              [--opera] [--safari]
+usage: cli.py [-h] -e EMAIL [-f FILTER] [-a API [KEYVALUE ...]] [-k KEYVALUE]
+              [-c COMMAND] [-t TIMEOUT] [-p PROXY] [-l] [-o] [-v] [-w] [-g]
+              [-b] [-n] [-m] [-s] [-d] [-r] [-S] [-H] [-V] [-L] [-u]
+              [--chrome] [--edge] [--firefox] [--opera] [--safari]
 
 Tesla Owner API CLI
 
 optional arguments:
-  -h, --help     show this help message and exit
-  -e EMAIL       login email
-  -f FILTER      filter on id, vin, etc.
-  -a API         API call endpoint name
-  -k KEYVALUE    API parameter (key=value)
-  -c COMMAND     product command endpoint
-  -t TIMEOUT     connect/read timeout
-  -p PROXY       proxy server URL
-  -l, --list     list all selected vehicles/batteries
-  -o, --option   list vehicle option codes
-  -v, --vin      vehicle identification number decode
-  -w, --wake     wake up selected vehicle(s)
-  -g, --get      get rollup of all vehicle data
-  -b, --battery  get detailed battery state and config
-  -n, --nearby   list nearby charging sites
-  -m, --mobile   get mobile enabled state
-  -s, --site     get current site generation data
-  -d, --debug    set logging level to debug
-  -r, --stream   receive streaming vehicle data on-change
-  -S, --service  get service self scheduling eligibility
-  -V, --verify   disable verify SSL certificate
-  -L, --logout   clear token from cache and logout
-  --chrome       use Chrome WebDriver
-  --edge         use Edge WebDriver
-  --firefox      use Firefox WebDriver
-  --opera        use Opera WebDriver
-  --safari       use Safari WebDriver
+  -h, --help            show this help message and exit
+  -e EMAIL              login email
+  -f FILTER             filter on id, vin, etc.
+  -a API [KEYVALUE ...]
+                        API call endpoint name
+  -k KEYVALUE           API parameter (key=value)
+  -c COMMAND            product command endpoint
+  -t TIMEOUT            connect/read timeout
+  -p PROXY              proxy server URL
+  -l, --list            list all selected vehicles/batteries
+  -o, --option          list vehicle option codes
+  -v, --vin             vehicle identification number decode
+  -w, --wake            wake up selected vehicle(s)
+  -g, --get             get rollup of all vehicle data
+  -b, --battery         get detailed battery state and config
+  -n, --nearby          list nearby charging sites
+  -m, --mobile          get mobile enabled state
+  -s, --site            get current site generation data
+  -d, --debug           set logging level to debug
+  -r, --stream          receive streaming vehicle data on-change
+  -S, --service         get service self scheduling eligibility
+  -H, --history         get charging history data
+  -V, --verify          disable verify SSL certificate
+  -L, --logout          clear token from cache and logout
+  -u, --user            get user account details
+  --chrome              use Chrome WebDriver
+  --edge                use Edge WebDriver
+  --firefox             use Firefox WebDriver
+  --opera               use Opera WebDriver
+  --safari              use Safari WebDriver
 ```
 
 Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py):
@@ -366,6 +370,10 @@ Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.p
 [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) is a graphical user interface using `tkinter`. API calls are performed asynchronously using threading. The GUI supports auto refreshing of the vehicle data and displays a composed vehicle image. Note that the vehicle will not go to sleep, if auto refresh is enabled. The application depends on [geopy](https://pypi.org/project/geopy/) to convert GPS coordinates to a human readable address. If Tcl/Tk GUI toolkit version of your Python installation is lower than 8.6 then [pillow](https://pypi.org/project/Pillow/) is required to display the vehicle image. User preferences, such as which web browser to use for authentication, persist upon application restart.
 
 ![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/gui.png)
+
+The vehicle charging history can be displayed in a graph as well.
+
+![](https://raw.githubusercontent.com/tdorssers/TeslaPy/master/media/charge_history.png)
 
 The demo applications can be containerized using the provided Dockerfile. A bind volume is used to store *cache.json* and *gui.ini* in the current directory on the host machine:
 

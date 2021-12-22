@@ -24,9 +24,8 @@ from teslapy import Tesla
 raw_input = vars(__builtins__).get('raw_input', input)  # Py2/3 compatibility
 
 def heading_to_str(deg):
-    lst = ['NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW',
-           'W', 'WNW', 'NW', 'NNW', 'N']
-    return lst[int(abs((deg - 11.25) % 360) / 22.5)]
+    return ['NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW',
+           'W', 'WNW', 'NW', 'NNW', 'N'][int(abs((deg - 11.25) % 360) / 22.5)]
 
 def show_vehicle_data(vehicle):
     cl = vehicle['climate_state']
@@ -140,17 +139,36 @@ def show_charging_sites(vehicle):
                          vehicle.dist_units(site['distance_miles']),
                          site['available_stalls'], site['total_stalls']))
 
+def show_charging_history(data):
+    print(data['screen_title'])
+    print('-' * 80)
+    print('%s\t%s %s' % (data['total_charged']['title'],
+                         data['total_charged']['value'],
+                         data['total_charged']['after_adornment']))
+    print('-' * 80)
+    for point in data['charging_history_graph']['data_points']:
+        if point['values'][0].get('raw_value', 0) <= 0:
+            continue
+        print('%s\t%s %s\t%s' % (point['timestamp']['display_string'],
+                                 point['values'][0]['value'],
+                                 point['values'][0]['after_adornment'],
+                                 point['values'][0]['sub_title']))
+    print('-' * 80)
+    for item in data['total_charged_breakdown'].values():
+        print('%s %s %s' % (item['value'], item['after_adornment'],
+                            item['sub_title']))
+
 def menu(vehicle):
-    lst = ['Refresh', 'Wake up', 'Nearby charging sites', 'Honk horn',
-           'Flash lights', 'Lock/unlock', 'Climate on/off', 'Set temperature',
-           'Actuate frunk/trunk', 'Remote start drive',
+    lst = ['Refresh', 'Charging history', 'Wake up', 'Nearby charging sites',
+           'Honk horn', 'Flash lights', 'Lock/unlock', 'Climate on/off',
+           'Set temperature', 'Actuate frunk/trunk', 'Remote start drive',
            'Set charge limit', 'Open/close charge port', 'Start/stop charge',
            'Seat heater request', 'Toggle media playback', 'Window control',
            'Max defrost']
     opt = 0
     while True:
         # Display vehicle info, except after nearby charging sites
-        if opt != 3:
+        if opt != 2 and opt != 4:
             if vehicle['state'] == 'online':
                 if not vehicle.mobile_enabled():
                     print('Mobile access is not enabled for this vehicle')
@@ -169,7 +187,7 @@ def menu(vehicle):
         opt = int(raw_input("Choice (0 to quit): "))
         print('-' * 80)
         # Check if vehicle is still online, otherwise force refresh
-        if opt > 2:
+        if opt > 3:
             vehicle.get_vehicle_summary()
             if vehicle['state'] != 'online':
                 opt = 1
@@ -179,59 +197,61 @@ def menu(vehicle):
         if opt == 1:
             pass
         elif opt == 2:
+            show_charging_history(vehicle.get_charge_history())
+        elif opt == 3:
             print('Please wait...')
             vehicle.sync_wake_up()
             print('-' * 80)
-        elif opt == 3:
-            show_charging_sites(vehicle)
         elif opt == 4:
-            vehicle.command('HONK_HORN')
+            show_charging_sites(vehicle)
         elif opt == 5:
-            vehicle.command('FLASH_LIGHTS')
+            vehicle.command('HONK_HORN')
         elif opt == 6:
+            vehicle.command('FLASH_LIGHTS')
+        elif opt == 7:
             if vehicle['vehicle_state']['locked']:
                 vehicle.command('UNLOCK')
             else:
                 vehicle.command('LOCK')
-        elif opt == 7:
+        elif opt == 8:
             if vehicle['climate_state']['is_climate_on']:
                 vehicle.command('CLIMATE_OFF')
             else:
                 vehicle.command('CLIMATE_ON')
-        elif opt == 8:
+        elif opt == 9:
             temp = float(raw_input("Enter temperature: "))
             vehicle.command('CHANGE_CLIMATE_TEMPERATURE_SETTING', driver_temp=temp,
                             passenger_temp=temp)
-        elif opt == 9:
+        elif opt == 10:
             which_trunk = raw_input("Which trunk (front/rear):")
             vehicle.command('ACTUATE_TRUNK', which_trunk=which_trunk)
-        elif opt == 10:
-            vehicle.command('REMOTE_START')
         elif opt == 11:
+            vehicle.command('REMOTE_START')
+        elif opt == 12:
             limit = int(raw_input("Enter charge limit: "))
             vehicle.command('CHANGE_CHARGE_LIMIT', percent=limit)
-        elif opt == 12:
+        elif opt == 13:
             if vehicle['charge_state']['charge_port_door_open']:
                 vehicle.command('CHARGE_PORT_DOOR_CLOSE')
             else:
                 vehicle.command('CHARGE_PORT_DOOR_OPEN')
-        elif opt == 13:
+        elif opt == 14:
             if vehicle['charge_state']['charging_state'].lower() == 'charging':
                 vehicle.command('STOP_CHARGE')
             else:
                 vehicle.command('START_CHARGE')
-        elif opt == 14:
+        elif opt == 15:
             heater = int(raw_input("Enter heater (0=Driver,1=Passenger,"
                                    "2=Rear left,3=Rear center,4=Rear right): "))
             level = int(raw_input("Enter level (0..3): "))
             vehicle.command('REMOTE_SEAT_HEATER_REQUEST', heater=heater,
                             level=level)
-        elif opt == 15:
-            vehicle.command('MEDIA_TOGGLE_PLAYBACK')
         elif opt == 16:
+            vehicle.command('MEDIA_TOGGLE_PLAYBACK')
+        elif opt == 17:
             command = raw_input("Enter command (close/vent):")
             vehicle.command('WINDOW_CONTROL', command=command, lat=0, lon=0)
-        elif opt == 17:
+        elif opt == 18:
             try:
                 if vehicle['climate_state']['defrost_mode']:
                     vehicle.command('MAX_DEFROST', on=False)

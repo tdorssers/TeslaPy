@@ -148,6 +148,74 @@ class DepartureDialog(Dialog):
                        'off_peak_charging_weekdays_only': self.off_peak_weekdays.get(),
                        'end_off_peak_time': int(end[0]) * 60 + int(end[1])}
 
+class ChargeHistoryDialog(Dialog):
+    """ Display dialog box with charging history graph """
+
+    def __init__(self, master, data):
+        self.data = data
+        Dialog.__init__(self, master, title='Charging History')
+
+    def body(self, master):
+        Label(master, text=self.data['screen_title'],
+              font=('TkTextFont', 12)).pack()
+        Label(master, text=self.data['total_charged']['title'],
+              anchor=W).pack(fill=X)
+        text = '%s %s' % (self.data['total_charged']['value'],
+                          self.data['total_charged']['after_adornment'])
+        Label(master, text=text, anchor=W,
+              font=('TkTextFont', 12, 'bold')).pack(fill=X)
+        # Draw graph
+        canvas = Canvas(master, width=440, height=410)
+        scale = self.data['charging_history_graph']['y_range_max'] / 320
+        for y in self.data['charging_history_graph']['horizontal_grid_lines']:
+            y_scaled = 335 - y / scale
+            canvas.create_line(5, y_scaled, 403, y_scaled, dash=(2, 2))
+        for x in self.data['charging_history_graph']['vertical_grid_lines']:
+            canvas.create_line(14 + x * 13, 15, 14 + x * 13, 335, dash=(2, 2))
+        for label in self.data['charging_history_graph']['x_labels']:
+            canvas.create_text(14 + label['raw_value'] * 13, 335,
+                               text=label['value'], anchor=NE)
+        for label in self.data['charging_history_graph']['y_labels']:
+            text = label['value'] + '\n' + label.get('after_adornment', '')
+            canvas.create_text(408, 335 - label.get('raw_value', 0) / scale,
+                               text=text.strip(), anchor=W)
+        # Stacked bars
+        x = 8
+        for point in self.data['charging_history_graph']['data_points']:
+            y = 335
+            for idx, value in enumerate(point['values']):
+                if idx == 0:
+                    if value.get('raw_value', 0) <= 0:
+                        canvas.create_line(x, y, x, y - 2, width=7)
+                    continue
+                color = {1: 'blue', 2: 'red', 3: 'grey'}.get(idx)
+                y_new = y - value.get('raw_value', 0) / scale
+                canvas.create_line(x, y, x, y_new, width=7, fill=color)
+                y = y_new - 1
+            x += 13
+        # Breakdown
+        x = 5
+        for idx, key in enumerate(self.data['total_charged_breakdown']):
+            color = {'home': 'blue', 'super_charger': 'red',
+                     'other': 'grey'}.get(key)
+            canvas.create_oval(10 + idx * 165, 370, 20 + idx * 165, 380,
+                               fill=color, outline=color)
+            item = self.data['total_charged_breakdown'][key]
+            text = '%s%s\n%s' % (item['value'], item['after_adornment'],
+                                 item['sub_title'])
+            canvas.create_text(25 + idx * 165, 375, text=text, anchor=W)
+            x_new = x + item['raw_value'] * 4.1
+            canvas.create_line(x, 400, x_new, 400, width=7, fill=color)
+            x = x_new + 1
+        canvas.pack()
+
+    def buttonbox(self):
+        box = Frame(self)
+        w = Button(box, text="OK", width=10, command=self.ok, default=ACTIVE)
+        w.pack(side=LEFT, padx=5, pady=5)
+        self.bind("<Return>", self.ok)
+        box.pack()
+
 class StatusBar(Frame):
     """ Status bar widget with transient and permanent status messages """
 
@@ -420,9 +488,9 @@ class Dashboard(Frame):
     @staticmethod
     def _heading_to_str(deg):
         """ Convert heading in degrees to a direction string """
-        lst = ['NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW',
-               'WSW', 'W', 'WNW', 'NW', 'NNW', 'N']
-        return lst[int(abs((deg - 11.25) % 360) / 22.5)]
+        return ['NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+                'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW',
+                'NNW', 'N'][int(abs((deg - 11.25) % 360) / 22.5)]
 
 def show_webview(url):
     """ Shows the SSO page in a webview and returns the redirected URL """
@@ -456,6 +524,8 @@ class App(Tk):
                                       command=self.option_codes)
         self.vehicle_menu.add_command(label='Decode VIN', state=DISABLED,
                                       command=self.decode_vin)
+        self.vehicle_menu.add_command(label='Charge history', state=DISABLED,
+                                      command=self.charge_history)
         self.vehicle_menu.add_separator()
         menu.add_cascade(label='Vehicle', menu=self.vehicle_menu)
         self.cmd_menu = Menu(menu, tearoff=0)
@@ -624,7 +694,7 @@ class App(Tk):
             self.status.text(self.login_thread.exception)
         else:
             # Remove vehicles from menu
-            self.vehicle_menu.delete(3, END)
+            self.vehicle_menu.delete(4, END)
             # Add to menu and select first vehicle
             self.selected = IntVar(value=0)
             for i, vehicle in enumerate(self.login_thread.vehicles):
@@ -634,7 +704,7 @@ class App(Tk):
                                                   command=self.select)
             if self.login_thread.vehicles:
                 # Enable show option codes and wake up command
-                for i in range(0, 2):
+                for i in range(0, 3):
                     self.vehicle_menu.entryconfig(i, state=NORMAL)
                 self.cmd_menu.entryconfig(0, state=NORMAL)
                 self.select()
@@ -657,9 +727,9 @@ class App(Tk):
         self.dashboard = Dashboard(self)
         self.dashboard.pack(pady=5, fill=X)
         # Remove vehicles from menu
-        self.vehicle_menu.delete(3, END)
+        self.vehicle_menu.delete(4, END)
         # Disable commands
-        for i in range(0, 2):
+        for i in range(0, 3):
             self.vehicle_menu.entryconfig(i, state=DISABLED)
         for i in range(0, self.cmd_menu.index(END) + 1):
             self.cmd_menu.entryconfig(i, state=DISABLED)
@@ -869,6 +939,23 @@ class App(Tk):
                 table.append(dict(text=text, row=r, column=2, sticky=W))
                 r += 1
             LabelGridDialog(self, 'Nearby Charging Sites', table)
+
+    def charge_history(self):
+        """ Creates a new thread to get charging history """
+        self.status.text('Please wait...')
+        self.charge_history_thread = ChargeHistoryThread(self.vehicle)
+        self.charge_history_thread.start()
+        self.after(100, self.process_charge_history)
+        
+    def process_charge_history(self):
+        """ Waits for thread to finish and displays history in a dialog box """
+        if self.charge_history_thread.is_alive():
+            self.after(100, self.process_charge_history)
+        elif self.charge_history_thread.exception:
+            self.status.text(self.charge_history_thread.exception)
+        else:
+            self.show_status()
+            ChargeHistoryDialog(self, self.charge_history_thread.result)
 
     def cmd(self, name, **kwargs):
         """ Creates a new thread to command vehicle """
@@ -1182,6 +1269,21 @@ class ServiceThread(threading.Thread):
     def run(self):
         try:
             self.data = self.vehicle.get_service_scheduling_data()
+        except (teslapy.RequestException, ValueError) as e:
+            self.exception = e
+
+class ChargeHistoryThread(threading.Thread):
+    """ Retrieve charging history """
+
+    def __init__(self, vehicle):
+        threading.Thread.__init__(self)
+        self.vehicle = vehicle
+        self.exception = None
+        self.result = None
+
+    def run(self):
+        try:
+            self.result = self.vehicle.get_charge_history()
         except (teslapy.RequestException, ValueError) as e:
             self.exception = e
 

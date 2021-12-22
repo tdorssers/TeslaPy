@@ -456,6 +456,22 @@ class Vehicle(JsonDict):
         return next((enabled for enabled in response['enabled_vins']
                      if enabled['vin'] == self['vin']), {})
 
+    def get_charge_history(self):
+        """ Lists vehicle charging history data points """
+        return self.api('VEHICLE_CHARGE_HISTORY')['response']
+
+    def get_user(self, device_country='US', device_language='EN'):
+        """ Retrieve user account data """
+        return self.tesla.api('USER', vin=self['vin'],
+                              deviceCountry=device_country,
+                              deviceLanguage=device_language)['data']
+
+    def get_user_details(self, device_country='US', device_language='EN'):
+        """ Retrieve user account details """
+        return self.tesla.api('USER_ACCOUNT_GET_DETAILS', vin=self['vin'],
+                              deviceCountry=device_country,
+                              deviceLanguage=device_language)['data']
+
     def mobile_enabled(self):
         """ Checks if the Mobile Access setting is enabled in the car """
         # Construct URL and send request
@@ -466,8 +482,8 @@ class Vehicle(JsonDict):
         """ Returns a PNG formatted composed vehicle image. Valid views are:
         STUD_3QTR, STUD_SEAT, STUD_SIDE, STUD_REAR and STUD_WHEEL """
         if options is None:
-            msg = 'compose_image requires options for the image to be accurate'
-            logger.warning(msg)
+            logger.warning('`compose_image` requires `options` to be set for '
+                           'an accurate image')
         # Derive model from VIN and other properties from (given) option codes
         params = {'model': 'm' + self['vin'][3].lower(),
                   'bkba_opt': 1, 'view': view, 'size': size,
@@ -555,6 +571,8 @@ class Vehicle(JsonDict):
     def command(self, name, **kwargs):
         """ Wrapper method for vehicle command response error handling """
         response = self.api(name, **kwargs)['response']
+        if 'result' not in response:
+            return response
         if not response['result']:
             raise VehicleError(response['reason'])
         return response['result']
