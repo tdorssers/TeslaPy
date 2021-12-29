@@ -52,30 +52,30 @@ The convenience method `api()` uses named endpoints listed in *endpoints.json* t
 
 The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner API, which is a pull API. The streaming API pushes vehicle data on-change after subscription. The `stream()` method takes an optional argument, a callback function that is called with one argument, a dict holding the changed data. The `Vehicle` object is always updated with the pushed data. If there are no changes within 10 seconds, the vehicle stops streaming data. The `stream()` method has two more optional arguments to control restarting. Additionally, the class implements the following methods:
 
-| Call | Description |
-| --- | --- |
-| `api()` | performs an API call to named endpoint requiring vehicle_id with optional arguments |
-| `get_vehicle_summary()` | gets the state of the vehicle (online, asleep, offline) |
-| `sync_wake_up()` | wakes up and waits for the vehicle to come online |
-| `option_code_list()` <sup>1</sup> | lists known descriptions (read from *option_codes.json*) of the vehicle option codes |
-| `get_vehicle_data()` | gets a rollup of all the data request endpoints plus vehicle config |
-| `get_nearby_charging_sites()` | lists nearby Tesla-operated charging stations |
-| `get_service_scheduling_data()` | retrieves next service appointment for this vehicle |
-| `get_charge_history()` | lists vehicle charging history data points |
-| `get_user()` | gets user account data |
-| `get_user_details()` | get user account details |
-| `mobile_enabled()` | checks if mobile access is enabled in the vehicle |
-| `compose_image()` <sup>2</sup> | composes a vehicle image based on vehicle option codes |
-| `dist_units()` | converts distance or speed units to GUI setting of the vehicle |
-| `temp_units()` | converts temperature units to GUI setting of the vehicle |
-| `decode_vin()` | decodes the vehicle identification number to a dict |
-| `command()` | wrapper around `api()` for vehicle command response error handling |
+| Call | Online | Description |
+| --- | --- | --- |
+| `api()` | Yes | performs an API call to named endpoint requiring vehicle_id with optional arguments |
+| `get_vehicle_summary()` | No | gets the state of the vehicle (online, asleep, offline) |
+| `sync_wake_up()` | No | wakes up and waits for the vehicle to come online |
+| `option_code_list()` <sup>1</sup> | No | lists known descriptions (read from *option_codes.json*) of the vehicle option codes |
+| `get_vehicle_data()` | Yes | gets a rollup of all the data request endpoints plus vehicle config |
+| `get_nearby_charging_sites()` | Yes | lists nearby Tesla-operated charging stations |
+| `get_service_scheduling_data()` | No | retrieves next service appointment for this vehicle |
+| `get_charge_history()` | No | lists vehicle charging history data points |
+| `get_user()` | No | gets user account data |
+| `get_user_details()` | No | get user account details |
+| `mobile_enabled()` | Yes | checks if mobile access is enabled in the vehicle |
+| `compose_image()` <sup>2</sup> | No | composes a vehicle image based on vehicle option codes |
+| `dist_units()` | Yes | converts distance or speed units to GUI setting of the vehicle |
+| `temp_units()` | Yes | converts temperature units to GUI setting of the vehicle |
+| `decode_vin()` | No | decodes the vehicle identification number to a dict |
+| `command()` | Yes | wrapper around `api()` for vehicle command response error handling |
 
 <sup>1</sup> Option codes appear to be deprecated. Vehicles return a generic set of codes related to a Model 3.
 
 <sup>2</sup> Pass vehicle option codes to this method or the image may not be accurate.
 
-Only `get_vehicle_summary()`, `option_code_list()`, `get_service_scheduling_data()`, `compose_image()` and `decode_vin()` are available when the vehicle is asleep or offline. These methods will not prevent your vehicle from sleeping. Other methods and API calls require the vehicle to be brought online by using `sync_wake_up()` and can prevent your vehicle from sleeping if called within too short a period.
+Only methods with *No* in the *Online* column are available when the vehicle is asleep or offline. These methods will not prevent your vehicle from sleeping. Other methods and API calls require the vehicle to be brought online by using `sync_wake_up()` and can prevent your vehicle from sleeping if called within too short a period.
 
 The `Product` class extends `dict` and stores product data of Powerwalls and solar panels returned by the API. Additionally, the class implements the following methods:
 
