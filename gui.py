@@ -204,7 +204,7 @@ class ChargeHistoryDialog(Dialog):
             text = '%s%s\n%s' % (item['value'], item['after_adornment'],
                                  item['sub_title'])
             canvas.create_text(25 + idx * 165, 375, text=text, anchor=W)
-            x_new = x + item['raw_value'] * 4.1
+            x_new = x + item.get('raw_value', 0) * 4.1
             canvas.create_line(x, 400, x_new, 400, width=7, fill=color)
             x = x_new + 1
         canvas.pack()
