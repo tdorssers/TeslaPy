@@ -1148,7 +1148,7 @@ class UpdateThread(threading.Thread):
                     osm = Nominatim(user_agent='TeslaPy',
                                     proxies=self.vehicle.tesla.proxies)
                     self.location = osm.reverse(coords).address
-                except GeocoderTimedOut:
+                except (GeocoderTimedOut, GeocoderUnavailable):
                     UpdateThread._coords = None  # Force lookup
                 except GeopyError as e:
                     UpdateThread._coords = None

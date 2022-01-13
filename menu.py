@@ -8,7 +8,7 @@ import logging
 import argparse
 import geopy.geocoders  # 1.14.0 or higher required
 from geopy.geocoders import Nominatim
-from geopy.exc import GeocoderTimedOut
+from geopy.exc import *
 try:
     import webview  # Optional pywebview 3.0 or higher
 except ImportError:
@@ -38,7 +38,7 @@ def show_vehicle_data(vehicle):
     try:
         osm = Nominatim(user_agent='TeslaPy', proxies=vehicle.tesla.proxies)
         location = osm.reverse(coords).address
-    except GeocoderTimedOut as e:
+    except (GeocoderTimedOut, GeocoderUnavailable) as e:
         logging.error(e)
         location = coords
     # Climate state
@@ -58,7 +58,7 @@ def show_vehicle_data(vehicle):
     print('-' * 80)
     # Vehicle state
     fmt = 'Vehicle Name: {:24} Odometer: {}'
-    print(fmt.format(ve['vehicle_name'], vehicle.dist_units(ve['odometer'])))
+    print(fmt.format(str(ve['vehicle_name']), vehicle.dist_units(ve['odometer'])))
     fmt = 'Car Version: {:25} Locked: {}'
     print(fmt.format(ve['car_version'], ve['locked']))
     door = ['Closed', 'Open']
