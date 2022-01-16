@@ -164,7 +164,7 @@ def menu(vehicle):
            'Set temperature', 'Actuate frunk/trunk', 'Remote start drive',
            'Set charge limit', 'Open/close charge port', 'Start/stop charge',
            'Seat heater request', 'Toggle media playback', 'Window control',
-           'Max defrost']
+           'Max defrost', 'Set charging amps']
     opt = 0
     while True:
         # Display vehicle info, except after nearby charging sites
@@ -259,6 +259,9 @@ def menu(vehicle):
                     vehicle.command('MAX_DEFROST', on=True)
             except KeyError:
                 print('Not available')
+        elif opt == 19:
+            amps = int(raw_input("Enter charging amps: "))
+            vehicle.command('CHARGING_AMPS', charging_amps=amps)
 
 def custom_auth(url):
     # Use pywebview if no web browser specified
