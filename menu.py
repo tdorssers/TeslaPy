@@ -170,7 +170,10 @@ def menu(vehicle):
         # Display vehicle info, except after nearby charging sites
         if opt != 2 and opt != 4:
             if vehicle['state'] == 'online':
-                if not vehicle.mobile_enabled():
+                if vehicle['in_service']:
+                    print('Vehicle is in service')
+                    print('-' * 80)
+                elif not vehicle.mobile_enabled():
                     print('Mobile access is not enabled for this vehicle')
                     print('-' * 80)
                 show_vehicle_data(vehicle.get_vehicle_data())
