@@ -50,6 +50,8 @@ def main():
             tesla.authenticator = custom_auth
         if args.timeout:
             tesla.timeout = args.timeout
+        if args.refresh:
+            tesla.refresh_token(refresh_token=args.refresh)
         selected = prod = tesla.vehicle_list() + tesla.battery_list()
         if args.filter:
             selected = [p for p in prod for v in p.values() if v == args.filter]
@@ -125,6 +127,7 @@ if __name__ == "__main__":
     parser.add_argument('-t', dest='timeout', type=int,
                         help='connect/read timeout')
     parser.add_argument('-p', dest='proxy', help='proxy server URL')
+    parser.add_argument('-R', dest='refresh', help='use this refresh token')
     parser.add_argument('-l', '--list', action='store_true',
                         help='list all selected vehicles/batteries')
     parser.add_argument('-o', '--option', action='store_true',

@@ -35,7 +35,7 @@ TeslaPy 2.0.0+ no longer implements headless authentication. The constructor dif
 
 TeslaPy 2.1.0+ no longer implements [RFC 7523](https://tools.ietf.org/html/rfc7523) and uses the SSO token for all API requests.
 
-To authenticate, the SSO page opens in the system's default web browser. After successful authentication, a *Page not found* will be displayed and the URL should start with `https://auth.tesla.com/void/callback`, which is the redirected URL. The class will use `stdio` to get the full redirected URL from the web browser by default. You need to copy and paste the full URL from the web browser to the console to continue aquirering API tokens. You can use a pluggable authenticator method to automate this for example using [pywebview](https://pypi.org/project/pywebview/) or [selenium](https://pypi.org/project/selenium/).
+The class will open Tesla's SSO page in the system's default web browser to authenticate. After successful authentication, a *Page not found* will be displayed and the URL should start with `https://auth.tesla.com/void/callback`, which is the redirected URL. The class will use `stdio` to get the full redirected URL from the web browser by default. You need to copy and paste the full URL from the web browser to the console to continue aquirering API tokens. You can use a pluggable authenticator method to automate this, for example using [pywebview](https://pypi.org/project/pywebview/) or [selenium](https://pypi.org/project/selenium/). It is also possible to use an SSO refresh token obtained by a 3rd party authentication app.
 
 The convenience method `api()` uses named endpoints listed in *endpoints.json* to perform calls, so the module does not require changes if the API is updated. `api()` substitutes path variables in the URI and calls `fetch_token()` when needed. Any error message returned by the API is raised as an `HTTPError` exception. Additionally, the class implements the following methods:
 
@@ -43,8 +43,8 @@ The convenience method `api()` uses named endpoints listed in *endpoints.json* t
 | --- | --- |
 | `request()` | performs API call using relative or absolute URL, serialization and error message handling |
 | `authorization_url()` | forms authorization URL with [PKCE](https://oauth.net/2/pkce/) extension |
-| `fetch_token()` | requests a SSO token using Authorization Code grant with [PKCE](https://oauth.net/2/pkce/) extension |
-| `refresh_token()` | requests a SSO token using [Refresh Token](https://oauth.net/2/grant-types/refresh-token/) grant |
+| `fetch_token()` | requests an SSO token using Authorization Code grant with [PKCE](https://oauth.net/2/pkce/) extension |
+| `refresh_token()` | requests an SSO token using [Refresh Token](https://oauth.net/2/grant-types/refresh-token/) grant |
 | `logout()` | removes token from cache, returns logout URL and optionally signs out using system's default web browser |
 | `vehicle_list()` | returns a list of Vehicle objects |
 | `battery_list()` | returns a list of Battery objects |
@@ -56,8 +56,10 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner
 | --- | --- | --- |
 | `api()` | Yes | performs an API call to named endpoint requiring vehicle_id with optional arguments |
 | `get_vehicle_summary()` | No | gets the state of the vehicle (online, asleep, offline) |
+| `available()` | No | checks whether the vehicle is online |
 | `sync_wake_up()` | No | wakes up and waits for the vehicle to come online |
-| `option_code_list()` <sup>1</sup> | No | lists known descriptions (read from *option_codes.json*) of the vehicle option codes |
+| `decode_option()` | No | lookup option code description (read from *option_codes.json*) |
+| `option_code_list()` <sup>1</sup> | No | lists known descriptions of the vehicle option codes |
 | `get_vehicle_data()` | Yes | gets a rollup of all the data request endpoints plus vehicle config |
 | `get_nearby_charging_sites()` | Yes | lists nearby Tesla-operated charging stations |
 | `get_service_scheduling_data()` | No | retrieves next service appointment for this vehicle |
@@ -119,9 +121,10 @@ The `Tesla` class implements a pluggable authentication method. If you want to i
 
 #### pywebview
 
-Example using webview component that displays the SSO page in its own native GUI window.
+Example using a webview component that displays the SSO page in its own native GUI window.
 
 ```python
+import teslapy
 import webview
 
 def custom_auth(url):
@@ -144,6 +147,7 @@ with teslapy.Tesla('elon@tesla.com', authenticator=custom_auth) as tesla:
 Example using selenium to automate web browser interaction.
 
 ```python
+import teslapy
 from selenium import webdriver
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -160,7 +164,7 @@ with teslapy.Tesla('elon@tesla.com', authenticator=custom_auth) as tesla:
 
 #### Alternative
 
-TeslaPy 2.2.0 introduced the `authorization_url()` method to get the SSO page URL and supply the redirected URL as keyword argument `authorization_response` to `fetch_token()` after authentication.
+TeslaPy 2.2.0 introduced the `authorization_url()` method to get the SSO page URL and the option to supply the redirected URL as keyword argument `authorization_response` to `fetch_token()` after authentication.
 
 ```python
 import teslapy
@@ -172,6 +176,19 @@ if not tesla.authorized:
 vehicles = tesla.vehicle_list()
 print(vehicles[0])
 tesla.close()
+```
+
+#### 3rd party authentication apps
+
+TeslaPy 2.4.0+ supports usage of a refresh token obtained by 3rd party [authentication apps](https://teslascope.com/help/generating-tokens). The refresh token is used to obtain an access token and both are cached for persistence, so you only need to supply the refresh token only once.
+
+```python
+import teslapy
+with teslapy.Tesla('elon@tesla.com') as tesla:
+    if not tesla.authorized:
+        tesla.refresh_token(refresh_token=input('Enter SSO refresh token: '))
+	vehicles = tesla.vehicle_list()
+	print(vehicles[0])
 ```
 
 #### Logout
@@ -202,6 +219,7 @@ The `Tesla` class implements a pluggable cache method. If you don't want to use 
 ```python
 import json
 import sqlite3
+import teslapy
 
 def db_load():
     con = sqlite3.connect('cache.db')
@@ -312,6 +330,8 @@ As of January 29, 2021, Tesla updated this endpoint to follow [RFC 7523](https:/
 
 As of September 3, 2021, Tesla has added ReCaptcha to the login form. This caused the headless login implemented by TeslaPy to break. If you get a `ValueError: Credentials rejected. Recaptcha is required` and you are using correct credentials then you are probably using an old version of this module.
 
+As of January 12, 2022, Tesla has deprecated the use of [RFC 7523](https://tools.ietf.org/html/rfc7523) tokens and requires the SSO tokens to be used for API access. If you get a `requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: https://owner-api.teslamotors.com/api/1/vehicles` and you are using correct credentials then you are probably using an old version of this module.
+
 ## Demo applications
 
 The source repository contains three demo applications that *optionally* use [pywebview](https://pypi.org/project/pywebview/) version 3.0 or higher or [selenium](https://pypi.org/project/selenium/) version 3.13.0 or higher to automate weblogin. Selenium 4.0.0 or higher is required for Edge Chromium.
@@ -320,8 +340,8 @@ The source repository contains three demo applications that *optionally* use [py
 
 ```
 usage: cli.py [-h] -e EMAIL [-f FILTER] [-a API [KEYVALUE ...]] [-k KEYVALUE]
-              [-c COMMAND] [-t TIMEOUT] [-p PROXY] [-l] [-o] [-v] [-w] [-g]
-              [-b] [-n] [-m] [-s] [-d] [-r] [-S] [-H] [-V] [-L] [-u]
+              [-c COMMAND] [-t TIMEOUT] [-p PROXY] [-R REFRESH] [-l] [-o] [-v]
+              [-w] [-g] [-b] [-n] [-m] [-s] [-d] [-r] [-S] [-H] [-V] [-L] [-u]
               [--chrome] [--edge] [--firefox] [--opera] [--safari]
 
 Tesla Owner API CLI
@@ -336,6 +356,7 @@ optional arguments:
   -c COMMAND            product command endpoint
   -t TIMEOUT            connect/read timeout
   -p PROXY              proxy server URL
+  -R REFRESH            use this refresh token
   -l, --list            list all selected vehicles/batteries
   -o, --option          list vehicle option codes
   -v, --vin             vehicle identification number decode
@@ -580,16 +601,10 @@ Example output of `get_service_scheduling_data()` or `python cli.py -e elon@tesl
 
 ```json
 {
-    "response": {
-        "enabled_vins": [
-            {
-                "vin": "5YJ3E111111111111",
-                "next_appt_timestamp": "2021-06-08T13:15:00",
-                "next_appt_end_timestamp": null,
-                "show_badge": false
-            }
-        ]
-    }
+    "vin": "5YJ3E111111111111",
+    "next_appt_timestamp": "2021-06-08T13:15:00",
+    "next_appt_end_timestamp": null,
+    "show_badge": false
 }
 ```
 

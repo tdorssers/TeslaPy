@@ -101,6 +101,16 @@ class Tesla(OAuth2Session):
         """ Overriddes base method to support relative URLs, serialization and
         error message handling. Raises HTTPError when an error occurs.
 
+        method: HTTP method to use.
+        url: URL to send.
+        serialize (optional): (de)serialize request/response body.
+
+        Extra keyword arguments to pass to base method using `kwargs`:
+        withhold_token (optional): perform unauthenticated request.
+        params (optional): URL parameters to append to the URL.
+        data (optional): the body to attach to the request.
+        json (optional): json for the body to attach to the request.
+
         Return type: JsonDict or String or requests.Response
         """
         if url.startswith(self._sso_base):
@@ -128,10 +138,15 @@ class Tesla(OAuth2Session):
         """ Overriddes base method to form an authorization URL with PKCE
         extension for Tesla's SSO service. Raises HTTPError.
 
+        url (optional): Authorization endpoint url.
+
+        Extra keyword arguments to pass to base method using `kwargs`:
+        state (optional): A state string for CSRF protection.
+
         Return type: String
         """
         if self.authorized:
-            return
+            return None
         # Generate code verifier and challenge for PKCE (RFC 7636)
         self.code_verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b'=')
         unencoded_digest = hashlib.sha256(self.code_verifier).digest()
@@ -152,11 +167,17 @@ class Tesla(OAuth2Session):
 
     def fetch_token(self, token_url='oauth2/v3/token', **kwargs):
         """ Overriddes base method to sign into Tesla's SSO service using
-        Authorization Code grant with PKCE extension. Raises HTTPError or
-        CustomOAuth2Error.
+        Authorization Code grant with PKCE extension. Raises CustomOAuth2Error.
+
+        token_url (optional): Token endpoint URL.
+
+        Extra keyword arguments to pass to base method using `kwargs`:
+        authorization_response (optional): Authorization response URL.
+
+        Return type: dict
         """
         if self.authorized:
-            return
+            return self.token
         if kwargs.get('authorization_response') is None:
             # Open SSO page for user authorization through redirection
             url = self.authorization_url()
@@ -164,26 +185,41 @@ class Tesla(OAuth2Session):
         # Use authorization code in redirected location to get token
         token_url = urljoin(self._sso_base, token_url)
         kwargs['include_client_id'] = True
+        kwargs.setdefault('verify', self.verify)
         kwargs.setdefault('code_verifier', self.code_verifier)
         super(Tesla, self).fetch_token(token_url, **kwargs)
         self._token_updater()  # Save new token
+        return self.token
 
     def refresh_token(self, token_url='oauth2/v3/token', **kwargs):
-        """ Overriddes base method to refresh Tesla's SSO token """
-        if not self.authorized:
-            return
+        """ Overriddes base method to refresh Tesla's SSO token. Raises
+        ValueError and ServerError.
+
+        token_url (optional): The token endpoint.
+
+        Extra keyword arguments to pass to base method using `kwargs`:
+        refresh_token (optional): The refresh_token to use.
+
+        Return type: dict
+        """
+        if not self.authorized and not kwargs.get('refresh_token'):
+            raise ValueError('`refresh_token` is not set')
         token_url = urljoin(self._sso_base, token_url)
+        kwargs.setdefault('verify', self.verify)
         super(Tesla, self).refresh_token(token_url, **kwargs)
         self._token_updater()  # Save new token
+        return self.token
 
     def logout(self, sign_out=False):
         """ Removes token from cache, returns logout URL, and optionally logs
         out of default browser.
 
+        sign_out (optional): sign out using system's default web browser.
+
         Return type: String
         """
         if not self.authorized:
-            return
+            return None
         url = self._sso_base + 'oauth2/v3/logout?client_id=' + SSO_CLIENT_ID
         # Built-in sign out method
         if sign_out:
@@ -227,7 +263,7 @@ class Tesla(OAuth2Session):
             logger.debug('Updated cache')
 
     def _token_updater(self, token=None):
-        """ Handles token persistency """
+        """ Handles token persistency. Raises ValueError. """
         cache = self.cache_loader()
         if not isinstance(cache, dict):
             raise ValueError('`cache_loader` must return dict')
@@ -254,7 +290,7 @@ class Tesla(OAuth2Session):
     def api(self, name, path_vars=None, **kwargs):
         """ Convenience method to perform API request for given endpoint name,
         with keyword arguments as parameters. Substitutes path variables in URI
-        using path_vars. Raises ValueError if endpoint name is not found.
+        using path_vars. Raises ValueError.
 
         Return type: JsonDict or String
         """
@@ -326,6 +362,7 @@ class Vehicle(JsonDict):
         super(Vehicle, self).__init__(vehicle)
         self.tesla = tesla
         self.callback = None
+        self.timestamp = time.time()
 
     def _subscribe(self, wsapp):
         """ Authenticate and select streaming telemetry columns """
@@ -406,40 +443,52 @@ class Vehicle(JsonDict):
     def get_vehicle_summary(self):
         """ Determine the state of the vehicle's various sub-systems """
         self.update(self.api('VEHICLE_SUMMARY')['response'])
+        self.timestamp = time.time()
         return self
+
+    def available(self, max_age=60):
+        """ Determine vehicle availability """
+        # Get vehicle status when aged out
+        if self.timestamp + max_age < time.time():
+            self.get_vehicle_summary()
+        return self['state'] == 'online'
 
     def sync_wake_up(self, timeout=60, interval=2, backoff=1.15):
         """ Wakes up vehicle if needed and waits for it to come online """
         logger.info('%s is %s', self['display_name'], self['state'])
-        if self['state'] != 'online':
+        if not self.available():
             self.api('WAKE_UP')  # Send wake up command
             start_time = time.time()
-            while self['state'] != 'online':
+            while True:
                 logger.debug('Waiting for %d seconds', interval)
                 time.sleep(int(interval))
-                # Get vehicle status
-                self.get_vehicle_summary()
+                if self.available(0):
+                    break
                 # Raise exception when task has timed out
-                if start_time + timeout < time.time():
+                if start_time + timeout - interval < time.time():
                     raise VehicleError('%s not woken up within %s seconds'
                                        % (self['display_name'], timeout))
                 interval *= backoff
             logger.info('%s is %s', self['display_name'], self['state'])
 
-    def option_code_list(self):
-        """ Returns a list of known option code titles """
+    @classmethod
+    def decode_option(cls, code):
+        """ Returns option code title or code if unknown """
         # Load option codes once
-        if Vehicle.codes is None:
+        if cls.codes is None:
             try:
                 data = pkgutil.get_data(__name__, 'option_codes.json')
-                Vehicle.codes = json.loads(data.decode())
+                cls.codes = json.loads(data.decode())
                 logger.debug('%d option codes loaded', len(Vehicle.codes))
             except (IOError, ValueError):
-                Vehicle.codes = {}
+                cls.codes = {}
                 logger.error('No option codes loaded')
-        # Make list of known option code titles
-        return [self.codes[c] for c in self['option_codes'].split(',')
-                if self.codes.get(c) is not None]
+        # Lookup option code title
+        return cls.codes.get(code, code)
+
+    def option_code_list(self):
+        """ Returns a list of known vehicle option code titles """
+        return [self.decode_option(c) for c in self['option_codes'].split(',')]
 
     def get_vehicle_data(self):
         """ A rollup of all the data request endpoints plus vehicle config """
@@ -473,7 +522,8 @@ class Vehicle(JsonDict):
                               deviceLanguage=device_language)['data']
 
     def mobile_enabled(self):
-        """ Checks if the Mobile Access setting is enabled in the car """
+        """ Checks if the Mobile Access setting is enabled in the car. Raises
+        HTTPError when vehicle is in service. """
         # Construct URL and send request
         uri = 'api/1/vehicles/%s/mobile_enabled' % self['id_s']
         return self.tesla.get(uri)['response']
@@ -570,9 +620,9 @@ class Vehicle(JsonDict):
 
     def command(self, name, **kwargs):
         """ Wrapper method for vehicle command response error handling """
-        response = self.api(name, **kwargs)['response']
-        if 'result' not in response:
-            return response
+        response = self.api(name, **kwargs).get('response')
+        if not response or 'result' not in response:
+            raise VehicleError(name + " doesn't seem to be a command")
         if not response['result']:
             raise VehicleError(response['reason'])
         return response['result']
