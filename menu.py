@@ -167,18 +167,19 @@ def menu(vehicle):
            'Max defrost', 'Set charging amps']
     opt = 0
     while True:
-        # Display vehicle info, except after nearby charging sites
-        if opt != 2 and opt != 4:
-            if vehicle['state'] == 'online':
-                if vehicle['in_service']:
-                    print('Vehicle is in service')
-                    print('-' * 80)
-                elif not vehicle.mobile_enabled():
-                    print('Mobile access is not enabled for this vehicle')
-                    print('-' * 80)
+        if vehicle['state'] == 'online':
+            if vehicle['in_service']:
+                print('Vehicle is in service')
+                print('-' * 80)
+            elif not vehicle.mobile_enabled():
+                print('Mobile access is not enabled for this vehicle')
+                print('-' * 80)
+                break
+            # Display vehicle info, except after charging history/sites
+            if opt != 2 and opt != 4:
                 show_vehicle_data(vehicle.get_vehicle_data())
-            else:
-                print('Wake up vehicle to use remote functions/telemetry')
+        else:
+            print('Wake up vehicle to use remote functions/telemetry')
         print('-' * 80)
         # Display 3 column menu
         for i, option in enumerate(lst, 1):
@@ -192,7 +193,7 @@ def menu(vehicle):
         # Check if vehicle is still online, otherwise force refresh
         if opt > 3:
             vehicle.get_vehicle_summary()
-            if vehicle['state'] != 'online':
+            if vehicle['state'] != 'online' or vehicle['in_service']:
                 opt = 1
         # Perform menu option
         if opt == 0:
