@@ -61,10 +61,11 @@ def show_vehicle_data(vehicle):
     print(fmt.format(str(ve['vehicle_name']), vehicle.dist_units(ve['odometer'])))
     fmt = 'Car Version: {:25} Locked: {}'
     print(fmt.format(ve['car_version'], ve['locked']))
-    door = ['Closed', 'Open']
+    door = {0: 'Closed', 1: 'Open'}
     fmt = 'Driver/Pass Front Door: {:14} Driver/Pass Rear Door: {}/{}'
-    print(fmt.format('%s/%s' % (door[bool(ve['df'])], door[bool(ve['pf'])]),
-                     door[bool(ve['dr'])], door[bool(ve['pr'])]))
+    print(fmt.format('%s/%s' % (door.get(bool(ve['df'])),
+                                door.get(bool(ve['pf']))),
+                     door.get(bool(ve['dr'])), door.get(bool(ve['pr']))))
     window = {0: 'Closed', 1: 'Venting', 2: 'Open'}
     fmt = 'Drvr/Pass Front Window: {:14} Driver/Pass Rear Window: {}/{}'
     print(fmt.format('%s/%s' % (window.get(ve.get('fd_window')),
@@ -72,7 +73,7 @@ def show_vehicle_data(vehicle):
                      window.get(ve.get('rd_window')),
                      window.get(ve.get('rp_window'))))
     fmt = 'Front Trunk: {:25} Rear Trunk: {}'
-    print(fmt.format(door[ve['ft']], door[ve['rt']]))
+    print(fmt.format(door.get(ve['ft']), door.get(ve['rt'])))
     fmt = 'Remote Start: {:24} Is User Present: {}'
     print(fmt.format(str(ve['remote_start']), str(ve['is_user_present'])))
     fmt = 'Speed Limit Mode: {:20} Current Limit: {}'
