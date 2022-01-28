@@ -119,6 +119,11 @@
     "URI": "api/1/vehicles/{vehicle_id}/command/set_charge_limit",
     "AUTH": true
   },
+  "SET_VEHICLE_NAME": {
+    "TYPE": "POST",
+    "URI": "api/1/vehicles/{vehicle_id}/command/set_vehicle_name",
+    "AUTH": true
+  },
   "CHANGE_CHARGE_MAX": {
     "TYPE": "POST",
     "URI": "api/1/vehicles/{vehicle_id}/command/charge_max_range",
@@ -455,9 +460,19 @@
     "URI": "api/1/energy_sites/{site_id}/site_info",
     "AUTH": true
   },
+  "RATE_TARIFFS": {
+    "TYPE": "GET",
+    "URI": "api/1/energy_sites/rate_tariffs",
+    "AUTH": true
+  },
   "SITE_TARIFFS": {
     "TYPE": "GET",
     "URI": "api/1/energy_sites/{site_id}/tariff_rates",
+    "AUTH": true
+  },
+  "SITE_TARIFF": {
+    "TYPE": "GET",
+    "URI": "api/1/energy_sites/{site_id}/tariff_rate",
     "AUTH": true
   },
   "HISTORY_DATA": {
@@ -568,6 +583,11 @@
   "SEND_SC_TO_VEHICLE": {
     "TYPE": "POST",
     "URI": "api/1/vehicles/{vehicle_id}/command/navigation_sc_request",
+    "AUTH": true
+  },
+  "SEND_GPS_TO_VEHICLE": {
+    "TYPE": "POST",
+    "URI": "api/1/vehicles/{vehicle_id}/command/navigation_gps_request",
     "AUTH": true
   },
   "REMOTE_SEAT_HEATER_REQUEST": {
@@ -1355,6 +1375,11 @@
     "URI": "commerce-api/checkout/auditrecords/v1/{locale}",
     "AUTH": true
   },
+  "COMMERCE_CONTENT": {
+    "TYPE": "GET",
+    "URI": "commerce-api/content/v2?file={fileName}",
+    "AUTH": true
+  },
   "MATTERMOST": {
     "TYPE": "POST",
     "URI": "Just a placeholder",
@@ -1603,6 +1628,46 @@
   "GET_MANAGE_DRIVER_FLAG": {
     "TYPE": "GET",
     "URI": "bff/v2/mobile-app/feature-flag/TAO-14025-add-driver-flow",
+    "AUTH": true
+  },
+  "CONTACT_US_CLASSIFICATION": {
+    "TYPE": "POST",
+    "URI": "bff/v2/mobile-app/contact-us/classify-narrative",
+    "AUTH": true
+  },
+  "CONTACT_US_CONTENT_CATALOG": {
+    "TYPE": "GET",
+    "URI": "mobile-app/contact-us/content-catalog",
+    "AUTH": true
+  },
+  "VEHICLE_PSEUDONYM_DIRECTIVES": {
+    "TYPE": "POST",
+    "URI": "api/1/directives/products",
+    "AUTH": true
+  },
+  "VEHICLE_UPLOAD_PSEUDONYM_DIRECTIVE": {
+    "TYPE": "POST",
+    "URI": "api/1/directives/discover",
+    "AUTH": true
+  },
+  "VEHICLE_COMPLETE_PSEUDONYM_DIRECTIVE": {
+    "TYPE": "POST",
+    "URI": "api/1/directives/products/complete",
+    "AUTH": true
+  },
+  "OWNERSHIP_VEHICLE_SPECS_REQUEST": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/ownership/vehicle-details",
+    "AUTH": true
+  },
+  "OWNERSHIP_WARRANTY_DETAILS_REQUEST": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/ownership/warranty-details",
+    "AUTH": true
+  },
+  "COMMERCE_FEATURE_FLAG": {
+    "TYPE": "GET",
+    "URI": "mobile-app/commerce/feature-flags",
     "AUTH": true
   }
 }
