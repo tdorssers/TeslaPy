@@ -56,7 +56,7 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner
 | --- | --- | --- |
 | `api()` | Yes | performs an API call to named endpoint requiring vehicle_id with optional arguments |
 | `get_vehicle_summary()` | No | gets the state of the vehicle (online, asleep, offline) |
-| `available()` | No | checks whether the vehicle is online |
+| `available()` | No | checks if the vehicle is online based on cached data or refreshed status when aged out |
 | `sync_wake_up()` | No | wakes up and waits for the vehicle to come online |
 | `decode_option()` | No | lookup option code description (read from *option_codes.json*) |
 | `option_code_list()` <sup>1</sup> | No | lists known descriptions of the vehicle option codes |
@@ -66,7 +66,7 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner
 | `get_charge_history()` | No | lists vehicle charging history data points |
 | `get_user()` | No | gets user account data |
 | `get_user_details()` | No | get user account details |
-| `mobile_enabled()` | Yes | checks if mobile access is enabled in the vehicle |
+| `mobile_enabled()` | Yes | checks if the Mobile Access setting is enabled in the car |
 | `compose_image()` <sup>2</sup> | No | composes a vehicle image based on vehicle option codes |
 | `dist_units()` | Yes | converts distance or speed units to GUI setting of the vehicle |
 | `temp_units()` | Yes | converts temperature units to GUI setting of the vehicle |
@@ -113,6 +113,12 @@ with teslapy.Tesla('elon@tesla.com') as tesla:
 	vehicles[0].sync_wake_up()
 	vehicles[0].command('ACTUATE_TRUNK', which_trunk='front')
 	print(vehicles[0].get_vehicle_data()['vehicle_state']['car_version'])
+```
+
+TeslaPy 2.4.0+ automatically calls `get_vehicle_data()` when a key is not found, allowing you to omit an initial `get_vehicle_data()` call:
+
+```python
+print(vehicles[0]['vehicle_state']['car_version'])
 ```
 
 ### Authentication
