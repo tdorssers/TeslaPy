@@ -306,6 +306,10 @@ class Dashboard(Frame):
                      ('sentry_mode', 'Sentry Mode:'),
                      ('valet_mode', 'Valet Mode:'),
                      ('valet_pin', 'Valet Pin Set:'),
+                     ('tmps_fl', 'TMPS Front Left:'),
+                     ('tmps_fr', 'TMPS Front Right:'),
+                     ('tmps_rl', 'TMPS Rear Left:'),
+                     ('tmps_rr', 'TMPS Rear Right:'),
                      ('sw_update', 'Software Update:'),
                      ('sw_duration', 'Expected Duration:'),
                      ('update_ver', 'Update Version:'),
@@ -350,13 +354,16 @@ class Dashboard(Frame):
         # Vehicle config on left frame
         self.layout(left, 'Vehicle Config',
                     [('car_type', 'Car Type:'),
+                     ('trim_badging', 'Trim Badging:'),
+                     ('air_suspension', 'Has Air Suspension:'),
                      ('exterior_color', 'Exterior Color:'),
                      ('wheel_type', 'Wheel Type:'),
                      ('spoiler_type', 'Spoiler Type:'),
                      ('roof_color', 'Roof Color:'),
                      ('charge_port_type', 'Charge Port Type:')])
-        # Service on left frame
-        self.layout(left, 'Service', [('next_appt', 'Next appointment:')])
+        # Service on right frame
+        self.layout(right, 'Service', [('next_appt', 'Next appointment:'),
+                                      ('in_service', 'In service:')])
 
     def layout(self, master, text, labels):
         """ Group four columns of widgets from list of tupels """
@@ -392,18 +399,18 @@ class Dashboard(Frame):
         self.odometer.text(app.vehicle.dist_units(ve['odometer']))
         self.car_version.text(ve['car_version'])
         self.locked.text(str(ve['locked']))
-        door = ['Closed', 'Open']
-        self.df.text(door[bool(ve['df'])])
-        self.pf.text(door[bool(ve['pf'])])
-        self.dr.text(door[bool(ve['dr'])])
-        self.pr.text(door[bool(ve['pr'])])
+        door = {0: 'Closed', 1: 'Open'}
+        self.df.text(door.get(ve['df']))
+        self.pf.text(door.get(ve['pf']))
+        self.dr.text(door.get(ve['dr']))
+        self.pr.text(door.get(ve['pr']))
         window = {0: 'Closed', 1: 'Venting', 2: 'Open'}
         self.fd.text(window.get(ve.get('fd_window')))
         self.fp.text(window.get(ve.get('fp_window')))
         self.rd.text(window.get(ve.get('rd_window')))
         self.rp.text(window.get(ve.get('rp_window')))
-        self.ft.text(door[bool(ve['ft'])])
-        self.rt.text(door[bool(ve['rt'])])
+        self.ft.text(door.get(ve['ft']))
+        self.rt.text(door.get(ve['rt']))
         self.remote_start.text(str(ve['remote_start']))
         self.user_present.text(str(ve['is_user_present']))
         self.speed_limit.text(str(ve['speed_limit_mode']['active']))
@@ -413,6 +420,10 @@ class Dashboard(Frame):
         self.sentry_mode.text(str(ve.get('sentry_mode')))
         self.valet_mode.text(str(ve['valet_mode']))
         self.valet_pin.text(str(not 'valet_pin_needed' in ve))
+        self.tmps_fl.text(ve.get('tpms_pressure_fl'))
+        self.tmps_fr.text(ve.get('tpms_pressure_fr'))
+        self.tmps_rl.text(ve.get('tpms_pressure_rl'))
+        self.tmps_rr.text(ve.get('tpms_pressure_rr'))
         status = ve['software_update']['status'] or 'unavailable'
         wt = ve['software_update'].get('warning_time_remaining_ms', 0) / 1000
         status += ' in {:02.0f}:{:02.0f}'.format(*divmod(wt, 60)) if wt else ''
@@ -479,6 +490,8 @@ class Dashboard(Frame):
         self.preconditioning_times.text(ch.get('preconditioning_times'))
         # Vehicle config
         self.car_type.text(co['car_type'])
+        self.trim_badging.text(co.get('trim_badging'))
+        self.air_suspension.text(str(co['has_air_suspension']))
         self.exterior_color.text(co['exterior_color'])
         self.wheel_type.text(co['wheel_type'])
         self.spoiler_type.text(co['spoiler_type'])
@@ -783,6 +796,7 @@ class App(Tk):
         """ Display vehicle state """
         self.status.text('%s is %s' % (self.vehicle['display_name'],
                                        self.vehicle['state']))
+        self.dashboard.in_service.text(str(self.vehicle['in_service']))
         # Enable/disable commands
         state = NORMAL if self.vehicle['state'] == 'online' else DISABLED
         for i in range(1, self.cmd_menu.index(END) + 1):

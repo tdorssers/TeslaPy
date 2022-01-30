@@ -63,9 +63,8 @@ def show_vehicle_data(vehicle):
     print(fmt.format(ve['car_version'], ve['locked']))
     door = {0: 'Closed', 1: 'Open'}
     fmt = 'Driver/Pass Front Door: {:14} Driver/Pass Rear Door: {}/{}'
-    print(fmt.format('%s/%s' % (door.get(bool(ve['df'])),
-                                door.get(bool(ve['pf']))),
-                     door.get(bool(ve['dr'])), door.get(bool(ve['pr']))))
+    print(fmt.format('%s/%s' % (door.get(ve['df']), door.get(ve['pf'])),
+                     door.get(ve['dr']), door.get(ve['pr'])))
     window = {0: 'Closed', 1: 'Venting', 2: 'Open'}
     fmt = 'Drvr/Pass Front Window: {:14} Driver/Pass Rear Window: {}/{}'
     print(fmt.format('%s/%s' % (window.get(ve.get('fd_window')),
