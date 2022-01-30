@@ -264,11 +264,10 @@ class Tesla(OAuth2Session):
 
     def _token_updater(self, token=None):
         """ Handles token persistency. Raises ValueError. """
+        self.token = token or self.token
         cache = self.cache_loader()
         if not isinstance(cache, dict):
             raise ValueError('`cache_loader` must return dict')
-        if token:
-            self.token = token
         # Write token to cache
         if self.authorized:
             cache[self.email] = {'url': self._sso_base, 'sso': self.token}
@@ -447,14 +446,15 @@ class Vehicle(JsonDict):
         return self
 
     def available(self, max_age=60):
-        """ Determine vehicle availability """
-        # Get vehicle status when aged out
+        """ Determine vehicle availability based on the cached data or the
+        refreshed status when aged out. """
         if self.timestamp + max_age < time.time():
             self.get_vehicle_summary()
         return self['state'] == 'online'
 
     def sync_wake_up(self, timeout=60, interval=2, backoff=1.15):
-        """ Wakes up vehicle if needed and waits for it to come online """
+        """ Wakes up vehicle if needed and waits for it to come online. Raises
+        VehicleError if not woken up within timeout. """
         logger.info('%s is %s', self['display_name'], self['state'])
         if not self.available():
             self.api('WAKE_UP')  # Send wake up command
@@ -473,7 +473,7 @@ class Vehicle(JsonDict):
 
     @classmethod
     def decode_option(cls, code):
-        """ Returns option code title or code if unknown """
+        """ Returns option code title or None if unknown """
         # Load option codes once
         if cls.codes is None:
             try:
@@ -484,19 +484,23 @@ class Vehicle(JsonDict):
                 cls.codes = {}
                 logger.error('No option codes loaded')
         # Lookup option code title
-        return cls.codes.get(code, code)
+        return cls.codes.get(code)
 
     def option_code_list(self):
         """ Returns a list of known vehicle option code titles """
-        return [self.decode_option(c) for c in self['option_codes'].split(',')]
+        return list(filter(None, [self.decode_option(code)
+                                  for code in self['option_codes'].split(',')]))
 
     def get_vehicle_data(self):
-        """ A rollup of all the data request endpoints plus vehicle config """
+        """ A rollup of all the data request endpoints plus vehicle config.
+        Raises HTTPError when vehicle is not online. """
         self.update(self.api('VEHICLE_DATA')['response'])
+        self.timestamp = time.time()
         return self
 
     def get_nearby_charging_sites(self):
-        """ Lists nearby Tesla-operated charging stations """
+        """ Lists nearby Tesla-operated charging stations. Raises HTTPError when
+        vehicle is in service or not online. """
         return self.api('NEARBY_CHARGING_SITES')['response']
 
     def get_service_scheduling_data(self):
@@ -523,7 +527,7 @@ class Vehicle(JsonDict):
 
     def mobile_enabled(self):
         """ Checks if the Mobile Access setting is enabled in the car. Raises
-        HTTPError when vehicle is in service. """
+        HTTPError when vehicle is in service or not online. """
         # Construct URL and send request
         uri = 'api/1/vehicles/%s/mobile_enabled' % self['id_s']
         return self.tesla.get(uri)['response']
@@ -545,23 +549,27 @@ class Vehicle(JsonDict):
         response.raise_for_status()  # Raise HTTPError, if one occurred
         return response.content
 
+    def __missing__(self, key):
+        """ Get all the data request endpoints on-the-fly. Raises KeyError. """
+        if key not in self.get_vehicle_data():
+            raise KeyError(key)
+        return self[key]
+
     def dist_units(self, miles, speed=False):
-        """ Format and convert distance or speed to GUI setting units """
+        """ Format and convert distance or speed to GUI setting units. Raises
+        HTTPError when vehicle is not online. """
         if miles is None:
             return None
-        if 'gui_settings' not in self:
-            self.get_vehicle_data()
         # Lookup GUI settings of the vehicle
         if 'km' in self['gui_settings']['gui_distance_units']:
             return '%.1f %s' % (miles * 1.609344, 'km/h' if speed else 'km')
         return '%.1f %s' % (miles, 'mph' if speed else 'mi')
 
     def temp_units(self, celcius):
-        """ Format and convert temperature to GUI setting units """
+        """ Format and convert temperature to GUI setting units. Raises
+        HTTPError when vehicle is not online. """
         if celcius is None:
             return None
-        if 'gui_settings' not in self:
-            self.get_vehicle_data()
         # Lookup GUI settings of the vehicle
         if 'F' in self['gui_settings']['gui_temperature_units']:
             return '%.1f F' % (celcius * 1.8 + 32)
@@ -619,7 +627,8 @@ class Vehicle(JsonDict):
                         drive_unit=drive, year=str(year), plant_code=plant)
 
     def command(self, name, **kwargs):
-        """ Wrapper method for vehicle command response error handling """
+        """ Wrapper method for vehicle command response error handling. Raises
+        VehicleError or HTTPError. """
         response = self.api(name, **kwargs).get('response')
         if not response or 'result' not in response:
             raise VehicleError(name + " doesn't seem to be a command")
