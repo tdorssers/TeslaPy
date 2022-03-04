@@ -210,6 +210,11 @@ class Tesla(OAuth2Session):
         self._token_updater()  # Save new token
         return self.token
 
+    def close(self):
+        """ Overriddes base method to remove all adapters on close """
+        super(Tesla, self).close()
+        self.adapters.clear()
+        
     def logout(self, sign_out=False):
         """ Removes token from cache, returns logout URL, and optionally logs
         out of default browser.
