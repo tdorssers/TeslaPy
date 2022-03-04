@@ -156,6 +156,8 @@ class ChargeHistoryDialog(Dialog):
         Dialog.__init__(self, master, title='Charging History')
 
     def body(self, master):
+        if not isinstance(self.data, dict):
+            return
         Label(master, text=self.data['screen_title'],
               font=('TkTextFont', 12)).pack()
         Label(master, text=self.data['total_charged']['title'],

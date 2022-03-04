@@ -63,11 +63,11 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner
 | `get_vehicle_data()` | Yes | gets a rollup of all the data request endpoints plus vehicle config |
 | `get_nearby_charging_sites()` | Yes | lists nearby Tesla-operated charging stations |
 | `get_service_scheduling_data()` | No | retrieves next service appointment for this vehicle |
-| `get_charge_history()` | No | lists vehicle charging history data points |
+| `get_charge_history()` <sup>2</sup> | No | lists vehicle charging history data points |
 | `get_user()` | No | gets user account data |
 | `get_user_details()` | No | get user account details |
 | `mobile_enabled()` | Yes | checks if the Mobile Access setting is enabled in the car |
-| `compose_image()` <sup>2</sup> | No | composes a vehicle image based on vehicle option codes |
+| `compose_image()` <sup>3</sup> | No | composes a vehicle image based on vehicle option codes |
 | `dist_units()` | Yes | converts distance or speed units to GUI setting of the vehicle |
 | `temp_units()` | Yes | converts temperature units to GUI setting of the vehicle |
 | `decode_vin()` | No | decodes the vehicle identification number to a dict |
@@ -75,7 +75,9 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner
 
 <sup>1</sup> Option codes appear to be deprecated. Vehicles return a generic set of codes related to a Model 3.
 
-<sup>2</sup> Pass vehicle option codes to this method or the image may not be accurate.
+<sup>2</sup> Car software version 2021.44.25 or higher required, Data Sharing must be enabled and you must be the primary vehicle owner.
+
+<sup>3</sup> Pass vehicle option codes to this method or the image may not be accurate.
 
 Only methods with *No* in the *Online* column are available when the vehicle is asleep or offline. These methods will not prevent your vehicle from sleeping. Other methods and API calls require the vehicle to be brought online by using `sync_wake_up()` and can prevent your vehicle from sleeping if called within too short a period.
 
