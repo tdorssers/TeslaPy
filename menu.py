@@ -298,7 +298,8 @@ def main():
         ctx.verify_mode = ssl.CERT_NONE
         geopy.geocoders.options.default_ssl_context = ctx
     email = raw_input('Enter email: ')
-    with Tesla(email, verify=args.verify, proxy=args.proxy) as tesla:
+    with Tesla(email, verify=args.verify, proxy=args.proxy,
+               sso_base_url=args.url) as tesla:
         if (webdriver and args.web is not None) or webview:
             tesla.authenticator = custom_auth
         if args.timeout:
@@ -322,6 +323,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Tesla Owner API Menu')
     parser.add_argument('-d', '--debug', action='store_true',
                         help='set logging level to debug')
+    parser.add_argument('--url', help='SSO service base URL')
     parser.add_argument('--verify', action='store_false',
                         help='disable verify SSL certificate')
     parser.add_argument('--timeout', type=int, help='connect/read timeout')

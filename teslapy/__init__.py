@@ -60,12 +60,16 @@ class Tesla(OAuth2Session):
     cache_file: (optional) Path to cache file used by default loader and dumper.
     cache_loader: (optional) Function that returns the cache dict.
     cache_dumper: (optional) Function with one argument, the cache dict.
+    sso_base_url: (optional) URL of SSO service, set to `https://auth.tesla.cn/`
+                  if your email is registered in another region.
+    kwargs: (optional) Extra arguments for the Session constructor.
     """
 
     def __init__(self, email, verify=True, proxy=None, retry=0, timeout=10,
                  user_agent=__name__ + '/' + __version__, authenticator=None,
-                 cache_file='cache.json', cache_loader=None, cache_dumper=None):
-        super(Tesla, self).__init__(client_id=SSO_CLIENT_ID)
+                 cache_file='cache.json', cache_loader=None, cache_dumper=None,
+                 sso_base_url=None, **kwargs):
+        super(Tesla, self).__init__(client_id=SSO_CLIENT_ID, **kwargs)
         if not email:
             raise ValueError('`email` is not set')
         self.email = email
@@ -75,12 +79,13 @@ class Tesla(OAuth2Session):
         self.cache_file = cache_file
         self.timeout = timeout
         self.endpoints = {}
-        self._sso_base = SSO_BASE_URL
+        self.sso_base_url = sso_base_url or SSO_BASE_URL
+        self._auto_refresh_url = None
         self.code_verifier = None
         # Set OAuth2Session properties
         self.scope = ('openid', 'email', 'offline_access')
         self.redirect_uri = SSO_BASE_URL + 'void/callback'
-        self.auto_refresh_url = self._sso_base + 'oauth2/v3/token'
+        self.auto_refresh_url = 'oauth2/v3/token'
         self.auto_refresh_kwargs = {'client_id': SSO_CLIENT_ID}
         self.token_updater = self._token_updater
         self.mount('https://', requests.adapters.HTTPAdapter(max_retries=retry))
@@ -91,11 +96,23 @@ class Tesla(OAuth2Session):
             self.trust_env = False
             self.proxies.update({'https': proxy})
         self._token_updater()  # Try to read token from cache
+        logger.debug('Using SSO service URL %s', self.sso_base_url)
 
     @property
     def expires_at(self):
         """ Returns unix time when token needs refreshing """
         return self.token.get('expires_at')
+
+    @property
+    def auto_refresh_url(self):
+        """ Returns refresh token endpoint URL for auto-renewal access token """
+        url = urljoin(self.sso_base_url, self._auto_refresh_url)
+        return url if self._auto_refresh_url else None
+
+    @auto_refresh_url.setter
+    def auto_refresh_url(self, url):
+        """ Sets refresh token endpoint URL for auto-renewal of access token """
+        self._auto_refresh_url = url
 
     def request(self, method, url, serialize=True, **kwargs):
         """ Overriddes base method to support relative URLs, serialization and
@@ -113,7 +130,7 @@ class Tesla(OAuth2Session):
 
         Return type: JsonDict or String or requests.Response
         """
-        if url.startswith(self._sso_base):
+        if url.startswith(self.sso_base_url):
             return super(Tesla, self).request(method, url, **kwargs)
         # Construct URL and send request with optional serialized data
         url = urljoin(BASE_URL, url)
@@ -152,18 +169,10 @@ class Tesla(OAuth2Session):
         unencoded_digest = hashlib.sha256(self.code_verifier).digest()
         code_challenge = base64.urlsafe_b64encode(unencoded_digest).rstrip(b'=')
         # Prepare for OAuth 2 Authorization Code Grant flow
-        url = urljoin(self._sso_base, url)
+        url = urljoin(self.sso_base_url, url)
         kwargs['code_challenge'] = code_challenge
         kwargs['code_challenge_method'] = 'S256'
-        kwargs['login_hint'] = self.email
-        url, _ = super(Tesla, self).authorization_url(url, **kwargs)
-        # Detect account's registered region
-        response = self.get(url)
-        response.raise_for_status()  # Raise HTTPError, if one occurred
-        if response.history:
-            self._sso_base = urljoin(response.url, '/')
-            self.auto_refresh_url = self._sso_base + 'oauth2/v3/token'
-        return response.url
+        return super(Tesla, self).authorization_url(url, **kwargs)[0]
 
     def fetch_token(self, token_url='oauth2/v3/token', **kwargs):
         """ Overriddes base method to sign into Tesla's SSO service using
@@ -183,7 +192,7 @@ class Tesla(OAuth2Session):
             url = self.authorization_url()
             kwargs['authorization_response'] = self.authenticator(url)
         # Use authorization code in redirected location to get token
-        token_url = urljoin(self._sso_base, token_url)
+        token_url = urljoin(self.sso_base_url, token_url)
         kwargs['include_client_id'] = True
         kwargs.setdefault('verify', self.verify)
         kwargs.setdefault('code_verifier', self.code_verifier)
@@ -204,7 +213,7 @@ class Tesla(OAuth2Session):
         """
         if not self.authorized and not kwargs.get('refresh_token'):
             raise ValueError('`refresh_token` is not set')
-        token_url = urljoin(self._sso_base, token_url)
+        token_url = urljoin(self.sso_base_url, token_url)
         kwargs.setdefault('verify', self.verify)
         super(Tesla, self).refresh_token(token_url, **kwargs)
         self._token_updater()  # Save new token
@@ -214,7 +223,7 @@ class Tesla(OAuth2Session):
         """ Overriddes base method to remove all adapters on close """
         super(Tesla, self).close()
         self.adapters.clear()
-        
+
     def logout(self, sign_out=False):
         """ Removes token from cache, returns logout URL, and optionally logs
         out of default browser.
@@ -225,7 +234,7 @@ class Tesla(OAuth2Session):
         """
         if not self.authorized:
             return None
-        url = self._sso_base + 'oauth2/v3/logout?client_id=' + SSO_CLIENT_ID
+        url = self.sso_base_url + 'oauth2/v3/logout?client_id=' + SSO_CLIENT_ID
         # Built-in sign out method
         if sign_out:
             if webbrowser.open(url):
@@ -275,12 +284,11 @@ class Tesla(OAuth2Session):
             raise ValueError('`cache_loader` must return dict')
         # Write token to cache
         if self.authorized:
-            cache[self.email] = {'url': self._sso_base, 'sso': self.token}
+            cache[self.email] = {'url': self.sso_base_url, 'sso': self.token}
             self.cache_dumper(cache)
         # Read token from cache
         elif self.email in cache:
-            self._sso_base = cache[self.email].get('url', SSO_BASE_URL)
-            self.auto_refresh_url = self._sso_base + 'oauth2/v3/token'
+            self.sso_base_url = cache[self.email].get('url', SSO_BASE_URL)
             self.token = cache[self.email].get('sso', {})
             if not self.token:
                 return

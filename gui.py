@@ -607,6 +607,7 @@ class App(Tk):
         opt_menu.add_checkbutton(label='Verify SSL', variable=self.verify,
                                  command=self.apply_settings)
         opt_menu.add_command(label='Set proxy URL', command=self.set_proxy)
+        opt_menu.add_command(label='Set SSO base URL', command=self.set_sso_url)
         web_menu = Menu(menu, tearoff=0)
         opt_menu.add_cascade(label='Web browser', menu=web_menu,
                              state=NORMAL if webdriver else DISABLED)
@@ -631,13 +632,13 @@ class App(Tk):
         self.status.text('Not logged in')
         # Read config
         config = RawConfigParser()
-        self.email = ''
-        self.proxy = ''
+        self.email, self.proxy, self.sso_url = '', '', ''
         try:
             config.read('gui.ini')
             self.email = config.get('app', 'email')
             self.verify.set(config.get('app', 'verify'))
             self.proxy = config.get('app', 'proxy')
+            self.sso_url = config.get('app', 'sso_url')
             self.browser.set(config.get('app', 'browser'))
             self.selenium.set(config.get('app', 'selenium'))
             self.auto_refresh.set(config.get('display', 'auto_refresh'))
@@ -694,7 +695,7 @@ class App(Tk):
                                   status_forcelist=(500, 502, 503, 504))
             tesla = teslapy.Tesla(self.email, authenticator=self.custom_auth,
                                   verify=self.verify.get(), proxy=self.proxy,
-                                  retry=retry)
+                                  retry=retry, sso_base_url=self.sso_url)
             # Create and start login thread. Check thread status after 100 ms
             self.login_thread = LoginThread(tesla)
             self.login_thread.start()
@@ -736,7 +737,8 @@ class App(Tk):
             pool.apply(show_webview, (self.login_thread.tesla.logout(), ))
         # Do not sign out if selenium is available and selected
         self.login_thread.tesla.logout(not (webdriver and self.selenium.get()))
-        del self.vehicle
+        if hasattr(self, 'vehicle'):
+            del self.vehicle
         # Redraw dashboard
         self.dashboard.pack_forget()
         self.dashboard = Dashboard(self)
@@ -1108,6 +1110,11 @@ class App(Tk):
         temp = askstring('Set', 'Proxy URL', initialvalue=self.proxy)
         self.proxy = '' if temp is None else temp
 
+    def set_sso_url(self):
+        """ Set SSO service base URL """
+        temp = askstring('Set', 'SSO service base URL', initialvalue=self.sso_url)
+        self.sso_url = '' if temp is None else temp
+
     def save_and_quit(self):
         """ Save settings to file and quit app """
         config = RawConfigParser()
@@ -1117,6 +1124,7 @@ class App(Tk):
             config.set('app', 'email', self.email)
             config.set('app', 'proxy', self.proxy)
             config.set('app', 'verify', self.verify.get())
+            config.set('app', 'sso_url', self.sso_url)
             config.set('app', 'browser', self.browser.get())
             config.set('app', 'selenium', self.selenium.get())
             config.set('display', 'auto_refresh', self.auto_refresh.get())

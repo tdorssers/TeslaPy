@@ -32,6 +32,7 @@ TeslaPy 2.0.0+ no longer implements headless authentication. The constructor dif
 | `cache_file` | (optional) path to cache file used by default loader and dumper |
 | `cache_loader` | (optional) function that returns the cache dict |
 | `cache_dumper` | (optional) function with one argument, the cache dict |
+| `sso_base_url` | (optional) URL of SSO service, set to `https://auth.tesla.cn/` if your email is registered in another region |
 
 TeslaPy 2.1.0+ no longer implements [RFC 7523](https://tools.ietf.org/html/rfc7523) and uses the SSO token for all API requests.
 
@@ -340,6 +341,8 @@ As of September 3, 2021, Tesla has added ReCaptcha to the login form. This cause
 
 As of January 12, 2022, Tesla has deprecated the use of [RFC 7523](https://tools.ietf.org/html/rfc7523) tokens and requires the SSO tokens to be used for API access. If you get a `requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: https://owner-api.teslamotors.com/api/1/vehicles` and you are using correct credentials then you are probably using an old version of this module.
 
+As of March 1, 2022, Tesla no longer supports the login_hint parameter in the V3 authorization URL. If you get a `requests.exceptions.HTTPError: 500 Server Error: Internal Server Error for url: https://auth.tesla.com/oauth2/v3/authorize` then you are probably using an old version of this module.
+
 ## Demo applications
 
 The source repository contains three demo applications that *optionally* use [pywebview](https://pypi.org/project/pywebview/) version 3.0 or higher or [selenium](https://pypi.org/project/selenium/) version 3.13.0 or higher to automate weblogin. Selenium 4.0.0 or higher is required for Edge Chromium.
@@ -348,9 +351,9 @@ The source repository contains three demo applications that *optionally* use [py
 
 ```
 usage: cli.py [-h] -e EMAIL [-f FILTER] [-a API [KEYVALUE ...]] [-k KEYVALUE]
-              [-c COMMAND] [-t TIMEOUT] [-p PROXY] [-R REFRESH] [-l] [-o] [-v]
-              [-w] [-g] [-b] [-n] [-m] [-s] [-d] [-r] [-S] [-H] [-V] [-L] [-u]
-              [--chrome] [--edge] [--firefox] [--opera] [--safari]
+              [-c COMMAND] [-t TIMEOUT] [-p PROXY] [-R REFRESH] [-U URL] [-l]
+              [-o] [-v] [-w] [-g] [-b] [-n] [-m] [-s] [-d] [-r] [-S] [-H] [-V]
+              [-L] [-u] [--chrome] [--edge] [--firefox] [--opera] [--safari]
 
 Tesla Owner API CLI
 
@@ -365,6 +368,7 @@ optional arguments:
   -t TIMEOUT            connect/read timeout
   -p PROXY              proxy server URL
   -R REFRESH            use this refresh token
+  -U URL                SSO service base URL
   -l, --list            list all selected vehicles/batteries
   -o, --option          list vehicle option codes
   -v, --vin             vehicle identification number decode

@@ -45,7 +45,8 @@ def main():
     default_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
                         format=default_format)
-    with Tesla(args.email, verify=args.verify, proxy=args.proxy) as tesla:
+    with Tesla(args.email, verify=args.verify, proxy=args.proxy,
+               sso_base_url=args.url) as tesla:
         if (webdriver and args.web is not None) or webview:
             tesla.authenticator = custom_auth
         if args.timeout:
@@ -128,6 +129,7 @@ if __name__ == "__main__":
                         help='connect/read timeout')
     parser.add_argument('-p', dest='proxy', help='proxy server URL')
     parser.add_argument('-R', dest='refresh', help='use this refresh token')
+    parser.add_argument('-U', dest='url', help='SSO service base URL')
     parser.add_argument('-l', '--list', action='store_true',
                         help='list all selected vehicles/batteries')
     parser.add_argument('-o', '--option', action='store_true',
