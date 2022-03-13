@@ -89,6 +89,11 @@
     "URI": "api/1/vehicles/{vehicle_id}/command/set_temps",
     "AUTH": true
   },
+  "SET_CLIMATE_KEEPER_MODE": {
+    "TYPE": "POST",
+    "URI": "api/1/vehicles/{vehicle_id}/command/set_climate_keeper_mode",
+    "AUTH": true
+  },
   "HVAC_BIOWEAPON_MODE": {
     "TYPE": "POST",
     "URI": "api/1/vehicles/{vehicle_id}/command/set_bioweapon_mode",
@@ -566,7 +571,7 @@
     "AUTH": true
   },
   "VEHICLE_CHARGE_HISTORY": {
-    "TYPE": "GET",
+    "TYPE": "POST",
     "URI": "api/1/vehicles/{vehicle_id}/charge_history",
     "AUTH": true
   },
@@ -741,7 +746,7 @@
     "AUTH": true
   },
   "SERVICE_CENTER_OPEN_SLOTS": {
-    "TYPE": "GET",
+    "TYPE": "POST",
     "URI": "bff/v2/mobile-app/service/locations/center/slots",
     "AUTH": true
   },
@@ -925,6 +930,11 @@
     "URI": "bff/v2/mobile-app/macgyver/service-type",
     "AUTH": true
   },
+  "SERVICE_MACGYVER_DIAGNOSTIC_RESULT": {
+    "TYPE": "GET",
+    "URI": "mobile-app/macgyver/urgent-autodiag-result",
+    "AUTH": true
+  },
   "SERVICE_ACCEPT_LOANER_AGREEMENT": {
     "TYPE": "POST",
     "URI": "bff/v2/mobile-app/service/loaner/{serviceVisitId}",
@@ -988,6 +998,11 @@
   "ENERGY_GET_TROUBLESHOOTING_GUIDE": {
     "TYPE": "GET",
     "URI": "bff/v2/mobile-app/energy-service/troubleshooting/{troubleshootingFlow}?version=2",
+    "AUTH": true
+  },
+  "ENERGY_SERVICE_GET_POWERWALL_WARRANTY_DETAILS": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/energy-service/warranty-details",
     "AUTH": true
   },
   "LOOTBOX_USER_INFO": {
@@ -1560,6 +1575,41 @@
     "URI": "bff/v2/mobile-app/financing/feature-flags",
     "AUTH": true
   },
+  "FINANCING_GET_E_SIGN_DOCUMENTS_STATUS": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/financing/documents-status",
+    "AUTH": true
+  },
+  "FINANCING_SUBMIT_FINANCING_ACTION": {
+    "TYPE": "POST",
+    "URI": "bff/v2/mobile-app/financing/manage-financing-action",
+    "AUTH": true
+  },
+  "FINANCING_GET_EXTENSION_QUOTE": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/financing/extension-quote",
+    "AUTH": true
+  },
+  "FINANCING_GET_CAR_DETAILS": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/financing/car-details",
+    "AUTH": true
+  },
+  "FINANCING_GET_E_SIGN_SUMMARY": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/financing/esign-summary",
+    "AUTH": true
+  },
+  "FINANCING_GET_E_SIGN_DOCUMENT": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/financing/esign-document",
+    "AUTH": true
+  },
+  "FINANCING_VALIDATE_E_SIGN_DETAILS": {
+    "TYPE": "POST",
+    "URI": "bff/v2/mobile-app/financing/esign-validate-details",
+    "AUTH": true
+  },
   "DASHCAM_SAVE_CLIP": {
     "TYPE": "POST",
     "URI": "api/1/vehicles/{vehicle_id}/command/dashcam_save_clip",
@@ -1668,6 +1718,11 @@
   "COMMERCE_FEATURE_FLAG": {
     "TYPE": "GET",
     "URI": "mobile-app/commerce/feature-flags",
+    "AUTH": true
+  },
+  "COMMERCE_SEARCH_PRODUCTS": {
+    "TYPE": "POST",
+    "URI": "commerce-api/searches/v1{locale}",
     "AUTH": true
   }
 }
