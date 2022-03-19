@@ -314,6 +314,11 @@
     "URI": "api/1/vehicles/{vehicle_id}/command/set_sentry_mode",
     "AUTH": true
   },
+  "TAKE_DRIVENOTE": {
+    "TYPE": "POST",
+    "URI": "api/1/vehicles/{vehicle_id}/command/take_drivenote",
+    "AUTH": true
+  },
   "POWERWALL_ORDER_SESSION_DATA": {
     "TYPE": "GET",
     "URI": "api/1/users/powerwall_order_entry_data",
@@ -530,6 +535,11 @@
     "URI": "api/1/energy_sites/{site_id}/operation",
     "AUTH": true
   },
+  "ENERGY_SITE_IMPORT_EXPORT_CONFIG": {
+    "TYPE": "POST",
+    "URI": "api/1/energy_sites/{site_id}/grid_import_export",
+    "AUTH": true
+  },
   "TIME_OF_USE_SETTINGS": {
     "TYPE": "POST",
     "URI": "api/1/energy_sites/{site_id}/time_of_use_settings",
@@ -598,6 +608,16 @@
   "REMOTE_SEAT_HEATER_REQUEST": {
     "TYPE": "POST",
     "URI": "api/1/vehicles/{vehicle_id}/command/remote_seat_heater_request",
+    "AUTH": true
+  },
+  "REMOTE_AUTO_SEAT_CLIMATE_REQUEST": {
+    "TYPE": "POST",
+    "URI": "api/1/vehicles/{vehicle_id}/command/remote_auto_seat_climate_request",
+    "AUTH": true
+  },
+  "REMOTE_SEAT_COOLING_REQUEST": {
+    "TYPE": "POST",
+    "URI": "api/1/vehicles/{vehicle_id}/command/remote_seat_cooler_request",
     "AUTH": true
   },
   "REMOTE_STEERING_WHEEL_HEATER_REQUEST": {
@@ -1075,14 +1095,14 @@
     "URI": "bff/v2/mobile-app/upgrades/purchased",
     "AUTH": true
   },
-  "UPGRADES_SUBMIT_REFUND": {
-    "TYPE": "POST",
-    "URI": "bff/v2/mobile-app/upgrades/refunds",
+  "UPGRADES_GET_PURCHASED_UPGRADES_V2": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/upgrades/purchased/v2",
     "AUTH": true
   },
-  "UPGRADES_POST_PAYMENT": {
+  "UPGRADES_SUBMIT_REFUND": {
     "TYPE": "POST",
-    "URI": "bff/v2/mobile-app/upgrades/payment",
+    "URI": "bff/v2/mobile-app/upgrades/refunds/v2",
     "AUTH": true
   },
   "USER_ACCOUNT_GET_DETAILS": {
@@ -1112,7 +1132,7 @@
   },
   "UPGRADES_COMPLETE_OFFLINE_ORDER": {
     "TYPE": "POST",
-    "URI": "bff/v2/mobile-app/upgrades/payment/offline-purchase-complete",
+    "URI": "bff/v2/mobile-app/upgrades/payment/offline-purchase-complete/v2",
     "AUTH": true
   },
   "SUBSCRIPTIONS_GET_ELIGIBLE": {
@@ -1152,7 +1172,7 @@
   },
   "MANAGE_PATCH_AUTO_RENEW_SUBSCRIPTIONS": {
     "TYPE": "PATCH",
-    "URI": "bff/v2/mobile-app/subscriptions",
+    "URI": "bff/v2/mobile-app/subscriptions/v2",
     "AUTH": true
   },
   "MANAGE_GET_BILL_ME_LATER_LIST": {
@@ -1723,6 +1743,16 @@
   "COMMERCE_SEARCH_PRODUCTS": {
     "TYPE": "POST",
     "URI": "commerce-api/searches/v1{locale}",
+    "AUTH": true
+  },
+  "VEHICLE_DOWNLOAD_VAULT": {
+    "TYPE": "GET",
+    "URI": "api/1/users/vault_profile",
+    "AUTH": true
+  },
+  "VEHICLE_UPLOAD_VAULT": {
+    "TYPE": "POST",
+    "URI": "api/1/users/vault_profile",
     "AUTH": true
   }
 }
