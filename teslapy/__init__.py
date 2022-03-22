@@ -90,6 +90,7 @@ class Tesla(OAuth2Session):
         self.token_updater = self._token_updater
         self.mount('https://', requests.adapters.HTTPAdapter(max_retries=retry))
         self.headers.update({'Content-Type': 'application/json',
+                             'X-Tesla-User-Agent': 'TeslaApp/4.5.0',
                              'User-Agent': user_agent})
         self.verify = verify
         if proxy:
