@@ -153,7 +153,7 @@ class Tesla(OAuth2Session):
 
     def authorization_url(self, url='oauth2/v3/authorize', **kwargs):
         """ Overriddes base method to form an authorization URL with PKCE
-        extension for Tesla's SSO service. Raises HTTPError.
+        extension for Tesla's SSO service.
 
         url (optional): Authorization endpoint url.
 
@@ -172,7 +172,15 @@ class Tesla(OAuth2Session):
         url = urljoin(self.sso_base_url, url)
         kwargs['code_challenge'] = code_challenge
         kwargs['code_challenge_method'] = 'S256'
-        return super(Tesla, self).authorization_url(url, **kwargs)[0]
+        without_hint = super(Tesla, self).authorization_url(url, **kwargs)[0]
+        # Detect account's registered region
+        kwargs['login_hint'] = self.email
+        with_hint = super(Tesla, self).authorization_url(url, **kwargs)[0]
+        response = self.get(with_hint, allow_redirects=False)
+        if response.is_redirect:
+            with_hint = response.headers['Location']
+            self.sso_base_url = urljoin(with_hint, '/')
+        return with_hint if response.ok else without_hint
 
     def fetch_token(self, token_url='oauth2/v3/token', **kwargs):
         """ Overriddes base method to sign into Tesla's SSO service using
@@ -288,7 +296,7 @@ class Tesla(OAuth2Session):
             self.cache_dumper(cache)
         # Read token from cache
         elif self.email in cache:
-            self.sso_base_url = cache[self.email].get('url', SSO_BASE_URL)
+            self.sso_base_url = cache[self.email].get('url', self.sso_base_url)
             self.token = cache[self.email].get('sso', {})
             if not self.token:
                 return
