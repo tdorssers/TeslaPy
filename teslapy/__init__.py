@@ -181,6 +181,7 @@ class Tesla(OAuth2Session):
         if response.is_redirect:
             with_hint = response.headers['Location']
             self.sso_base_url = urljoin(with_hint, '/')
+            logger.debug('New SSO service URL %s', self.sso_base_url)
         return with_hint if response.ok else without_hint
 
     def fetch_token(self, token_url='oauth2/v3/token', **kwargs):
@@ -287,7 +288,8 @@ class Tesla(OAuth2Session):
 
     def _token_updater(self, token=None):
         """ Handles token persistency. Raises ValueError. """
-        self.token = token or self.token
+        if token:
+            return  # Don't update token twice when auto refreshing
         cache = self.cache_loader()
         if not isinstance(cache, dict):
             raise ValueError('`cache_loader` must return dict')
