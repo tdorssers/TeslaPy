@@ -284,10 +284,14 @@ These are the major commands:
 | CLIMATE_OFF | | |
 | MAX_DEFROST | `on` | `true` or `false` |
 | CHANGE_CLIMATE_TEMPERATURE_SETTING | `driver_temp`, `passenger_temp` | temperature in celcius |
+| SET_CLIMATE_KEEPER_MODE | `climate_keeper_mode` | |
+| HVAC_BIOWEAPON_MODE | |
 | SCHEDULED_DEPARTURE <sup>1</sup> | `enable`, `departure_time`, `preconditioning_enabled`, `preconditioning_weekdays_only`, `off_peak_charging_enabled`, `off_peak_charging_weekdays_only`, `end_off_peak_time` | `true` or `false`, minutes past midnight |
 | SCHEDULED_CHARGING <sup>1</sup> | `enable`, `time` | `true` or `false`, minutes past midnight |
 | CHARGING_AMPS <sup>1</sup> | `charging_amps` | between 0-32 |
+| SET_CABIN_OVERHEAT_PROTECTION | `on`, `fan_only` | `true` or `false` |
 | CHANGE_CHARGE_LIMIT | `percent` | percentage |
+| SET_VEHICLE_NAME | `vehicle_name` | name |
 | CHANGE_SUNROOF_STATE | `state` | `vent` or `close` |
 | WINDOW_CONTROL <sup>2</sup> | `command`, `lat`, `lon` | `vent` or `close`, `0`, `0` |
 | ACTUATE_TRUNK | `which_trunk` | `rear` or `front` |
@@ -314,6 +318,8 @@ These are the major commands:
 | CANCEL_SOFTWARE_UPDATE | | |
 | SET_SENTRY_MODE | `on` | `true` or `false` |
 | REMOTE_SEAT_HEATER_REQUEST | `heater`, `level` | seat 0-5, level 0-3 |
+| REMOTE_AUTO_SEAT_CLIMATE_REQUEST | `auto_seat_position`, `auto_climate_on` | 1-2, `true` or `false` |
+| REMOTE_SEAT_COOLING_REQUEST | `seat_position`, `seat_cooler_level` | |
 | REMOTE_STEERING_WHEEL_HEATER_REQUEST | `on` | `true` or `false` |
 
 <sup>1</sup> requires car version 2021.36 or higher. CHARGING_AMPS can be set to less than 5, by calling the API twice. Special thanks to [themonomers](https://github.com/themonomers) and [purcell-lab](https://github.com/purcell-lab).
