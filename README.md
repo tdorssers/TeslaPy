@@ -162,7 +162,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 def custom_auth(url):
-    with webdriver.Chrome() as browser:
+    options = webdriver.ChromeOptions()
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    with webdriver.Chrome(chrome_options=options) as browser:
         browser.get(url)
         WebDriverWait(browser, 300).until(EC.url_contains('void/callback'))
         return browser.current_url
