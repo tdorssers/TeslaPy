@@ -33,8 +33,14 @@ def custom_auth(url):
         webview.start()
         return result[0]
     # Use selenium to control specified web browser
+    # Prevent Selenium from being detected (works for Chrome and Edge only, for now)
+    if args.web < 2:
+        options = [webdriver.chrome, webdriver.edge][args.web].options.Options()
+        options.add_argument("--disable-blink-features=AutomationControlled")
+    else:
+        options = None
     with [webdriver.Chrome, webdriver.Edge, webdriver.Firefox, webdriver.Opera,
-          webdriver.Safari][args.web]() as browser:
+          webdriver.Safari][args.web](options=options) as browser:
         logging.info('Selenium opened %s', browser.capabilities['browserName'])
         browser.get(url)
         WebDriverWait(browser, 300).until(EC.url_contains('void/callback'))
