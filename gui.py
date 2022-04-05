@@ -662,9 +662,15 @@ class App(Tk):
             return pool.apply(show_webview, (url, ))  # Run in separate process
         # Use selenium if available and selected
         if webdriver and self.selenium.get():
+            # Prevent Selenium from being detected (works for Chrome and Edge only, for now)
+            if self.browser.get() < 2:
+                options = [webdriver.chrome, webdriver.edge][self.browser.get()].options.Options()
+                options.add_argument("--disable-blink-features=AutomationControlled")
+            else:
+                options = None
             with [webdriver.Chrome, webdriver.Edge,
                   webdriver.Firefox, webdriver.Opera,
-                  webdriver.Safari][self.browser.get()]() as browser:
+                  webdriver.Safari][self.browser.get()](options=options) as browser:
                 browser.get(url)
                 wait = WebDriverWait(browser, 300)
                 wait.until(EC.url_contains('void/callback'))
