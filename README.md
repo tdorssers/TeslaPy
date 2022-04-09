@@ -153,7 +153,7 @@ with teslapy.Tesla('elon@tesla.com', authenticator=custom_auth) as tesla:
 
 #### selenium
 
-Example using selenium to automate web browser interaction.
+Example using selenium to automate web browser interaction. The SSO page returns a 403 when `navigator.webdriver` is set and currently only Chrome, Opera and Edge Chromium can prevent this.
 
 ```python
 import teslapy
@@ -349,8 +349,6 @@ As of September 3, 2021, Tesla has added ReCaptcha to the login form. This cause
 
 As of January 12, 2022, Tesla has deprecated the use of [RFC 7523](https://tools.ietf.org/html/rfc7523) tokens and requires the SSO tokens to be used for API access. If you get a `requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: https://owner-api.teslamotors.com/api/1/vehicles` and you are using correct credentials then you are probably using an old version of this module.
 
-As of March 1, 2022, Tesla no longer supports the login_hint parameter in the V3 authorization URL. If you get a `requests.exceptions.HTTPError: 500 Server Error: Internal Server Error for url: https://auth.tesla.com/oauth2/v3/authorize` then you are probably using an old version of this module.
-
 ## Demo applications
 
 The source repository contains three demo applications that *optionally* use [pywebview](https://pypi.org/project/pywebview/) version 3.0 or higher or [selenium](https://pypi.org/project/selenium/) version 3.13.0 or higher to automate weblogin. Selenium 4.0.0 or higher is required for Edge Chromium.
@@ -361,7 +359,7 @@ The source repository contains three demo applications that *optionally* use [py
 usage: cli.py [-h] -e EMAIL [-f FILTER] [-a API [KEYVALUE ...]] [-k KEYVALUE]
               [-c COMMAND] [-t TIMEOUT] [-p PROXY] [-R REFRESH] [-U URL] [-l]
               [-o] [-v] [-w] [-g] [-b] [-n] [-m] [-s] [-d] [-r] [-S] [-H] [-V]
-              [-L] [-u] [--chrome] [--edge] [--firefox] [--opera] [--safari]
+              [-L] [-u] [--chrome] [--opera] [--edge]
 
 Tesla Owner API CLI
 
@@ -394,10 +392,8 @@ optional arguments:
   -L, --logout          clear token from cache and logout
   -u, --user            get user account details
   --chrome              use Chrome WebDriver
-  --edge                use Edge WebDriver
-  --firefox             use Firefox WebDriver
   --opera               use Opera WebDriver
-  --safari              use Safari WebDriver
+  --edge                use Edge WebDriver
 ```
 
 Example usage of [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py):
@@ -709,7 +705,3 @@ Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on y
 and install [ChromeDriver](https://sites.google.com/chromium.org/driver/) to use Selenium or on Ubuntu as follows:
 
 `sudo apt-get install python3-requests-oauthlib python3-geopy python3-webview python3-selenium python3-websocket`
-
-If you prefer Firefox, install [GeckoDriver](https://github.com/mozilla/geckodriver/releases) or on Ubuntu as follows:
-
-`sudo apt-get install firefox-geckodriver`
