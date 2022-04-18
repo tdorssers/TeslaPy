@@ -33,6 +33,9 @@ TeslaPy 2.0.0+ no longer implements headless authentication. The constructor dif
 | `cache_loader` | (optional) function that returns the cache dict |
 | `cache_dumper` | (optional) function with one argument, the cache dict |
 | `sso_base_url` | (optional) URL of SSO service, set to `https://auth.tesla.cn/` if your email is registered in another region |
+| `state` | (optional) state string for CSRF protection |
+| `code_verifier` | (optional) PKCE code verifier string |
+| `app_user_agent` | (optional) X-Tesla-User-Agent string |
 
 TeslaPy 2.1.0+ no longer implements [RFC 7523](https://tools.ietf.org/html/rfc7523) and uses the SSO token for all API requests.
 
@@ -43,9 +46,11 @@ The convenience method `api()` uses named endpoints listed in *endpoints.json* t
 | Call | Description |
 | --- | --- |
 | `request()` | performs API call using relative or absolute URL, serialization and error message handling |
-| `authorization_url()` | forms authorization URL with [PKCE](https://oauth.net/2/pkce/) extension |
+| `new_code_verifier()` | generates code verifier for [PKCE](https://oauth.net/2/pkce/) |
+| `authorization_url()` | forms authorization URL with [PKCE](https://oauth.net/2/pkce/) extension and tries to detect the accounts registered region |
 | `fetch_token()` | requests an SSO token using Authorization Code grant with [PKCE](https://oauth.net/2/pkce/) extension |
 | `refresh_token()` | requests an SSO token using [Refresh Token](https://oauth.net/2/grant-types/refresh-token/) grant |
+| `close()` | remove all requests adapter instances |
 | `logout()` | removes token from cache, returns logout URL and optionally signs out using system's default web browser |
 | `vehicle_list()` | returns a list of Vehicle objects |
 | `battery_list()` | returns a list of Battery objects |
@@ -183,6 +188,29 @@ tesla = teslapy.Tesla('elon@tesla.com')
 if not tesla.authorized:
     print('Use browser to login. Page Not Found will be shown at success.')
     print('Open this URL: ' + tesla.authorization_url())
+    tesla.fetch_token(authorization_response=input('Enter URL after authentication: '))
+vehicles = tesla.vehicle_list()
+print(vehicles[0])
+tesla.close()
+```
+
+#### Alternative staged
+
+Support for staged authorization has been added to TeslaPy 2.5.0. The keyword arguments `state` and `code_verifier` are accepted by the `Tesla` class constructor, the `authorization_url()` method and the `fetch_token()` method.
+
+```python
+import teslapy
+# First stage
+tesla = teslapy.Tesla('elon@tesla.com')
+if not tesla.authorized:
+    state = tesla.new_state()
+    code_verifier = tesla.new_code_verifier()
+    print('Use browser to login. Page Not Found will be shown at success.')
+    print('Open: ' + tesla.authorization_url(state=state, code_verifier=code_verifier))
+tesla.close()
+# Second stage
+tesla = teslapy.Tesla('elon@tesla.com', state=state, code_verifier=code_verifier)
+if not tesla.authorized:
     tesla.fetch_token(authorization_response=input('Enter URL after authentication: '))
 vehicles = tesla.vehicle_list()
 print(vehicles[0])
