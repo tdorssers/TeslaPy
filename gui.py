@@ -614,7 +614,7 @@ class App(Tk):
         self.browser = IntVar(0)
         web_menu.add_radiobutton(label='Chrome', value=0, variable=self.browser)
         web_menu.add_radiobutton(label='Opera', value=1, variable=self.browser)
-        if hasattr(webdriver.edge, 'options'):
+        if webdriver and hasattr(webdriver.edge, 'options'):
             web_menu.add_radiobutton(label='Edge', value=2, variable=self.browser)
         self.selenium = BooleanVar()
         opt_menu.add_checkbutton(label='Use selenium', variable=self.selenium,
