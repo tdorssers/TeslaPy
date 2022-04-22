@@ -314,7 +314,7 @@ These are the major commands:
 | CLIMATE_OFF | | |
 | MAX_DEFROST | `on` | `true` or `false` |
 | CHANGE_CLIMATE_TEMPERATURE_SETTING | `driver_temp`, `passenger_temp` | temperature in celcius |
-| SET_CLIMATE_KEEPER_MODE | `climate_keeper_mode` | |
+| SET_CLIMATE_KEEPER_MODE | `climate_keeper_mode` | 0=off, 1=on, 2=dog, 3=camp |
 | HVAC_BIOWEAPON_MODE | |
 | SCHEDULED_DEPARTURE <sup>1</sup> | `enable`, `departure_time`, `preconditioning_enabled`, `preconditioning_weekdays_only`, `off_peak_charging_enabled`, `off_peak_charging_weekdays_only`, `end_off_peak_time` | `true` or `false`, minutes past midnight |
 | SCHEDULED_CHARGING <sup>1</sup> | `enable`, `time` | `true` or `false`, minutes past midnight |
