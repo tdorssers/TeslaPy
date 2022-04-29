@@ -6,7 +6,7 @@ for reuse and refreshed automatically. The vehicle option codes are loaded from
 
 # Author: Tim Dorssers
 
-__version__ = '2.4.0'
+__version__ = '2.5.0'
 
 import os
 import ast
@@ -34,6 +34,7 @@ BASE_URL = 'https://owner-api.teslamotors.com/'
 SSO_BASE_URL = 'https://auth.tesla.com/'
 SSO_CLIENT_ID = 'ownerapi'
 STREAMING_BASE_URL = 'wss://streaming.vn.teslamotors.com/'
+APP_USER_AGENT = 'TeslaApp/4.7.0'
 
 # Setup module logging
 logger = logging.getLogger(__name__)
@@ -62,13 +63,18 @@ class Tesla(OAuth2Session):
     cache_dumper: (optional) Function with one argument, the cache dict.
     sso_base_url: (optional) URL of SSO service, set to `https://auth.tesla.cn/`
                   if your email is registered in another region.
-    kwargs: (optional) Extra arguments for the Session constructor.
+    code_verifier (optional): PKCE code verifier string.
+    app_user_agent (optional): X-Tesla-User-Agent string.
+
+    Extra keyword arguments to pass to OAuth2Session constructor using `kwargs`:
+    state (optional): A state string for CSRF protection.
     """
 
     def __init__(self, email, verify=True, proxy=None, retry=0, timeout=10,
                  user_agent=__name__ + '/' + __version__, authenticator=None,
                  cache_file='cache.json', cache_loader=None, cache_dumper=None,
-                 sso_base_url=None, **kwargs):
+                 sso_base_url=None, code_verifier=None,
+                 app_user_agent=APP_USER_AGENT, **kwargs):
         super(Tesla, self).__init__(client_id=SSO_CLIENT_ID, **kwargs)
         if not email:
             raise ValueError('`email` is not set')
@@ -81,7 +87,7 @@ class Tesla(OAuth2Session):
         self.endpoints = {}
         self.sso_base_url = sso_base_url or SSO_BASE_URL
         self._auto_refresh_url = None
-        self.code_verifier = None
+        self.code_verifier = code_verifier
         # Set OAuth2Session properties
         self.scope = ('openid', 'email', 'offline_access')
         self.redirect_uri = SSO_BASE_URL + 'void/callback'
@@ -90,7 +96,7 @@ class Tesla(OAuth2Session):
         self.token_updater = self._token_updater
         self.mount('https://', requests.adapters.HTTPAdapter(max_retries=retry))
         self.headers.update({'Content-Type': 'application/json',
-                             'X-Tesla-User-Agent': 'TeslaApp/4.5.0',
+                             'X-Tesla-User-Agent': app_user_agent,
                              'User-Agent': user_agent})
         self.verify = verify
         if proxy:
@@ -152,30 +158,41 @@ class Tesla(OAuth2Session):
             return response.json(object_hook=JsonDict)
         return response.text
 
-    def authorization_url(self, url='oauth2/v3/authorize', **kwargs):
+    @staticmethod
+    def new_code_verifier():
+        """ Generate code verifier for PKCE as per RFC 7636 section 4.1 """
+        result = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b'=')
+        logger.debug('Generated new code verifier %s.',
+                     result.decode() if isinstance(result, bytes) else result)
+        return result
+
+    def authorization_url(self, url='oauth2/v3/authorize',
+                          code_verifier=None, **kwargs):
         """ Overriddes base method to form an authorization URL with PKCE
         extension for Tesla's SSO service.
 
         url (optional): Authorization endpoint url.
+        code_verifier (optional): PKCE code verifier string.
 
         Extra keyword arguments to pass to base method using `kwargs`:
         state (optional): A state string for CSRF protection.
 
-        Return type: String
+        Return type: String or None
         """
         if self.authorized:
             return None
         # Generate code verifier and challenge for PKCE (RFC 7636)
-        self.code_verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b'=')
+        self.code_verifier = code_verifier or self.new_code_verifier()
         unencoded_digest = hashlib.sha256(self.code_verifier).digest()
         code_challenge = base64.urlsafe_b64encode(unencoded_digest).rstrip(b'=')
         # Prepare for OAuth 2 Authorization Code Grant flow
         url = urljoin(self.sso_base_url, url)
         kwargs['code_challenge'] = code_challenge
         kwargs['code_challenge_method'] = 'S256'
-        without_hint = super(Tesla, self).authorization_url(url, **kwargs)[0]
+        without_hint, state = super(Tesla, self).authorization_url(url, **kwargs)
         # Detect account's registered region
         kwargs['login_hint'] = self.email
+        kwargs['state'] = state
         with_hint = super(Tesla, self).authorization_url(url, **kwargs)[0]
         response = self.get(with_hint, allow_redirects=False)
         if response.is_redirect:
@@ -192,6 +209,7 @@ class Tesla(OAuth2Session):
 
         Extra keyword arguments to pass to base method using `kwargs`:
         authorization_response (optional): Authorization response URL.
+        code_verifier (optional): Code verifier cryptographic random string.
 
         Return type: dict
         """
@@ -240,7 +258,7 @@ class Tesla(OAuth2Session):
 
         sign_out (optional): sign out using system's default web browser.
 
-        Return type: String
+        Return type: String or None
         """
         if not self.authorized:
             return None
@@ -679,7 +697,7 @@ class Product(JsonDict):
         return self.tesla.api(name, pathvars, **kwargs)
 
     def get_calendar_history_data(
-            self, kind='savings', period='day', start_date=None,
+            self, kind='energy', period='day', start_date=None,
             end_date=time.strftime('%Y-%m-%dT%H:%M:%S.000Z'),
             installation_timezone=None, timezone=None, tariff=None):
         """ Retrieve live status of product
@@ -697,14 +715,13 @@ class Product(JsonDict):
         """
         return self.api('CALENDAR_HISTORY_DATA', kind=kind, period=period,
                         start_date=start_date, end_date=end_date,
-                        timezone=timezone,
                         installation_timezone=installation_timezone,
-                        tariff=tariff)['response']
+                        timezone=timezone, tariff=tariff)['response']
 
     def get_history_data(
-            self, kind='savings', period='day', start_date=None,
+            self, kind='energy', period='day', start_date=None,
             end_date=time.strftime('%Y-%m-%dT%H:%M:%S.000Z'),
-            installation_timezone=None, timezone=None, tariff=None):
+            installation_timezone=None, timezone=None):
         """ Retrieve live status of product
         kind: A telemetry type of 'backup', 'energy', 'power',
               'self_consumption', 'time_of_use_energy', and
@@ -716,13 +733,11 @@ class Product(JsonDict):
         start_date: The state date in the data requested in the json format
                     '2021-02-27T07:59:59.999Z'
         installation_timezone: Timezone of installation location for 'savings'
-        tariff: Unclear format use in 'savings' only
         """
         return self.api('HISTORY_DATA', kind=kind, period=period,
                         start_date=start_date, end_date=end_date,
-                        timezone=timezone,
                         installation_timezone=installation_timezone,
-                        tariff=tariff)['response']
+                        timezone=timezone)['response']
 
     def command(self, name, **kwargs):
         """ Wrapper method for product command response error handling """

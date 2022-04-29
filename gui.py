@@ -611,9 +611,11 @@ class App(Tk):
         web_menu = Menu(menu, tearoff=0)
         opt_menu.add_cascade(label='Web browser', menu=web_menu,
                              state=NORMAL if webdriver else DISABLED)
-        self.browser = IntVar()
-        for v, l in enumerate(('Chrome', 'Edge', 'Firefox', 'Opera', 'Safari')):
-            web_menu.add_radiobutton(label=l, value=v, variable=self.browser)
+        self.browser = IntVar(0)
+        web_menu.add_radiobutton(label='Chrome', value=0, variable=self.browser)
+        web_menu.add_radiobutton(label='Opera', value=1, variable=self.browser)
+        if webdriver and hasattr(webdriver.edge, 'options'):
+            web_menu.add_radiobutton(label='Edge', value=2, variable=self.browser)
         self.selenium = BooleanVar()
         opt_menu.add_checkbutton(label='Use selenium', variable=self.selenium,
                                  state=NORMAL if webdriver else DISABLED,
@@ -662,15 +664,11 @@ class App(Tk):
             return pool.apply(show_webview, (url, ))  # Run in separate process
         # Use selenium if available and selected
         if webdriver and self.selenium.get():
-            # Prevent Selenium from being detected (works for Chrome and Edge only, for now)
-            if self.browser.get() < 2:
-                options = [webdriver.chrome, webdriver.edge][self.browser.get()].options.Options()
-                options.add_argument("--disable-blink-features=AutomationControlled")
-            else:
-                options = None
-            with [webdriver.Chrome, webdriver.Edge,
-                  webdriver.Firefox, webdriver.Opera,
-                  webdriver.Safari][self.browser.get()](options=options) as browser:
+            options = [webdriver.chrome, webdriver.opera,
+                       webdriver.edge][self.browser.get()].options.Options()
+            options.add_argument('--disable-blink-features=AutomationControlled')
+            with [webdriver.Chrome, webdriver.Opera,
+                  webdriver.Edge][self.browser.get()](options=options) as browser:
                 browser.get(url)
                 wait = WebDriverWait(browser, 300)
                 wait.until(EC.url_contains('void/callback'))

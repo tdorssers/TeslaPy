@@ -280,14 +280,11 @@ def custom_auth(url):
         webview.start()
         return result[0]
     # Use selenium to control specified web browser
-    # Prevent Selenium from being detected (works for Chrome and Edge only, for now)
-    if args.web < 2:
-        options = [webdriver.chrome, webdriver.edge][args.web].options.Options()
-        options.add_argument("--disable-blink-features=AutomationControlled")
-    else:
-        options = None
-    with [webdriver.Chrome, webdriver.Edge, webdriver.Firefox, webdriver.Opera,
-          webdriver.Safari][args.web](options=options) as browser:
+    options = [webdriver.chrome, webdriver.opera,
+               webdriver.edge][args.web].options.Options()
+    options.add_argument('--disable-blink-features=AutomationControlled')
+    with [webdriver.Chrome, webdriver.Opera,
+          webdriver.Edge][args.web](options=options) as browser:
         logging.info('Selenium opened %s', browser.capabilities['browserName'])
         browser.get(url)
         WebDriverWait(browser, 300).until(EC.url_contains('void/callback'))
@@ -334,11 +331,14 @@ if __name__ == "__main__":
                         help='disable verify SSL certificate')
     parser.add_argument('--timeout', type=int, help='connect/read timeout')
     if webdriver:
-        for c, s in enumerate(('chrome', 'edge', 'firefox', 'opera', 'safari')):
-            d, h = (0, ' (default)') if not webview and c == 0 else (None, '')
-            parser.add_argument('--' + s, action='store_const', dest='web',
-                                help='use %s browser' % s.title() + h,
-                                const=c, default=d)
+        h = 'use Chrome browser' if webview else 'use Chrome browser (default)'
+        parser.add_argument('--chrome', action='store_const', dest='web',
+                            help=h, const=0, default=None if webview else 0)
+        parser.add_argument('--opera', action='store_const', dest='web',
+                                help='use Opera browser', const=1)
+        if hasattr(webdriver.edge, 'options'):
+            parser.add_argument('--edge', action='store_const', dest='web',
+                                help='use Edge browser', const=2)
     parser.add_argument('--proxy', help='proxy server URL')
     args = parser.parse_args()
     main()
