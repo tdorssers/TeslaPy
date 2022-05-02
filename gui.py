@@ -515,7 +515,10 @@ def show_webview(url):
         result[0] = window.get_current_url()
         if 'void/callback' in result[0].split('?')[0]:
             window.destroy()
-    window.loaded += on_loaded
+    try:
+        window.events.loaded += on_loaded
+    except AttributeError:
+        window.loaded += on_loaded
     webview.start()  # Blocks the main thread until webview is closed
     return result[0]
 

@@ -29,7 +29,10 @@ def custom_auth(url):
             result[0] = window.get_current_url()
             if 'void/callback' in result[0].split('?')[0]:
                 window.destroy()
-        window.loaded += on_loaded
+        try:
+            window.events.loaded += on_loaded
+        except AttributeError:
+            window.loaded += on_loaded
         webview.start()
         return result[0]
     # Use selenium to control specified web browser
