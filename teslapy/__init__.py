@@ -540,6 +540,12 @@ class Vehicle(JsonDict):
         self.timestamp = time.time()
         return self
 
+    def get_latest_vehicle_data(self):
+        """ Cached data, pushed by the vehicle on sleep, wake and around OTA """
+        self.update(self.api('CACHED_PROTO_VEHICLE_DATA')['response'])
+        self.timestamp = time.time()
+        return self
+
     def get_nearby_charging_sites(self):
         """ Lists nearby Tesla-operated charging stations. Raises HTTPError when
         vehicle is in service or not online. """
@@ -592,14 +598,13 @@ class Vehicle(JsonDict):
         return response.content
 
     def __missing__(self, key):
-        """ Get all the data request endpoints on-the-fly. Raises KeyError. """
-        if key not in self.get_vehicle_data():
+        """ Get cached data when accessed. Raises KeyError on invalid key. """
+        if key not in self.get_latest_vehicle_data():
             raise KeyError(key)
         return self[key]
 
     def dist_units(self, miles, speed=False):
-        """ Format and convert distance or speed to GUI setting units. Raises
-        HTTPError when vehicle is not online. """
+        """ Format and convert distance or speed to GUI setting units """
         if miles is None:
             return None
         # Lookup GUI settings of the vehicle
@@ -608,14 +613,37 @@ class Vehicle(JsonDict):
         return '%.1f %s' % (miles, 'mph' if speed else 'mi')
 
     def temp_units(self, celcius):
-        """ Format and convert temperature to GUI setting units. Raises
-        HTTPError when vehicle is not online. """
+        """ Format and convert temperature to GUI setting units """
         if celcius is None:
             return None
         # Lookup GUI settings of the vehicle
         if 'F' in self['gui_settings']['gui_temperature_units']:
             return '%.1f F' % (celcius * 1.8 + 32)
         return '%.1f C' % celcius
+
+    def time_format(self, timestamp_ms=0):
+        """ Returns timestamp or current time formatted to GUI setting """
+        tm = time.localtime(timestamp_ms / 1000 or None)
+        # Lookup GUI settings of the vehicle
+        if self['gui_settings']['gui_24_hour_time']:
+            return time.strftime('%H:%M:%S', tm)
+        return time.strftime('%I:%M:%S %p', tm)
+
+    def last_seen(self):
+        """ Returns vehicle last seen natural time. Raises ValueError. """
+        units = ((60, 'a second'), (60, 'a minute'), (24, 'an hour'),
+                 (7, 'a day'), (4.35, 'a week'), (12, 'a month'), (0, 'a year'))
+        diff = time.time() - self['charge_state']['timestamp'] / 1000
+        if diff < 0:
+            raise ValueError('Timestamp is in the future')
+        if diff >= 1:
+            for length, unit in units:
+                if diff < length or not length:
+                    if diff > 1.5:
+                        unit = '%d %ss' % (round(diff), unit.split()[1])
+                    return unit + ' ago'
+                diff /= length
+        return 'just now'
 
     def decode_vin(self):
         """ Returns decoded VIN as dict """
