@@ -67,23 +67,28 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner
 | `decode_option()` | No | lookup option code description (read from *option_codes.json*) |
 | `option_code_list()` <sup>1</sup> | No | lists known descriptions of the vehicle option codes |
 | `get_vehicle_data()` | Yes | gets a rollup of all the data request endpoints plus vehicle config |
+| `get_latest_vehicle_data()` | No <sup>2</sup> | gets cached data, pushed by the vehicle on sleep, wake and around OTA |
 | `get_nearby_charging_sites()` | Yes | lists nearby Tesla-operated charging stations |
 | `get_service_scheduling_data()` | No | retrieves next service appointment for this vehicle |
-| `get_charge_history()` <sup>2</sup> | No | lists vehicle charging history data points |
+| `get_charge_history()` <sup>3</sup> | No | lists vehicle charging history data points |
 | `get_user()` | No | gets user account data |
 | `get_user_details()` | No | get user account details |
 | `mobile_enabled()` | Yes | checks if the Mobile Access setting is enabled in the car |
-| `compose_image()` <sup>3</sup> | No | composes a vehicle image based on vehicle option codes |
-| `dist_units()` | Yes | converts distance or speed units to GUI setting of the vehicle |
-| `temp_units()` | Yes | converts temperature units to GUI setting of the vehicle |
+| `compose_image()` <sup>4</sup> | No | composes a vehicle image based on vehicle option codes |
+| `dist_units()` | No | converts distance or speed units to GUI setting of the vehicle |
+| `temp_units()` | No | converts temperature units to GUI setting of the vehicle |
+| `gui_time()` | No | returns timestamp or current time formatted to GUI setting |
+| `last_seen()` | No | returns vehicle last seen natural time |
 | `decode_vin()` | No | decodes the vehicle identification number to a dict |
 | `command()` | Yes | wrapper around `api()` for vehicle command response error handling |
 
 <sup>1</sup> Option codes appear to be deprecated. Vehicles return a generic set of codes related to a Model 3.
 
-<sup>2</sup> Car software version 2021.44.25 or higher required, Data Sharing must be enabled and you must be the primary vehicle owner.
+<sup>2</sup> Vehicle should still be online if there is no cached data available.
 
-<sup>3</sup> Pass vehicle option codes to this method or the image may not be accurate.
+<sup>3</sup> Car software version 2021.44.25 or higher required, Data Sharing must be enabled and you must be the primary vehicle owner.
+
+<sup>4</sup> Pass vehicle option codes to this method or the image may not be accurate.
 
 Only methods with *No* in the *Online* column are available when the vehicle is asleep or offline. These methods will not prevent your vehicle from sleeping. Other methods and API calls require the vehicle to be brought online by using `sync_wake_up()` and can prevent your vehicle from sleeping if called within too short a period.
 
@@ -120,14 +125,24 @@ with teslapy.Tesla('elon@tesla.com') as tesla:
 	vehicles = tesla.vehicle_list()
 	vehicles[0].sync_wake_up()
 	vehicles[0].command('ACTUATE_TRUNK', which_trunk='front')
-	print(vehicles[0].get_vehicle_data()['vehicle_state']['car_version'])
+    vehicles[0].get_vehicle_data()
+	print(vehicles[0]['vehicle_state']['car_version'])
+vehicles[0].command('FLASH_LIGHTS')  # Causes exception
 ```
 
-TeslaPy 2.4.0+ automatically calls `get_vehicle_data()` when a key is not found, allowing you to omit an initial `get_vehicle_data()` call:
+The last line after the context manager will cause an exception when using TeslaPy 2.5.0+ because it closes the [requests](https://pypi.org/project/requests/) connection handler when the context manager exits. TeslaPy 2.4.0 and 2.5.0 automatically calls `get_vehicle_data()` and TeslaPy 2.6.0+ automatically calls `get_latest_vehicle_data()` when a key is not found. This example works for TeslaPy 2.6.0+:
 
 ```python
-print(vehicles[0]['vehicle_state']['car_version'])
+import teslapy
+with teslapy.Tesla('elon@tesla.com') as tesla:
+    vehicles = tesla.vehicle_list()
+    print(vehicles[0]['display_name'] + ' last seen ' + vehicles[0].last_seen() +
+          ' at ' + str(vehicles[0]['charge_state']['battery_level']) + '% SoC')
 ```
+
+Example output:
+
+`Tim's Tesla last seen 6 hours ago at 87% SoC`
 
 ### Authentication
 

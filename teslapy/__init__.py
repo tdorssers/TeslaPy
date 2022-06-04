@@ -541,7 +541,8 @@ class Vehicle(JsonDict):
         return self
 
     def get_latest_vehicle_data(self):
-        """ Cached data, pushed by the vehicle on sleep, wake and around OTA """
+        """ Cached data, pushed by the vehicle on sleep, wake and around OTA.
+        Raises HTTPError if no data is available and vehicle is not online. """
         self.update(self.api('CACHED_PROTO_VEHICLE_DATA')['response'])
         self.timestamp = time.time()
         return self
@@ -621,7 +622,7 @@ class Vehicle(JsonDict):
             return '%.1f F' % (celcius * 1.8 + 32)
         return '%.1f C' % celcius
 
-    def time_format(self, timestamp_ms=0):
+    def gui_time(self, timestamp_ms=0):
         """ Returns timestamp or current time formatted to GUI setting """
         tm = time.localtime(timestamp_ms / 1000 or None)
         # Lookup GUI settings of the vehicle
