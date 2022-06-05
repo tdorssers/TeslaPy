@@ -122,11 +122,11 @@ Basic usage of the module:
 ```python
 import teslapy
 with teslapy.Tesla('elon@tesla.com') as tesla:
-	vehicles = tesla.vehicle_list()
-	vehicles[0].sync_wake_up()
-	vehicles[0].command('ACTUATE_TRUNK', which_trunk='front')
+    vehicles = tesla.vehicle_list()
+    vehicles[0].sync_wake_up()
+    vehicles[0].command('ACTUATE_TRUNK', which_trunk='front')
     vehicles[0].get_vehicle_data()
-	print(vehicles[0]['vehicle_state']['car_version'])
+    print(vehicles[0]['vehicle_state']['car_version'])
 vehicles[0].command('FLASH_LIGHTS')  # Causes exception
 ```
 
@@ -311,6 +311,25 @@ with Tesla('elon@tesla.com') as tesla:
     url = 'https://akamai-apigateway-vfx.tesla.com/safety-rating/daily-metrics'
     print(tesla.get(url, params={'vin': vehicles[0]['vin'], 'deviceLanguage': 'en',
                                  'deviceCountry': 'US', 'timezone': 'UTC'}))
+```
+
+### Robustness
+
+TeslaPy uses a default timeout of 10 seconds, that can be adjusted if, for instance, the remote server is very slow. Refer to the [timeouts](https://requests.readthedocs.io/en/master/user/advanced/#timeouts) section for more details. TeslaPy does not retry failed or timed out connections by default, which can be enabled with the `retry` parameter.
+
+```python
+tesla = teslapy.Tesla('elon@tesla.com', retry=2, timeout=15)
+```
+
+A robust program accounting for network failures has a retry strategy, that includes the total number of retry attempts to make, the HTTP response codes to retry on and optionally a backoff factor. Refer to the [retry](https://urllib3.readthedocs.io/en/latest/reference/urllib3.util.html#module-urllib3.util.retry) module for more details.
+
+Be aware that Tesla may temporarily block your account if you are hammering the servers too much.
+
+```python
+import teslapy
+retry = teslapy.Retry(total=2, status_forcelist=(500, 502, 503, 504))
+with teslapy.Tesla('elon@tesla.com', retry=retry) as tesla:
+    vehicles = tesla.vehicle_list()
 ```
 
 Take a look at [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) for more code examples.
