@@ -240,8 +240,8 @@ import teslapy
 with teslapy.Tesla('elon@tesla.com') as tesla:
     if not tesla.authorized:
         tesla.refresh_token(refresh_token=input('Enter SSO refresh token: '))
-	vehicles = tesla.vehicle_list()
-	print(vehicles[0])
+    vehicles = tesla.vehicle_list()
+    print(vehicles[0])
 ```
 
 #### Logout
@@ -329,7 +329,7 @@ import teslapy
 retry = teslapy.Retry(total=2, status_forcelist=(500, 502, 503, 504))
 with teslapy.Tesla('elon@tesla.com', retry=retry) as tesla:
     vehicles = tesla.vehicle_list()
-	print(vehicles[0])
+    print(vehicles[0])
 vehicles[0].command('FLASH_LIGHTS')  # Raises exception
 ```
 
@@ -636,7 +636,7 @@ Example output of `get_vehicle_data()` or `python cli.py -e elon@tesla.com -w -g
         "center_display_state": 2,
         "df": 0,
         "dr": 0,
-		"fd_window": 0,
+        "fd_window": 0,
         "fp_window": 0,
         "ft": 0,
         "is_user_present": true,
@@ -649,11 +649,11 @@ Example output of `get_vehicle_data()` or `python cli.py -e elon@tesla.com -w -g
         "parsed_calendar_supported": true,
         "pf": 0,
         "pr": 0,
-		"rd_window": 0,
+        "rd_window": 0,
         "remote_start": false,
         "remote_start_enabled": true,
         "remote_start_supported": true,
-		"rp_window": 0,
+        "rp_window": 0,
         "rt": 0,
         "sentry_mode": false,
         "sentry_mode_available": true,
