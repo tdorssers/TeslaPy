@@ -127,10 +127,9 @@ with teslapy.Tesla('elon@tesla.com') as tesla:
     vehicles[0].command('ACTUATE_TRUNK', which_trunk='front')
     vehicles[0].get_vehicle_data()
     print(vehicles[0]['vehicle_state']['car_version'])
-vehicles[0].command('FLASH_LIGHTS')  # Causes exception
 ```
 
-The last line after the context manager will cause an exception when using TeslaPy 2.5.0+ because it closes the [requests](https://pypi.org/project/requests/) connection handler when the context manager exits. TeslaPy 2.4.0 and 2.5.0 automatically calls `get_vehicle_data()` and TeslaPy 2.6.0+ automatically calls `get_latest_vehicle_data()` when a key is not found. This example works for TeslaPy 2.6.0+:
+TeslaPy 2.4.0 and 2.5.0 automatically calls `get_vehicle_data()` and TeslaPy 2.6.0+ automatically calls `get_latest_vehicle_data()` when a key is not found. This example works for TeslaPy 2.6.0+:
 
 ```python
 import teslapy
@@ -315,7 +314,7 @@ with Tesla('elon@tesla.com') as tesla:
 
 ### Robustness
 
-TeslaPy uses a default timeout of 10 seconds, that can be adjusted if, for instance, the remote server is very slow. Refer to the [timeouts](https://requests.readthedocs.io/en/master/user/advanced/#timeouts) section for more details. TeslaPy does not retry failed or timed out connections by default, which can be enabled with the `retry` parameter.
+TeslaPy uses an adjustable connect and read timeout of 10 seconds by default. Refer to the [timeouts](https://requests.readthedocs.io/en/master/user/advanced/#timeouts) section for more details. TeslaPy does not retry failed or timed out connections by default, which can be enabled with the `retry` parameter.
 
 ```python
 tesla = teslapy.Tesla('elon@tesla.com', retry=2, timeout=15)
@@ -330,7 +329,11 @@ import teslapy
 retry = teslapy.Retry(total=2, status_forcelist=(500, 502, 503, 504))
 with teslapy.Tesla('elon@tesla.com', retry=retry) as tesla:
     vehicles = tesla.vehicle_list()
+	print(vehicles[0])
+vehicles[0].command('FLASH_LIGHTS')  # Raises exception
 ```
+
+The line after the context manager will raise an exception when using TeslaPy 2.5.0+ because it explicitly closes the [requests](https://pypi.org/project/requests/) connection handler when the context manager exits. Earlier versions would not raise an exception and retries would not work.
 
 Take a look at [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) for more code examples.
 

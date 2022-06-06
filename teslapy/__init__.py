@@ -6,7 +6,7 @@ for reuse and refreshed automatically. The vehicle option codes are loaded from
 
 # Author: Tim Dorssers
 
-__version__ = '2.5.0'
+__version__ = '2.6.0'
 
 import os
 import ast
@@ -34,7 +34,7 @@ BASE_URL = 'https://owner-api.teslamotors.com/'
 SSO_BASE_URL = 'https://auth.tesla.com/'
 SSO_CLIENT_ID = 'ownerapi'
 STREAMING_BASE_URL = 'wss://streaming.vn.teslamotors.com/'
-APP_USER_AGENT = 'TeslaApp/4.7.0'
+APP_USER_AGENT = 'TeslaApp/4.9.0'
 
 # Setup module logging
 logger = logging.getLogger(__name__)
