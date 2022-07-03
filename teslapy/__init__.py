@@ -36,7 +36,7 @@ BASE_URL = 'https://owner-api.teslamotors.com/'
 SSO_BASE_URL = 'https://auth.tesla.com/'
 SSO_CLIENT_ID = 'ownerapi'
 STREAMING_BASE_URL = 'wss://streaming.vn.teslamotors.com/'
-APP_USER_AGENT = 'TeslaApp/4.9.0'
+APP_USER_AGENT = 'TeslaApp/4.10.0'
 
 # Setup module logging
 logger = logging.getLogger(__name__)

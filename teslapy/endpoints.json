@@ -506,6 +506,11 @@
     "URI": "api/1/energy_sites/{site_id}/savings_forecast",
     "AUTH": true
   },
+  "ENERGY_REGISTER_PRODUCT": {
+    "TYPE": "POST",
+    "URI": "api/1/users/register_product",
+    "AUTH": true
+  },
   "ENERGY_SITE_BACKUP_TIME_REMAINING": {
     "TYPE": "GET",
     "URI": "api/1/energy_sites/{site_id}/backup_time_remaining",
@@ -594,6 +599,11 @@
   "ENERGY_SITE_PROGRAM_DETAILS": {
     "TYPE": "GET",
     "URI": "api/1/energy_sites/{site_id}/program",
+    "AUTH": true
+  },
+  "ENERGY_WALL_CONNECTOR_FIRMWARE_DOWNLOAD_URL": {
+    "TYPE": "GET",
+    "URI": "api/1/wall_connectors/firmware",
     "AUTH": true
   },
   "SEND_NOTIFICATION_CONFIRMATION": {
@@ -784,6 +794,16 @@
   "SERVICE_CENTER_IS_BODY_SHOP": {
     "TYPE": "GET",
     "URI": "bff/v2/mobile-app/service/locations/body-shop",
+    "AUTH": true
+  },
+  "SERVICE_CENTER_FETCH_PREFERRED_CENTER": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/service/locations/preferred-service-center",
+    "AUTH": true
+  },
+  "SERVICE_CENTER_UPDATE_PREFERRED_CENTER": {
+    "TYPE": "POST",
+    "URI": "bff/v2/mobile-app/service/locations/preferred-service-center",
     "AUTH": true
   },
   "SERVICE_SAVE_CENTER_APPOINTMENT": {
@@ -1001,6 +1021,16 @@
     "URI": "bff/v2/mobile-app/service/appointments/get-trt/{trtId}",
     "AUTH": true
   },
+  "SERVICE_CREATE_INVOICE": {
+    "TYPE": "POST",
+    "URI": "mobile-app/service/estimate/{serviceVisitId}",
+    "AUTH": true
+  },
+  "SERVICE_ESTIMATE_DETAILS": {
+    "TYPE": "GET",
+    "URI": "mobile-app/service/estimate/{serviceVisitID}",
+    "AUTH": true
+  },
   "ENERGY_OWNERSHIP_GET_TOGGLES": {
     "TYPE": "GET",
     "URI": "bff/v2/mobile-app/energy/feature-flags",
@@ -1118,7 +1148,7 @@
   },
   "UPGRADES_GET_ELIGIBLE_UPGRADES": {
     "TYPE": "GET",
-    "URI": "bff/v2/mobile-app/upgrades/eligible",
+    "URI": "bff/v2/mobile-app/upgrades/eligible/v2",
     "AUTH": true
   },
   "UPGRADES_GET_PURCHASED_UPGRADES": {
@@ -1443,7 +1473,7 @@
   },
   "COMMERCE_POST_INSTALLER_VENDOR": {
     "TYPE": "POST",
-    "URI": "commerce-api/checkout/auditrecords/v1/{locale}",
+    "URI": "commerce-api/checkout/auditrecords/v1{locale}",
     "AUTH": true
   },
   "COMMERCE_CONTENT": {
@@ -1453,7 +1483,12 @@
   },
   "COMMERCE_CREATE_ENERGY_ORDER": {
     "TYPE": "POST",
-    "URI": "commerce-api/energy/orders/v1/{locale}",
+    "URI": "commerce-api/energy/orders/v1{locale}",
+    "AUTH": true
+  },
+  "COMMERCE_STOCK_NOTIFICATION": {
+    "TYPE": "POST",
+    "URI": "commerce-api/stocknotifications/v1{locale}",
     "AUTH": true
   },
   "MATTERMOST": {
@@ -1739,6 +1774,11 @@
   "FINANCING_SUBMIT_ACQUISITION": {
     "TYPE": "POST",
     "URI": "bff/v2/mobile-app/financing/acquisition/submit",
+    "AUTH": true
+  },
+  "FINANCING_STATUS_UPDATE_ACQUISITION": {
+    "TYPE": "POST",
+    "URI": "bff/v2/mobile-app/financing/acquisition/status-update",
     "AUTH": true
   },
   "FINANCING_SUBMIT_APPOINTMENT": {
