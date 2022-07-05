@@ -815,6 +815,25 @@ class Battery(Product):
         return self.command('BACKUP_RESERVE',
                             backup_reserve_percent=int(percent))
 
+    def set_import_export(
+            self, allow_grid_charging=None, allow_battery_export=None):
+        """ Sets the battery grid import and export settings
+        allow_grid_charging: Optional bool argument indicating if charging from
+        the grid is allowed.
+        allow_battery_export: Optional bool argument indicating if export to the
+        grid is allowed.
+        """
+        params = {}
+        if allow_grid_charging is not None:
+            val = not allow_grid_charging
+            params['disallow_charge_from_grid_with_solar_installed'] = val
+        if allow_battery_export is not None:
+            val = 'battery_ok' if allow_battery_export else 'pv_only'
+            params['customer_preferred_export_rule'] = val
+        # This endpoint returns an empty responce instead of a result code, so 
+        # api() is called instead of using command()
+        self.api('ENERGY_SITE_IMPORT_EXPORT_CONFIG', **params)
+
     def get_tariff(self):
         """ Get the tariff rate data """
         return self.api('SITE_TARIFF')['response']
