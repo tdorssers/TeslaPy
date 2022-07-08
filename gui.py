@@ -605,8 +605,7 @@ class App(Tk):
         self.debug = BooleanVar()
         opt_menu.add_checkbutton(label='Console debugging', variable=self.debug,
                                  command=self.apply_settings)
-        self.verify = BooleanVar()
-        self.verify.set(1)
+        self.verify = BooleanVar(value=1)
         opt_menu.add_checkbutton(label='Verify SSL', variable=self.verify,
                                  command=self.apply_settings)
         opt_menu.add_command(label='Set proxy URL', command=self.set_proxy)
@@ -614,7 +613,7 @@ class App(Tk):
         web_menu = Menu(menu, tearoff=0)
         opt_menu.add_cascade(label='Web browser', menu=web_menu,
                              state=NORMAL if webdriver else DISABLED)
-        self.browser = IntVar(0)
+        self.browser = IntVar()
         web_menu.add_radiobutton(label='Chrome', value=0, variable=self.browser)
         web_menu.add_radiobutton(label='Opera', value=1, variable=self.browser)
         if webdriver and hasattr(webdriver.edge, 'options'):
