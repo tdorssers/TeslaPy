@@ -779,10 +779,12 @@ class Product(JsonDict):
 
 
 class BatteryTariffPeriodCost(
-        namedtuple('BatteryTariffPeriodCost', ['buy', 'sell'])):
+        namedtuple('BatteryTariffPeriodCost', ['buy', 'sell', 'name'])):
     """ Represents the costs of a tariff period
     buy: A float containing the import price
     sell: A float containing the export price
+    name: The name for the period, must be 'ON_PEAK', 'PARTIAL_PEAK', 'OFF_PEAK',
+    or 'SUPER_OFF_PEAK'
     """
     __slots__ = ()
 
@@ -885,20 +887,12 @@ class Battery(Product):
         # add the background time slots to the costs array
         costs[default_price] = [BatteryTariffPeriod(default_price, x[0], x[1])
                                 for x in background_time]
-        period_names_full = ["ON_PEAK", "PARTIAL_PEAK", "OFF_PEAK",
-                             "SUPER_OFF_PEAK"]
-        period_names_partial = ["ON_PEAK", "OFF_PEAK"]
-
-        if len(costs) > len(period_names_full):
-            return None
 
         tou_periods = {}
         buy_price_info = {}
         sell_price_info = {}
-        short_list = len(period_names_partial) >= len(costs)
-        period_names = (period_names_partial if short_list
-                        else period_names_full)
-        for (name, cost) in zip(period_names, sorted(costs, reverse=True)):
+        for cost in sorted(costs, reverse=True):
+            name = cost.name
             buy_price_info[name] = cost.buy
             sell_price_info[name] = cost.sell
             periods_for_cost = []
