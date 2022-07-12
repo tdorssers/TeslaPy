@@ -884,6 +884,13 @@ class Battery(Product):
             # Update the list of prices
             costs[period.cost].append(period)
 
+            # The loop above can leave background time slots with zero duration.
+            # It's difficult to filter them out above as the list indexes can get
+            # out of sync as we end up modifying the array being iterated over.
+            # As a result it's easier to filter out invalid background slots now.
+            background_time = list(filter(lambda t: t[0] != t[1], 
+                                          background_time))
+
         # add the background time slots to the costs array
         costs[default_price] = [BatteryTariffPeriod(default_price, x[0], x[1])
                                 for x in background_time]
