@@ -58,7 +58,7 @@ def main():
             tesla.timeout = args.timeout
         if args.refresh:
             tesla.refresh_token(refresh_token=args.refresh)
-        selected = prod = tesla.vehicle_list() + tesla.battery_list()
+        selected = prod = tesla.vehicle_list() + tesla.battery_list() + tesla.solar_list()
         if args.filter:
             selected = [p for p in prod for v in p.values() if v == args.filter]
         logging.info('%d product(s), %d selected', len(prod), len(selected))
