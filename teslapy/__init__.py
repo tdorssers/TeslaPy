@@ -292,7 +292,9 @@ class Tesla(OAuth2Session):
         try:
             with open(self.cache_file) as infile:
                 cache = json.load(infile)
-        except (IOError, ValueError):
+        except (IOError, ValueError) as e:
+            logger.warning('Cannot load cache: %s',
+                           self.cache_file, exc_info=True)
             cache = {}
         return cache
 
