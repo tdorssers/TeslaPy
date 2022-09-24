@@ -547,7 +547,8 @@ class Vehicle(JsonDict):
     def get_latest_vehicle_data(self):
         """ Cached data, pushed by the vehicle on sleep, wake and around OTA.
         Raises HTTPError if no data is available and vehicle is not online. """
-        self.update(self.api('CACHED_PROTO_VEHICLE_DATA')['response'])
+        response = self.api('CACHED_PROTO_VEHICLE_DATA')['response']
+        self.update(response['data'] if 'data' in response else response)
         self.timestamp = time.time()
         return self
 
