@@ -18,6 +18,7 @@ import logging
 import pkgutil
 import datetime
 import webbrowser
+import stat
 try:
     from urlparse import urljoin
 except ImportError:
@@ -303,6 +304,7 @@ class Tesla(OAuth2Session):
         try:
             with open(self.cache_file, 'w') as outfile:
                 json.dump(cache, outfile)
+            os.chmod(self.cache_file, (stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP))
         except IOError:
             logger.error('Cache not updated')
         else:
@@ -835,7 +837,7 @@ class Battery(Product):
         if allow_battery_export is not None:
             val = 'battery_ok' if allow_battery_export else 'pv_only'
             params['customer_preferred_export_rule'] = val
-        # This endpoint returns an empty responce instead of a result code, so 
+        # This endpoint returns an empty responce instead of a result code, so
         # api() is called instead of using command()
         self.api('ENERGY_SITE_IMPORT_EXPORT_CONFIG', **params)
 
@@ -891,7 +893,7 @@ class Battery(Product):
             # It's difficult to filter them out above as the list indexes can get
             # out of sync as we end up modifying the array being iterated over.
             # As a result it's easier to filter out invalid background slots now.
-            background_time = list(filter(lambda t: t[0] != t[1], 
+            background_time = list(filter(lambda t: t[0] != t[1],
                                           background_time))
 
         # add the background time slots to the costs array
