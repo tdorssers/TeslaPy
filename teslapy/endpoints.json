@@ -39,6 +39,11 @@
     "URI": "api/1/vehicles/{vehicle_id}/vehicle_data",
     "AUTH": true
   },
+  "CHARGE_STATE": {
+    "TYPE": "GET",
+    "URI": "api/1/vehicles/{vehicle_id}/data_request/charge_state",
+    "AUTH": true
+  },
   "CACHED_PROTO_VEHICLE_DATA": {
     "NOTE": "This is cached data, pushed by the vehicle on sleep, wake and around OTAs.",
     "TYPE": "GET",
