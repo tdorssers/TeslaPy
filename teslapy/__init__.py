@@ -536,8 +536,9 @@ class Vehicle(JsonDict):
 
     def option_code_list(self):
         """ Returns a list of known vehicle option code titles """
+        codes = self['option_codes'] if self['option_codes'] else ''
         return list(filter(None, [self.decode_option(code)
-                                  for code in self['option_codes'].split(',')]))
+                                  for code in codes.split(',')]))
 
     def get_charge_state(self):
         """ Charge state information including battery limit, charge miles,
@@ -552,14 +553,6 @@ class Vehicle(JsonDict):
         """ A rollup of all the data request endpoints plus vehicle config.
         Raises HTTPError when vehicle is not online. """
         self.update(self.api('VEHICLE_DATA')['response'])
-        self.timestamp = time.time()
-        return self
-
-    def get_latest_vehicle_data(self):
-        """ Cached data, pushed by the vehicle on sleep, wake and around OTA.
-        Raises HTTPError if no data is available and vehicle is not online. """
-        response = self.api('CACHED_PROTO_VEHICLE_DATA')['response']
-        self.update(response['data'] if 'data' in response else response)
         self.timestamp = time.time()
         return self
 
@@ -600,9 +593,8 @@ class Vehicle(JsonDict):
     def compose_image(self, view='STUD_3QTR', size=640, options=None):
         """ Returns a PNG formatted composed vehicle image. Valid views are:
         STUD_3QTR, STUD_SEAT, STUD_SIDE, STUD_REAR and STUD_WHEEL """
-        if options is None:
-            logger.warning('`compose_image` requires `options` to be set for '
-                           'an accurate image')
+        if options is None and self['option_codes'] is None:
+            raise ValueError('`compose_image` requires `options` to be set')
         # Derive model from VIN and other properties from (given) option codes
         params = {'model': 'm' + self['vin'][3].lower(),
                   'bkba_opt': 1, 'view': view, 'size': size,
@@ -616,7 +608,7 @@ class Vehicle(JsonDict):
 
     def __missing__(self, key):
         """ Get cached data when accessed. Raises KeyError on invalid key. """
-        if key not in self.get_latest_vehicle_data():
+        if key not in self.get_vehicle_data():
             raise KeyError(key)
         return self[key]
 
