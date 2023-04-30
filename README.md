@@ -67,14 +67,13 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner
 | `decode_option()` | No | lookup option code description (read from *option_codes.json*) |
 | `option_code_list()` <sup>1</sup> | No | lists known descriptions of the vehicle option codes |
 | `get_vehicle_data()` | Yes | gets a rollup of all the data request endpoints plus vehicle config |
-| `get_latest_vehicle_data()` | No <sup>2</sup> | gets cached data, pushed by the vehicle on sleep, wake and around OTA |
 | `get_nearby_charging_sites()` | Yes | lists nearby Tesla-operated charging stations |
 | `get_service_scheduling_data()` | No | retrieves next service appointment for this vehicle |
-| `get_charge_history()` <sup>3</sup> | No | lists vehicle charging history data points |
+| `get_charge_history()` <sup>2</sup> | No | lists vehicle charging history data points |
 | `get_user()` | No | gets user account data |
 | `get_user_details()` | No | get user account details |
 | `mobile_enabled()` | Yes | checks if the Mobile Access setting is enabled in the car |
-| `compose_image()` <sup>4</sup> | No | composes a vehicle image based on vehicle option codes |
+| `compose_image()` <sup>3</sup> | No | composes a vehicle image based on vehicle option codes |
 | `dist_units()` | No | converts distance or speed units to GUI setting of the vehicle |
 | `temp_units()` | No | converts temperature units to GUI setting of the vehicle |
 | `gui_time()` | No | returns timestamp or current time formatted to GUI setting |
@@ -82,13 +81,11 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner
 | `decode_vin()` | No | decodes the vehicle identification number to a dict |
 | `command()` | Yes | wrapper around `api()` for vehicle command response error handling |
 
-<sup>1</sup> Option codes appear to be deprecated. Vehicles return a generic set of codes related to a Model 3.
+<sup>1</sup> Option codes appear to be deprecated.
 
-<sup>2</sup> Vehicle should still be online if there is no cached data available.
+<sup>2</sup> Car software version 2021.44.25 or higher required, Data Sharing must be enabled and you must be the primary vehicle owner.
 
-<sup>3</sup> Car software version 2021.44.25 or higher required, Data Sharing must be enabled and you must be the primary vehicle owner.
-
-<sup>4</sup> Pass vehicle option codes to this method or the image may not be accurate.
+<sup>3</sup> Pass vehicle option codes to this method now options codes are deprecated.
 
 Only methods with *No* in the *Online* column are available when the vehicle is asleep or offline. These methods will not prevent your vehicle from sleeping. Other methods and API calls require the vehicle to be brought online by using `sync_wake_up()` and can prevent your vehicle from sleeping if called within too short a period.
 
@@ -356,7 +353,7 @@ These are the major commands:
 | MAX_DEFROST | `on` | `true` or `false` |
 | CHANGE_CLIMATE_TEMPERATURE_SETTING | `driver_temp`, `passenger_temp` | temperature in celcius |
 | SET_CLIMATE_KEEPER_MODE | `climate_keeper_mode` | 0=off, 1=on, 2=dog, 3=camp |
-| HVAC_BIOWEAPON_MODE | |
+| HVAC_BIOWEAPON_MODE | `on` | `true` or `false` |
 | SCHEDULED_DEPARTURE <sup>1</sup> | `enable`, `departure_time`, `preconditioning_enabled`, `preconditioning_weekdays_only`, `off_peak_charging_enabled`, `off_peak_charging_weekdays_only`, `end_off_peak_time` | `true` or `false`, minutes past midnight |
 | SCHEDULED_CHARGING <sup>1</sup> | `enable`, `time` | `true` or `false`, minutes past midnight |
 | CHARGING_AMPS <sup>1</sup> | `charging_amps` | between 0-32 |
@@ -372,6 +369,7 @@ These are the major commands:
 | CHARGE_PORT_DOOR_CLOSE | | |
 | START_CHARGE | | |
 | STOP_CHARGE | | |
+| SET_COP_TEMP | `temp` | temperature in celcius |
 | MEDIA_TOGGLE_PLAYBACK | | |
 | MEDIA_NEXT_TRACK | | |
 | MEDIA_PREVIOUS_TRACK | | |
@@ -499,7 +497,7 @@ Example output of `get_vehicle_data()` or `python cli.py -e elon@tesla.com -w -g
     "vehicle_id": 1234567890,
     "vin": "5YJ3E111111111111",
     "display_name": "Tim's Tesla",
-    "option_codes": "AD15,MDL3,PBSB,RENA,BT37,ID3W,RF3G,S3PB,DRLH,DV2W,W39B,APF0,COUS,BC3B,CH07,PC30,FC3P,FG31,GLFR,HL31,HM31,IL31,LTPB,MR31,FM3B,RS3H,SA3P,STCP,SC04,SU3C,T3CA,TW00,TM00,UT3P,WR00,AU3P,APH3,AF00,ZCST,MI00,CDM0",
+    "option_codes": null,
     "color": null,
     "tokens": [
         "1234567890abcdef",
