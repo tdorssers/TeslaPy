@@ -321,7 +321,6 @@ def main():
         idx = int(raw_input("Select vehicle: "))
         print('-' * 80)
         print('VIN decode:', ', '.join(vehicles[idx].decode_vin().values()))
-        print('Option codes:', ', '.join(vehicles[idx].option_code_list()))
         print('-' * 80)
         menu(vehicles[idx])
 
