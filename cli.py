@@ -68,8 +68,6 @@ def main():
             if args.list:
                 print(product)
             if isinstance(product, Vehicle):
-                if args.option:
-                    print(', '.join(product.option_code_list()))
                 if args.vin:
                     print(product.decode_vin())
                 if args.wake:
@@ -112,8 +110,6 @@ def main():
                         print(product.api(command, **command_data))
                 else:
                     print(product.command(args.command, **data))
-            if args.user:
-                print(product.get_user_details())
         if args.logout:
             if webview and not (webdriver and args.web is not None):
                 window = webview.create_window('Logout', tesla.logout())
@@ -137,8 +133,6 @@ if __name__ == "__main__":
     parser.add_argument('-U', dest='url', help='SSO service base URL')
     parser.add_argument('-l', '--list', action='store_true',
                         help='list all selected vehicles/batteries')
-    parser.add_argument('-o', '--option', action='store_true',
-                        help='list vehicle option codes')
     parser.add_argument('-v', '--vin', action='store_true',
                         help='vehicle identification number decode')
     parser.add_argument('-w', '--wake', action='store_true',
@@ -165,8 +159,6 @@ if __name__ == "__main__":
                         help='disable verify SSL certificate')
     parser.add_argument('-L', '--logout', action='store_true',
                         help='clear token from cache and logout')
-    parser.add_argument('-u', '--user', action='store_true',
-                        help='get user account details')
     if webdriver:
         h = 'use Chrome browser' if webview else 'use Chrome browser (default)'
         parser.add_argument('--chrome', action='store_const', dest='web',

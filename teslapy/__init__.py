@@ -540,15 +540,6 @@ class Vehicle(JsonDict):
         return list(filter(None, [self.decode_option(code)
                                   for code in codes.split(',')]))
 
-    def get_charge_state(self):
-        """ Charge state information including battery limit, charge miles,
-        charge voltage, charge phases, current, charge management, and
-        battery heater status.
-        Raises HTTPError when vehicle is not online. """
-        self.update(self.api('CHARGE_STATE')['response'])
-        self.timestamp = time.time()
-        return self
-
     def get_vehicle_data(self):
         """ A rollup of all the data request endpoints plus vehicle config.
         Raises HTTPError when vehicle is not online. """
@@ -570,18 +561,6 @@ class Vehicle(JsonDict):
     def get_charge_history(self):
         """ Lists vehicle charging history data points """
         return self.api('VEHICLE_CHARGE_HISTORY')['response']
-
-    def get_user(self, device_country='US', device_language='EN'):
-        """ Retrieve user account data """
-        return self.tesla.api('USER', vin=self['vin'],
-                              deviceCountry=device_country,
-                              deviceLanguage=device_language)['data']
-
-    def get_user_details(self, device_country='US', device_language='EN'):
-        """ Retrieve user account details """
-        return self.tesla.api('USER_ACCOUNT_GET_DETAILS', vin=self['vin'],
-                              deviceCountry=device_country,
-                              deviceLanguage=device_language)['data']
 
     def mobile_enabled(self):
         """ Checks if the Mobile Access setting is enabled in the car. Raises

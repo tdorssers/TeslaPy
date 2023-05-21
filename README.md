@@ -56,7 +56,7 @@ The convenience method `api()` uses named endpoints listed in *endpoints.json* t
 | `battery_list()` | returns a list of Battery objects |
 | `solar_list()` | returns a list of SolarPanel objects |
 
-The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner API, which is a pull API. The `get_vehicle_summary()`, `get_vehicle_data()` and `get_latest_vehicle_data()` calls update the `Vehicle` instance, merging data. The streaming API pushes vehicle data on-change after subscription. The `stream()` method takes an optional argument, a callback function that is called with one argument, a dict holding the changed data. The `Vehicle` object is always updated with the pushed data. If there are no changes within 10 seconds, the vehicle stops streaming data. The `stream()` method has two more optional arguments to control restarting. Additionally, the class implements the following methods:
+The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner API, which is a pull API. The `get_vehicle_summary()` and `get_vehicle_data()` calls update the `Vehicle` instance, merging data. The streaming API pushes vehicle data on-change after subscription. The `stream()` method takes an optional argument, a callback function that is called with one argument, a dict holding the changed data. The `Vehicle` object is always updated with the pushed data. If there are no changes within 10 seconds, the vehicle stops streaming data. The `stream()` method has two more optional arguments to control restarting. Additionally, the class implements the following methods:
 
 | Call | Online | Description |
 | --- | --- | --- |
@@ -70,8 +70,6 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner
 | `get_nearby_charging_sites()` | Yes | lists nearby Tesla-operated charging stations |
 | `get_service_scheduling_data()` | No | retrieves next service appointment for this vehicle |
 | `get_charge_history()` <sup>2</sup> | No | lists vehicle charging history data points |
-| `get_user()` | No | gets user account data |
-| `get_user_details()` | No | get user account details |
 | `mobile_enabled()` | Yes | checks if the Mobile Access setting is enabled in the car |
 | `compose_image()` <sup>3</sup> | No | composes a vehicle image based on vehicle option codes |
 | `dist_units()` | No | converts distance or speed units to GUI setting of the vehicle |
