@@ -320,6 +320,10 @@ def main():
         print('-' * 80)
         idx = int(raw_input("Select vehicle: "))
         print('-' * 80)
+        fmt = '{} last seen {} at {} % SoC'
+        print(fmt.format(vehicles[0]['display_name'], vehicles[0].last_seen(),
+                         vehicles[0]['charge_state']['battery_level']))
+        print('-' * 80)
         print('VIN decode:', ', '.join(vehicles[idx].decode_vin().values()))
         print('-' * 80)
         menu(vehicles[idx])
