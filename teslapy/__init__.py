@@ -622,7 +622,7 @@ class Vehicle(JsonDict):
         units = ((60, 'a second'), (60, 'a minute'), (24, 'an hour'),
                  (7, 'a day'), (4.35, 'a week'), (12, 'a month'), (0, 'a year'))
         diff = time.time() - self['charge_state']['timestamp'] / 1000
-        if diff < 0:
+        if diff < -9:
             raise ValueError('Timestamp is in the future')
         if diff >= 1:
             for length, unit in units:
