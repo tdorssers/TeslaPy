@@ -708,9 +708,19 @@ class Product(JsonDict):
         self.tesla = tesla
 
     def api(self, name, **kwargs):
-        """ Endpoint request with battery_id or site_id path variable """
-        pathvars = {'battery_id': self['id'], 'site_id': self['energy_site_id']}
-        return self.tesla.api(name, pathvars, **kwargs)
+        """ Endpoint request with site_id path variable """
+        path_vars = {'site_id': self['energy_site_id']}
+        return self.tesla.api(name, path_vars, **kwargs)
+
+    def get_site_info(self):
+        """ Retrieve current site/battery information """
+        self.update(self.api('SITE_CONFIG')['response'])
+        return self
+
+    def get_site_data(self):
+        """ Retrieve current site/battery live status """
+        self.update(self.api('SITE_DATA')['response'])
+        return self
 
     def get_calendar_history_data(
             self, kind='energy', period='day', start_date=None,
@@ -788,14 +798,9 @@ class BatteryTariffPeriod(
 class Battery(Product):
     """ Powerwall class """
 
-    def get_battery_data(self):
-        """ Retrieve detailed state and configuration of the battery """
-        self.update(self.api('BATTERY_DATA')['response'])
-        return self
-
     def set_operation(self, mode):
         """ Set battery operation to self_consumption, backup or autonomous """
-        return self.command('BATTERY_OPERATION_MODE', default_real_mode=mode)
+        return self.command('OPERATION_MODE', default_real_mode=mode)
 
     def set_backup_reserve_percent(self, percent):
         """ Set the minimum backup reserve percent for that battery """
@@ -922,8 +927,4 @@ class Battery(Product):
 
 class SolarPanel(Product):
     """ Solar panel class """
-
-    def get_site_data(self):
-        """ Retrieve current site generation data """
-        self.update(self.api('SITE_DATA')['response'])
-        return self
+    pass
