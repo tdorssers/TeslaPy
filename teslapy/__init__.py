@@ -543,7 +543,9 @@ class Vehicle(JsonDict):
     def get_vehicle_data(self):
         """ A rollup of all the data request endpoints plus vehicle config.
         Raises HTTPError when vehicle is not online. """
-        self.update(self.api('VEHICLE_DATA')['response'])
+        self.update(self.api('VEHICLE_DATA', endpoints='location_data;'
+                             'charge_state;climate_state;vehicle_state;'
+                             'gui_settings;vehicle_config')['response'])
         self.timestamp = time.time()
         return self
 
