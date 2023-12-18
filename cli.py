@@ -74,6 +74,10 @@ def main():
                     product.sync_wake_up()
                 if args.get:
                     print(product.get_vehicle_data())
+                if args.location:
+                    print(product.get_vehicle_location_data())
+                if args.basic:
+                    print(product.get_vehicle_basic_data())
                 if args.nearby:
                     print(product.get_nearby_charging_sites())
                 if args.mobile:
@@ -155,6 +159,10 @@ if __name__ == "__main__":
                         help='get service self scheduling eligibility')
     parser.add_argument('-H', '--history', action='store_true',
                         help='get charging history data')
+    parser.add_argument('-B', '--basic', action='store_true',
+                        help='get basic vhicle data only')
+    parser.add_argument('-G', '--location', action='store_true',
+                        help='get location (GPS) data, wake as needed')
     parser.add_argument('-V', '--verify', action='store_false',
                         help='disable verify SSL certificate')
     parser.add_argument('-L', '--logout', action='store_true',
