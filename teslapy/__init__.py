@@ -6,7 +6,7 @@ for reuse and refreshed automatically. The vehicle option codes are loaded from
 
 # Author: Tim Dorssers
 
-__version__ = '2.10.0'
+__version__ = '2.9.0'
 
 import os
 import ast
@@ -541,17 +541,18 @@ class Vehicle(JsonDict):
                                   for code in codes.split(',')]))
 
     def get_vehicle_data(self):
-        """ Get vehicle data from all endpoints: location_data, charge_state,
-        climate_state, vehicle_state, vehicle_config, gui_settings. Raises
-        HTTPError when vehicle is not online. """
-        self.update(self.api('VEHICLE_DATA')['response'])
+        """ A rollup of all the data request endpoints plus vehicle config.
+        Raises HTTPError when vehicle is not online. """
+        self.update(self.api('VEHICLE_DATA', endpoints='location_data;'
+                             'charge_state;climate_state;vehicle_state;'
+                             'gui_settings;vehicle_config')['response'])
         self.timestamp = time.time()
         return self
 
     def get_vehicle_basic_data(self):
         """ Get only basic vehicle data, does not include location or config.
         Raises HTTPError when vehicle is not online. """
-        self.update(self.api('VEHICLE_BASIC_DATA')['response'])
+        self.update(self.api('VEHICLE_DATA')['response'])
         self.timestamp = time.time()
         return self
 
@@ -564,7 +565,8 @@ class Vehicle(JsonDict):
         except (KeyError):
             self.sync_wake_up()
             self.get_vehicle_location_data()["drive_state"]
-        self.update(self.api('VEHICLE_LOCATION_DATA')['response'])
+        self.update(self.api('VEHICLE_DATA',
+                             endpoints='location_data')['response'])
         self.timestamp = time.time()
         return self
 

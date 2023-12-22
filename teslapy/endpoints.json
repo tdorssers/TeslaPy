@@ -31,17 +31,7 @@
   },
   "VEHICLE_DATA": {
     "TYPE": "GET",
-    "URI": "api/1/vehicles/{vehicle_id}/vehicle_data?endpoints=location_data%3Bcharge_state%3Bclimate_state%3Bvehicle_state%3Bvehicle_config%3Bgui_settings",
-    "AUTH": true
-  },
-  "VEHICLE_BASIC_DATA": {
-    "TYPE": "GET",
     "URI": "api/1/vehicles/{vehicle_id}/vehicle_data",
-    "AUTH": true
-  },
-  "VEHICLE_LOCATION_DATA": {
-    "TYPE": "GET",
-    "URI": "api/1/vehicles/{vehicle_id}/vehicle_data?endpoints=location_data",
     "AUTH": true
   },
   "VEHICLE_SERVICE_DATA": {
