@@ -610,9 +610,8 @@ class App(Tk):
                              state=NORMAL if webdriver else DISABLED)
         self.browser = IntVar()
         web_menu.add_radiobutton(label='Chrome', value=0, variable=self.browser)
-        web_menu.add_radiobutton(label='Opera', value=1, variable=self.browser)
         if webdriver and hasattr(webdriver.edge, 'options'):
-            web_menu.add_radiobutton(label='Edge', value=2, variable=self.browser)
+            web_menu.add_radiobutton(label='Edge', value=1, variable=self.browser)
         self.selenium = BooleanVar()
         opt_menu.add_checkbutton(label='Use selenium', variable=self.selenium,
                                  state=NORMAL if webdriver else DISABLED,
@@ -661,10 +660,10 @@ class App(Tk):
             return pool.apply(show_webview, (url, ))  # Run in separate process
         # Use selenium if available and selected
         if webdriver and self.selenium.get():
-            options = [webdriver.chrome, webdriver.opera,
+            options = [webdriver.chrome,
                        webdriver.edge][self.browser.get()].options.Options()
             options.add_argument('--disable-blink-features=AutomationControlled')
-            with [webdriver.Chrome, webdriver.Opera,
+            with [webdriver.Chrome,
                   webdriver.Edge][self.browser.get()](options=options) as browser:
                 browser.get(url)
                 wait = WebDriverWait(browser, 300)
