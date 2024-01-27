@@ -2,6 +2,8 @@
 
 A Python implementation based on [unofficial documentation](https://tesla-api.timdorr.com/) of the client side interface to the Tesla Motors Owner API, which provides functionality to monitor and control Tesla products remotely.
 
+The Owner API will [stop working](https://developer.tesla.com/docs/fleet-api#2023-11-17-vehicle-commands-endpoint-deprecation-timeline-action-required) as vehicles begin requiring end-to-end command authentication using the Tesla Vehicle Command Protocol. Pre-2021 Model S and X vehicles do not support this new protocol and remain controllable using TeslaPy.
+
 [![Version](https://img.shields.io/pypi/v/TeslaPy)](https://pypi.org/project/TeslaPy)
 [![Downloads](https://static.pepy.tech/badge/TeslaPy/month)](https://pepy.tech/project/TeslaPy)
 
