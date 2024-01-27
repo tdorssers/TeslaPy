@@ -417,6 +417,8 @@ As of September 3, 2021, Tesla has added ReCaptcha to the login form. This cause
 
 As of January 12, 2022, Tesla has deprecated the use of [RFC 7523](https://tools.ietf.org/html/rfc7523) tokens and requires the SSO tokens to be used for API access. If you get a `requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: https://owner-api.teslamotors.com/api/1/vehicles` and you are using correct credentials then you are probably using an old version of this module.
 
+As of January 7, 2024, Tesla has removed the VEHICLE_LIST endpoint. If you get a `requests.exceptions.HTTPError: 412 Client Error: Endpoint is only available on fleetapi. Visit https://developer.tesla.com/docs for more info` then you are probably using an old version of this module.
+
 ## Demo applications
 
 The source repository contains three demo applications that *optionally* use [pywebview](https://pypi.org/project/pywebview/) version 3.0 or higher or [selenium](https://pypi.org/project/selenium/) version 3.13.0 or higher to automate weblogin. Selenium 4.0.0 or higher is required for Edge Chromium.
@@ -427,7 +429,7 @@ The source repository contains three demo applications that *optionally* use [py
 usage: cli.py [-h] -e EMAIL [-f FILTER] [-a API [KEYVALUE ...]] [-k KEYVALUE]
               [-c COMMAND] [-t TIMEOUT] [-p PROXY] [-R REFRESH] [-U URL] [-l]
               [-o] [-v] [-w] [-g] [-b] [-n] [-m] [-s] [-d] [-r] [-S] [-H] [-V]
-              [-L] [-u] [--chrome] [--opera] [--edge]
+              [-L] [-u] [--chrome] [--edge]
 
 Tesla Owner API CLI
 
@@ -462,7 +464,6 @@ optional arguments:
   -L, --logout          clear token from cache and logout
   -u, --user            get user account details
   --chrome              use Chrome WebDriver
-  --opera               use Opera WebDriver
   --edge                use Edge WebDriver
 ```
 
