@@ -374,7 +374,8 @@ class Tesla(OAuth2Session):
 
     def vehicle_list(self):
         """ Returns a list of `Vehicle` objects """
-        return [Vehicle(v, self) for v in self.api('PRODUCT_LIST')['response']]
+        return [Vehicle(p, self) for p in self.api('PRODUCT_LIST')['response']
+                if 'vehicle_id' in p]
 
     def battery_list(self):
         """ Returns a list of `Battery` objects """
