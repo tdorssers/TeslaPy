@@ -586,6 +586,13 @@ class Vehicle(JsonDict):
         """ Lists vehicle charging history data points """
         return self.api('VEHICLE_CHARGE_HISTORY')['response']
 
+    def get_charge_history_v2(self):
+        """ Lists vehicle charging history data points """
+        url = 'https://ownership.tesla.com/mobile-app/charging/history'
+        return self.tesla.get(url, params={
+            'vin': self['vin'], 'deviceLanguage': 'en', 'deviceCountry': 'US',
+            'operationName': 'getChargingHistoryV2'})['data']
+
     def mobile_enabled(self):
         """ Checks if the Mobile Access setting is enabled in the car. Raises
         HTTPError when vehicle is in service or not online. """
