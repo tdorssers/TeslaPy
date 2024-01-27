@@ -38,10 +38,9 @@ def custom_auth(url):
         webview.start()
         return result[0]
     # Use selenium to control specified web browser
-    options = [webdriver.chrome, webdriver.opera,
-               webdriver.edge][args.web].options.Options()
+    options = [webdriver.chrome, webdriver.edge][args.web].options.Options()
     options.add_argument('--disable-blink-features=AutomationControlled')
-    with [webdriver.Chrome, webdriver.Opera,
+    with [webdriver.Chrome,
           webdriver.Edge][args.web](options=options) as browser:
         logging.info('Selenium opened %s', browser.capabilities['browserName'])
         browser.get(url)
@@ -175,10 +174,8 @@ if __name__ == "__main__":
         h = 'use Chrome browser' if webview else 'use Chrome browser (default)'
         parser.add_argument('--chrome', action='store_const', dest='web',
                             help=h, const=0, default=None if webview else 0)
-        parser.add_argument('--opera', action='store_const', dest='web',
-                            help='use Opera browser', const=1)
         if hasattr(webdriver.edge, 'options'):
             parser.add_argument('--edge', action='store_const', dest='web',
-                                help='use Edge browser', const=2)
+                                help='use Edge browser', const=1)
     args = parser.parse_args()
     main()
