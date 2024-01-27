@@ -68,7 +68,8 @@ The `Vehicle` class extends `dict` and stores vehicle data returned by the Owner
 | `sync_wake_up()` | No | wakes up and waits for the vehicle to come online |
 | `decode_option()` | No | lookup option code description (read from *option_codes.json*) |
 | `option_code_list()` <sup>1</sup> | No | lists known descriptions of the vehicle option codes |
-| `get_vehicle_data()` | Yes | gets a rollup of all the data request endpoints plus vehicle config |
+| `get_vehicle_data()` | Yes | get vehicle data for selected endpoints, defaults to all endpoints|
+| `get_vehicle_location_data()` | Yes | gets the basic and location data for the vehicle|
 | `get_nearby_charging_sites()` | Yes | lists nearby Tesla-operated charging stations |
 | `get_service_scheduling_data()` | No | retrieves next service appointment for this vehicle |
 | `get_charge_history()` <sup>2</sup> | No | lists vehicle charging history data points |
@@ -455,6 +456,8 @@ optional arguments:
   -r, --stream          receive streaming vehicle data on-change
   -S, --service         get service self scheduling eligibility
   -H, --history         get charging history data
+  -B, --basic           get basic vehicle data only
+  -G, --location        get location (GPS) data, wake as needed
   -V, --verify          disable verify SSL certificate
   -L, --logout          clear token from cache and logout
   -u, --user            get user account details
