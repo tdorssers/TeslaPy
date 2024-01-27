@@ -66,7 +66,7 @@ def main():
             selected = [p for p in prod for v in p.values() if v == args.filter]
         logging.info('%d product(s), %d selected', len(prod), len(selected))
         for i, product in enumerate(selected):
-            print(f'Product {i}:')
+            print('Product %d:' % i)
             # Show information or invoke API depending on arguments
             if args.list:
                 print(product)
@@ -172,9 +172,9 @@ if __name__ == "__main__":
     parser.add_argument('-L', '--logout', action='store_true',
                         help='clear token from cache and logout')
     if webdriver:
-        H = 'use Chrome browser' if webview else 'use Chrome browser (default)'
+        h = 'use Chrome browser' if webview else 'use Chrome browser (default)'
         parser.add_argument('--chrome', action='store_const', dest='web',
-                            help=H, const=0, default=None if webview else 0)
+                            help=h, const=0, default=None if webview else 0)
         parser.add_argument('--opera', action='store_const', dest='web',
                             help='use Opera browser', const=1)
         if hasattr(webdriver.edge, 'options'):

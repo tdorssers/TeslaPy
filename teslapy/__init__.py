@@ -305,9 +305,8 @@ class Tesla(OAuth2Session):
         try:
             with open(self.cache_file, 'w', encoding='utf-8') as outfile:
                 json.dump(cache, outfile)
-            os.chmod(self.cache_file,
-                     (stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP)
-                     )
+            os.chmod(self.cache_file, (stat.S_IWUSR | stat.S_IRUSR | 
+                                       stat.S_IRGRP))
         except IOError:
             logger.error('Cache not updated')
         else:
@@ -356,8 +355,8 @@ class Tesla(OAuth2Session):
         # Lookup endpoint name
         try:
             endpoint = self.endpoints[name]
-        except KeyError as e:
-            raise ValueError(f'Unknown endpoint name {name}') from e
+        except KeyError:
+            raise ValueError('Unknown endpoint name ' + name)
         # Fetch token if not authorized and API requires authorization
         if endpoint['AUTH'] and not self.authorized:
             self.fetch_token()
@@ -365,7 +364,7 @@ class Tesla(OAuth2Session):
         try:
             uri = endpoint['URI'].format(**path_vars)
         except KeyError as e:
-            raise ValueError(f"{name} requires path variable {e}") from e
+            raise ValueError('%s requires path variable %s' % (name, e))
         # Perform request using given keyword arguments as parameters
         arg_name = 'params' if endpoint['TYPE'] == 'GET' else 'json'
         serialize = endpoint.get('CONTENT') != 'HTML' and name != 'STATUS'
@@ -517,9 +516,8 @@ class Vehicle(JsonDict):
                     break
                 # Raise exception when task has timed out
                 if start_time + timeout - interval < time.time():
-                    name = self['display_name']
-                    err = f"{name} not woken up within {timeout} seconds"
-                    raise VehicleError(err)
+                    raise VehicleError('%s not woken up within %s seconds'
+                                       % (self['display_name'], timeout))
                 interval *= backoff
             logger.info('%s is %s', self['display_name'], self['state'])
 
@@ -591,7 +589,7 @@ class Vehicle(JsonDict):
         """ Checks if the Mobile Access setting is enabled in the car. Raises
         HTTPError when vehicle is in service or not online. """
         # Construct URL and send request
-        uri = f"api/1/vehicles/{self['id_s']}/mobile_enabled"
+        uri = 'api/1/vehicles/%s/mobile_enabled' % self['id_s']
         return self.tesla.get(uri)['response']
 
     def compose_image(self, view='STUD_3QTR', size=640, options=None):
