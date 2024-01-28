@@ -463,6 +463,11 @@
     "URI": "api/1/energy_sites/{site_id}/site_info",
     "AUTH": true
   },
+  "SYSTEM_STATUS": {
+    "TYPE": "GET",
+    "URI": "api/1/energy_sites/{site_id}/system_status",
+    "AUTH": true
+  },
   "SITE_ADDRESS": {
     "TYPE": "POST",
     "URI": "api/1/energy_sites/{site_id}/site_address",
@@ -626,6 +631,11 @@
   "SEND_GPS_TO_VEHICLE": {
     "TYPE": "POST",
     "URI": "api/1/vehicles/{vehicle_id}/command/navigation_gps_request",
+    "AUTH": true
+  },
+  "SEND_WAYPOINTS_TO_VEHICLE": {
+    "TYPE": "POST",
+    "URI": "api/1/vehicles/{vehicle_id}/command/navigation_waypoints_request",
     "AUTH": true
   },
   "REMOTE_SEAT_HEATER_REQUEST": {
@@ -1018,9 +1028,19 @@
     "URI": "bff/v2/mobile-app/service/tracker/{serviceVisitID}/doc-status",
     "AUTH": true
   },
+  "EXTERNAL_SERVICE_APPROVE_DOC": {
+    "TYPE": "POST",
+    "URI": "bff/v2/mobile-app/service/tracker/{serviceVisitID}/tab-doc-status",
+    "AUTH": true
+  },
   "SERVICE_GET_FINAL_INVOICE_AMOUNT_DUE": {
     "TYPE": "GET",
     "URI": "bff/v2/mobile-app/service/tracker/{serviceVisitID}/amount-due",
+    "AUTH": true
+  },
+  "SERVICE_GET_SERVICE_CONCERN_CONTENT": {
+    "TYPE": "GET",
+    "URI": "mobile-app/service/content/concern/{contentType}",
     "AUTH": true
   },
   "SERVICE_MACGYVER_ALERTS": {
@@ -1146,6 +1166,11 @@
   "SERVICE_TCC_CREATE_CASE": {
     "TYPE": "POST",
     "URI": "bff/mobile-app/support/case",
+    "AUTH": true
+  },
+  "SERVICE_GET_TCC_CASES": {
+    "TYPE": "GET",
+    "URI": "bff/mobile-app/support/tesla-assist/case",
     "AUTH": true
   },
   "SERVICE_ACTIVITY_PROGRESS": {
@@ -1325,12 +1350,12 @@
   },
   "ENERGY_DOCUMENTS_GET_DOCUMENTS": {
     "TYPE": "GET",
-    "URI": "bff/v2/mobile-app/energy-documents/documents",
+    "URI": "bff/v2/mobile-app/energy-documents/v2/documents",
     "AUTH": true
   },
   "ENERGY_DOCUMENTS_DOWNLOAD_DOCUMENT": {
     "TYPE": "GET",
-    "URI": "bff/v2/mobile-app/energy-documents/documents/{documentId}",
+    "URI": "bff/v2/mobile-app/energy-documents/v2/documents/{documentId}",
     "AUTH": true
   },
   "GET_TROUBLESHOOTING_GUIDE": {
@@ -1356,6 +1381,16 @@
   "ENERGY_SERVICE_POST_POWERWALL_REBATE_DETAILS": {
     "TYPE": "POST",
     "URI": "bff/v2/mobile-app/energy-support/powerwall-rebate",
+    "AUTH": true
+  },
+  "ENERGY_SERVICE_DELETE_POWERWALL_REBATE_DETAILS": {
+    "TYPE": "PUT",
+    "URI": "mobile-app/energy-support/powerwall-rebate",
+    "AUTH": true
+  },
+  "ENERGY_SERVICE_POST_POWERWALL_REBATE_SIGNED_TOKEN": {
+    "TYPE": "POST",
+    "URI": "mobile-app/energy-support/powerwall-rebate/signed-token",
     "AUTH": true
   },
   "ENERGY_SERVICE_UPDATE_ESTIMATE_STATUS": {
@@ -1578,6 +1613,11 @@
     "URI": "bff/v2/mobile-app/account/license-plate",
     "AUTH": true
   },
+  "USER_ACCOUNT_GET_COUPON_AMOUNT": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/account/coupon-amount",
+    "AUTH": true
+  },
   "UPGRADES_CREATE_OFFLINE_ORDER": {
     "TYPE": "POST",
     "URI": "bff/v2/mobile-app/upgrades/payment/offline-order",
@@ -1718,9 +1758,24 @@
     "URI": "bff/v2/mobile-app/payments/entity",
     "AUTH": true
   },
+  "CN_OTHER_LOCATIONS": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/locations/cn-other-locations",
+    "AUTH": true
+  },
+  "CHARGING_FETCH_PARKING_BENEFIT": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/charging-cn/parking-benefit/{trtId}",
+    "AUTH": true
+  },
   "DOCUMENTS_DOWNLOAD_INVOICE": {
     "TYPE": "GET",
     "URI": "bff/v2/mobile-app/documents/invoices/{invoiceId}",
+    "AUTH": true
+  },
+  "DOCUMENTS_DOWNLOAD_TAB": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/service/documents/tab",
     "AUTH": true
   },
   "DOCUMENTS_DOWNLOAD_INSPECTION": {
@@ -1791,6 +1846,16 @@
   "COMMERCE_CAPTURE": {
     "TYPE": "POST",
     "URI": "commerce-api/purchases/v1{locale}",
+    "AUTH": true
+  },
+  "COMMERCE_CAPTURE_V2": {
+    "TYPE": "POST",
+    "URI": "commerce-api/purchases/v2{locale}",
+    "AUTH": true
+  },
+  "COMMERCE_TAX": {
+    "TYPE": "POST",
+    "URI": "commerce-api/items/taxes/v1{locale}",
     "AUTH": true
   },
   "COMMERCE_PROCESSPAYMENT": {
@@ -1993,6 +2058,21 @@
     "URI": "commerce-api/checkout/invoices/v1{locale}",
     "AUTH": true
   },
+  "TAX_FORM_POST_INFO": {
+    "TYPE": "POST",
+    "URI": "mobile-app/referrals/user-w9-information",
+    "AUTH": true
+  },
+  "TAX_FORM_GET_SUBMITTED": {
+    "TYPE": "GET",
+    "URI": "mobile-app/referrals/tax-form-submitted",
+    "AUTH": true
+  },
+  "CHARGING_ASSETS": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/charging/assets",
+    "AUTH": true
+  },
   "CHARGING_BALANCE": {
     "TYPE": "GET",
     "URI": "bff/v2/mobile-app/charging/balance",
@@ -2036,6 +2116,11 @@
   "CHARGING_HISTORY_VEHICLE_IMAGES": {
     "TYPE": "GET",
     "URI": "bff/v2/mobile-app/charging/vehicle-images",
+    "AUTH": true
+  },
+  "CHARGING_MILES_INFO": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/charging-cn/super-charging-miles-info",
     "AUTH": true
   },
   "DOWNLOAD_CHARGING_INVOICE": {
@@ -2368,6 +2453,46 @@
     "URI": "bff/v2/mobile-app/financing/loan-principal-balance",
     "AUTH": true
   },
+  "PREVIOUSLY_OWNED_GET_FINANCING_DETAILS": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/previously-owned/details",
+    "AUTH": true
+  },
+  "PREVIOUSLY_OWNED_GET_CAR_DETAILS": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/previously-owned/car-details",
+    "AUTH": true
+  },
+  "PREVIOUSLY_OWNED_GET_TRANSLATIONS": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/previously-owned/translations",
+    "AUTH": true
+  },
+  "PREVIOUSLY_OWNED_GET_BILLING_ADDRESS": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/previously-owned/billing-address",
+    "AUTH": true
+  },
+  "PREVIOUSLY_OWNED_UPDATE_BILLING_ADDRESS": {
+    "TYPE": "POST",
+    "URI": "bff/v2/mobile-app/previously-owned/billing-address",
+    "AUTH": true
+  },
+  "PREVIOUSLY_OWNED_GET_SIGNED_TOKEN": {
+    "TYPE": "GET",
+    "URI": "bff/v2/mobile-app/previously-owned/signed-token",
+    "AUTH": true
+  },
+  "PREVIOUSLY_OWNED_PAYMENT_SIGNED_TOKEN": {
+    "TYPE": "POST",
+    "URI": "bff/v2/mobile-app/previously-owned/payment-signed-token",
+    "AUTH": true
+  },
+  "PREVIOUSLY_OWNED_UPDATE_PAYMENT_STATUS": {
+    "TYPE": "POST",
+    "URI": "bff/v2/mobile-app/previously-owned/update-payment-status",
+    "AUTH": true
+  },
   "DASHCAM_SAVE_CLIP": {
     "TYPE": "POST",
     "URI": "api/1/vehicles/{vehicle_id}/command/dashcam_save_clip",
@@ -2406,6 +2531,11 @@
   "FETCH_VEHICLE_SHARED_DRIVERS": {
     "TYPE": "GET",
     "URI": "api/1/vehicles/{vehicle_id}/drivers",
+    "AUTH": true
+  },
+  "SET_VEHICLE_SHARED_DRIVER_LOCATION_ACCESS": {
+    "TYPE": "PATCH",
+    "URI": "api/1/vehicles/{vehicle_id}/drivers/{driver_id}",
     "AUTH": true
   },
   "CREATE_VEHICLE_SHARE_INVITE": {
@@ -2481,6 +2611,16 @@
   "CONTACT_US_TESLA_ASSIST": {
     "TYPE": "POST",
     "URI": "mobile-app/contact-us/tesla-assist",
+    "AUTH": true
+  },
+  "CONTACT_US_TESLA_ASSIST_FEEDBACK": {
+    "TYPE": "POST",
+    "URI": "mobile-app/contact-us/tesla-assist/feedback",
+    "AUTH": true
+  },
+  "CONTACT_US_TESLA_ASSIST_SUPPORT_CREATE_CASE": {
+    "TYPE": "POST",
+    "URI": "mobile-app/support/tesla-assist-case",
     "AUTH": true
   },
   "CONTACT_US_CONTENT_CATALOG": {
@@ -2873,6 +3013,11 @@
     "URI": "mobile-app/drive/appointments/{guid}",
     "AUTH": true
   },
+  "TEST_DRIVE_UPDATE_APPOINTMENT_STATUS": {
+    "TYPE": "PATCH",
+    "URI": "mobile-app/drive/appointment-status/{guid}",
+    "AUTH": true
+  },
   "TEST_DRIVE_GET_SUPPORT_MODELS": {
     "TYPE": "GET",
     "URI": "mobile-app/drive/models",
@@ -2901,6 +3046,76 @@
   "THIRD_PARTY_PUBLIC_KEY": {
     "TYPE": "GET",
     "URI": "api/1/partner_accounts/public_key",
+    "AUTH": true
+  },
+  "NOTIFICATIONS_GET_NEWS_AND_EVENTS_TOGGLES": {
+    "TYPE": "GET",
+    "URI": "bff/mobile-app/notifications/news-and-events-toggles",
+    "AUTH": true
+  },
+  "WINDOW_TINT_CHECK_SERVICE_CENTER_AVAILABILITY": {
+    "TYPE": "GET",
+    "URI": "mobile-app/discovery/window-tint/check-service-center-availability",
+    "AUTH": true
+  },
+  "WINDOW_TINT_CHECK_OTC_AVAILABILITY": {
+    "TYPE": "GET",
+    "URI": "mobile-app/discovery/window-tint/check-otc-availability",
+    "AUTH": true
+  },
+  "WINDOW_TINT_CHECK_PREDELIVERY_ORDER": {
+    "TYPE": "POST",
+    "URI": "mobile-app/discovery/window-tint/check-predelivery-order-availability",
+    "AUTH": true
+  },
+  "WINDOW_TINT_GET_INFO": {
+    "TYPE": "GET",
+    "URI": "mobile-app/discovery/window-tint/get-info",
+    "AUTH": true
+  },
+  "WINDOW_TINT_GET_PRICE_INFO": {
+    "TYPE": "GET",
+    "URI": "mobile-app/discovery/window-tint/get-price-info",
+    "AUTH": true
+  },
+  "WINDOW_TINT_SUBMIT": {
+    "TYPE": "POST",
+    "URI": "mobile-app/discovery/window-tint/submit",
+    "AUTH": true
+  },
+  "WINDOW_TINT_CHECK_ORDER_IS_DELIVERED": {
+    "TYPE": "GET",
+    "URI": "mobile-app/discovery/window-tint/check-order-is-delivered",
+    "AUTH": true
+  },
+  "WINDOW_TINT_GET_PAYMENT_AMOUNT_DUE": {
+    "TYPE": "GET",
+    "URI": "mobile-app/discovery/window-tint/payment-amount-due/{serviceVisitID}",
+    "AUTH": true
+  },
+  "WINDOW_TINT_GET_ENTITY_CODE": {
+    "TYPE": "GET",
+    "URI": "mobile-app/discovery/window-tint/appointments/get-trt/{trtId}",
+    "AUTH": true
+  },
+  "WINDOW_TINT_DOCUMENTS_DOWNLOAD_INVOICE": {
+    "TYPE": "GET",
+    "URI": "mobile-app/discovery/window-tint/documents/invoices/{invoiceId}",
+    "AUTH": true
+  },
+  "WINDOW_TINT_SERVICE_APPROVE_DOC": {
+    "TYPE": "POST",
+    "URI": "mobile-app/discovery/window-tint/tracker/{serviceVisitID}/doc-status",
+    "AUTH": true
+  },
+  "WINDOW_TINT_CREATE_OFFLINE_ORDER": {
+    "TYPE": "POST",
+    "URI": "mobile-app/discovery/window-tint/payment/create-offline-order",
+    "AUTH": true
+  },
+  "WINDOW_TINT_COMPLETE_OFFLINE_ORDER": {
+    "TYPE": "POST",
+    "URI": "mobile-app/discovery/window-tint/payment/complete-offline-order",
     "AUTH": true
   }
 }
