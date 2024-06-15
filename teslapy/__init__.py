@@ -386,6 +386,10 @@ class Tesla(OAuth2Session):
         """ Returns a list of `SolarPanel` objects """
         return [SolarPanel(p, self) for p in self.api('PRODUCT_LIST')['response']
                 if p.get('resource_type') == 'solar']
+    def wall_connector_list(self):
+        """ Returns a list of `WallConnector` objects """
+        return [WallConnector(p, self) for p in self.api('PRODUCT_LIST')['response']
+                if p.get('resource_type') == 'wall_connector']
 
 
 class VehicleError(Exception):
@@ -961,4 +965,7 @@ class Battery(Product):
 
 class SolarPanel(Product):
     """ Solar panel class """
+    pass
+class WallConnector(Product):
+    """ Wall Connector class """
     pass
