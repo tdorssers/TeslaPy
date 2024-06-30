@@ -305,7 +305,7 @@ class Tesla(OAuth2Session):
         try:
             with open(self.cache_file, 'w', encoding='utf-8') as outfile:
                 json.dump(cache, outfile)
-            os.chmod(self.cache_file, (stat.S_IWUSR | stat.S_IRUSR | 
+            os.chmod(self.cache_file, (stat.S_IWUSR | stat.S_IRUSR |
                                        stat.S_IRGRP))
         except IOError:
             logger.error('Cache not updated')
@@ -386,6 +386,7 @@ class Tesla(OAuth2Session):
         """ Returns a list of `SolarPanel` objects """
         return [SolarPanel(p, self) for p in self.api('PRODUCT_LIST')['response']
                 if p.get('resource_type') == 'solar']
+
     def wall_connector_list(self):
         """ Returns a list of `WallConnector` objects """
         return [WallConnector(p, self) for p in self.api('PRODUCT_LIST')['response']
@@ -409,6 +410,7 @@ class Vehicle(JsonDict):
     """ Vehicle class with dictionary access and API request support """
 
     codes = None  # Vehicle option codes class variable
+    orders = []
     COLS = ['speed', 'odometer', 'soc', 'elevation', 'est_heading', 'est_lat',
             'est_lng', 'power', 'shift_state', 'range', 'est_range', 'heading']
 
@@ -417,6 +419,12 @@ class Vehicle(JsonDict):
         self.tesla = tesla
         self.callback = None
         self.timestamp = time.time()
+        self.orders = self.orders or self.api('VEHICLE_ORDER_LIST')['response']
+
+    @property
+    def order(self):
+        """ Try to find the order for this vehicle """
+        return next((o for o in self.orders if o['vin'] == self['vin']), {})
 
     def _subscribe(self, wsapp):
         """ Authenticate and select streaming telemetry columns """
@@ -543,7 +551,7 @@ class Vehicle(JsonDict):
 
     def option_code_list(self):
         """ Returns a list of known vehicle option code titles """
-        codes = self['option_codes'] if self['option_codes'] else ''
+        codes = self.order.get('mktOptions', self['option_codes'])
         return list(filter(None, [self.decode_option(code)
                                   for code in codes.split(',')]))
 
@@ -607,12 +615,12 @@ class Vehicle(JsonDict):
     def compose_image(self, view='STUD_3QTR', size=640, options=None):
         """ Returns a PNG formatted composed vehicle image. Valid views are:
         STUD_3QTR, STUD_SEAT, STUD_SIDE, STUD_REAR and STUD_WHEEL """
-        if options is None and self['option_codes'] is None:
+        options = options or self.order.get('mktOptions', self['option_codes'])
+        if not options:
             raise ValueError('`compose_image` requires `options` to be set')
-        # Derive model from VIN and other properties from (given) option codes
-        params = {'model': 'm' + self['vin'][3].lower(),
-                  'bkba_opt': 1, 'view': view, 'size': size,
-                  'options': options or self['option_codes']}
+        model = self.order.get('modelCode', 'm' + self['vin'][3].lower())
+        params = {'model': model, 'bkba_opt': 1, 'view': view, 'size': size,
+                  'options': options}
         # Retrieve image from compositor
         url = 'https://static-assets.tesla.com/v1/compositor/'
         response = requests.get(url, params=params, verify=self.tesla.verify,
@@ -966,6 +974,8 @@ class Battery(Product):
 class SolarPanel(Product):
     """ Solar panel class """
     pass
+
+
 class WallConnector(Product):
     """ Wall Connector class """
     pass
