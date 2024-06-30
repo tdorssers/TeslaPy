@@ -325,6 +325,7 @@ def main():
                          vehicles[0]['charge_state']['battery_level']))
         print('-' * 80)
         print('VIN decode:', ', '.join(vehicles[idx].decode_vin().values()))
+        print('Option codes:', ', '.join(vehicles[idx].option_code_list()))
         print('-' * 80)
         menu(vehicles[idx])
 

@@ -70,6 +70,8 @@ def main():
             if args.list:
                 print(product)
             if isinstance(product, Vehicle):
+                if args.option:
+                    print(', '.join(product.option_code_list()))
                 if args.vin:
                     print(product.decode_vin())
                 if args.wake:
@@ -140,6 +142,8 @@ if __name__ == "__main__":
     parser.add_argument('-U', dest='url', help='SSO service base URL')
     parser.add_argument('-l', '--list', action='store_true',
                         help='list all selected vehicles/batteries')
+    parser.add_argument('-o', '--option', action='store_true',
+                        help='list vehicle option codes')
     parser.add_argument('-v', '--vin', action='store_true',
                         help='vehicle identification number decode')
     parser.add_argument('-w', '--wake', action='store_true',

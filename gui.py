@@ -269,6 +269,9 @@ class Dashboard(Frame):
         left.pack(side=LEFT, padx=5)
         right = Frame(self)
         right.pack(side=LEFT, padx=5)
+        # Vehicle image on right frame
+        self.vehicle_image = Label(right)
+        self.vehicle_image.pack()
         # Climate state on left frame
         self.layout(left, 'Climate State',
                     [('outside_temp', 'Outside Temperature:'),
@@ -350,8 +353,8 @@ class Dashboard(Frame):
                      ('off_peak_end_time', 'Off Peak End Time:'),
                      ('preconditioning', 'Preconditioning:'),
                      ('preconditioning_times', 'Preconditioning Times:')])
-        # Vehicle config on right frame
-        self.layout(right, 'Vehicle Config',
+        # Vehicle config on left frame
+        self.layout(left, 'Vehicle Config',
                     [('car_type', 'Car Type:'),
                      ('trim_badging', 'Trim Badging:'),
                      ('air_suspension', 'Has Air Suspension:'),
@@ -360,8 +363,8 @@ class Dashboard(Frame):
                      ('spoiler_type', 'Spoiler Type:'),
                      ('roof_color', 'Roof Color:'),
                      ('charge_port_type', 'Charge Port Type:')])
-        # Service on left frame
-        self.layout(left, 'Service', [('next_appt', 'Next appointment:'),
+        # Service on right frame
+        self.layout(right, 'Service', [('next_appt', 'Next appointment:'),
                                       ('in_service', 'In service:')])
 
     def layout(self, master, text, labels):
@@ -535,6 +538,8 @@ class App(Tk):
         app_menu.add_command(label='Exit', command=self.save_and_quit)
         menu.add_cascade(label='App', menu=app_menu)
         self.vehicle_menu = Menu(menu, tearoff=0)
+        self.vehicle_menu.add_command(label='Show option codes', state=DISABLED,
+                                      command=self.option_codes)
         self.vehicle_menu.add_command(label='Decode VIN', state=DISABLED,
                                       command=self.decode_vin)
         self.vehicle_menu.add_command(label='Charge history', state=DISABLED,
@@ -719,8 +724,8 @@ class App(Tk):
                                                   variable=self.selected,
                                                   command=self.select)
             if self.login_thread.vehicles:
-                # Enable decode VIN, charge history and wake up command
-                for i in range(0, 2):
+                # Enable options, decode VIN, charge history and wake up command
+                for i in range(0, 3):
                     self.vehicle_menu.entryconfig(i, state=NORMAL)
                 self.cmd_menu.entryconfig(0, state=NORMAL)
                 self.select()
@@ -757,6 +762,10 @@ class App(Tk):
     def select(self):
         """ Select vehicle and start new thread to get vehicle image """
         self.vehicle = self.login_thread.vehicles[self.selected.get()]
+        # Create and start image thread. Check thread status after 100 ms
+        self.image_thread = ImageThread(self.vehicle)
+        self.image_thread.start()
+        self.after(100, self.process_select)
         # Create and start service thread. Check thread status after 100 ms
         self.service_thread = ServiceThread(self.vehicle)
         self.service_thread.start()
@@ -765,6 +774,18 @@ class App(Tk):
         if not hasattr(self, 'status_thread'):
             self.update_status()
         self.update_dashboard()
+
+    def process_select(self):
+        """ Waits for thread to finish and displays vehicle image """
+        if self.image_thread.is_alive():
+            # Check again after 100 ms
+            self.after(100, self.process_select)
+        elif self.image_thread.exception:
+            # Handle errors
+            self.status.text(self.image_thread.exception)
+        else:
+            # Display vehicle image
+            self.dashboard.vehicle_image.config(image=self.image_thread.photo)
 
     def process_service(self):
         """ Waits for thread to finish and displays service data """
@@ -891,6 +912,13 @@ class App(Tk):
         LabelGridDialog(self, 'About',
                         [{'text': 'Tesla Owner API Python GUI by Tim Dorssers'},
                          {'text': 'Tcl/Tk toolkit version %s' % TkVersion}])
+
+    def option_codes(self):
+        """ Show vehicle option codes in a dialog """
+        table = []
+        for i, item in enumerate(self.vehicle.option_code_list()):
+            table.append(dict(text=item, row=i // 2, column=i % 2, sticky=W))
+        LabelGridDialog(self, 'Option codes', table)
 
     def decode_vin(self):
         """ Show decoded vin in a dialog """
@@ -1172,6 +1200,30 @@ class WakeUpThread(threading.Thread):
             self.vehicle.sync_wake_up()
         except (teslapy.VehicleError, teslapy.RequestException) as e:
             self.exception = e
+
+class ImageThread(threading.Thread):
+    """ Compose vehicle image """
+
+    def __init__(self, vehicle):
+        threading.Thread.__init__(self)
+        self.vehicle = vehicle
+        self.exception = None
+        self.photo = None
+
+    def run(self):
+        try:
+            response = self.vehicle.compose_image(size=300)
+        except teslapy.RequestException as e:
+            self.exception = e
+        else:
+            # Tk 8.6 has native PNG support, older Tk require PIL
+            try:
+                import base64
+                self.photo = PhotoImage(data=base64.b64encode(response))
+            except TclError:
+                from PIL import Image, ImageTk
+                import io
+                self.photo = ImageTk.PhotoImage(Image.open(io.BytesIO(response)))
 
 class LoginThread(threading.Thread):
     """ Authenticate and retrieve vehicle list """
