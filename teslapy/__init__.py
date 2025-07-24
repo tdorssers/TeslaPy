@@ -813,9 +813,11 @@ class Product(JsonDict):
     def command(self, name, **kwargs):
         """ Wrapper method for product command response error handling """
         response = self.api(name, **kwargs)['response']
-        if response['Code'] == 200:
+        if response.get('Code') == 200:
+            return response.get('Message')
+        elif response.get('code') == 201:
             return response.get('message')
-        raise ProductError(response.get('message'))
+        raise ProductError(response.get('Message') or response.get('message'))
 
 
 class BatteryTariffPeriodCost(
