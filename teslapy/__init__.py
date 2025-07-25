@@ -811,7 +811,7 @@ class Product(JsonDict):
                         timezone=timezone)['response']
 
     def command(self, name, **kwargs):
-        """" Wrapper method for product command response error handling """
+        """ Wrapper method for product command response error handling """
         response = self.api(name, **kwargs)['response']
         # Normalize keys to lowercase for case-insensitive lookup of items
         r = {k.lower(): v for k, v in response.items()}
