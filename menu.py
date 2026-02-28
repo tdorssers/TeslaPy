@@ -196,102 +196,164 @@ def menu(vehicle):
             if vehicle['state'] != 'online' or vehicle['in_service']:
                 opt = 1
         # Perform menu option
-        if opt == 0:
-            break
-        if opt == 1:
-            pass
-        elif opt == 2:
-            show_charging_history(vehicle.get_charge_history())
-        elif opt == 3:
-            print('Please wait...')
-            vehicle.sync_wake_up()
-            print('-' * 80)
-        elif opt == 4:
-            show_charging_sites(vehicle)
-        elif opt == 5:
-            vehicle.command('HONK_HORN')
-        elif opt == 6:
-            vehicle.command('FLASH_LIGHTS')
-        elif opt == 7:
-            if vehicle['vehicle_state']['locked']:
-                vehicle.command('UNLOCK')
-            else:
-                vehicle.command('LOCK')
-        elif opt == 8:
-            if vehicle['climate_state']['is_climate_on']:
-                vehicle.command('CLIMATE_OFF')
-            else:
-                vehicle.command('CLIMATE_ON')
-        elif opt == 9:
-            temp = float(raw_input("Enter temperature: "))
-            vehicle.command('CHANGE_CLIMATE_TEMPERATURE_SETTING', driver_temp=temp,
-                            passenger_temp=temp)
-        elif opt == 10:
-            which_trunk = raw_input("Which trunk (front/rear):")
-            vehicle.command('ACTUATE_TRUNK', which_trunk=which_trunk)
-        elif opt == 11:
-            vehicle.command('REMOTE_START')
-        elif opt == 12:
-            limit = int(raw_input("Enter charge limit: "))
-            vehicle.command('CHANGE_CHARGE_LIMIT', percent=limit)
-        elif opt == 13:
-            if vehicle['charge_state']['charge_port_door_open']:
-                vehicle.command('CHARGE_PORT_DOOR_CLOSE')
-            else:
-                vehicle.command('CHARGE_PORT_DOOR_OPEN')
-        elif opt == 14:
-            if vehicle['charge_state']['charging_state'].lower() == 'charging':
-                vehicle.command('STOP_CHARGE')
-            else:
-                vehicle.command('START_CHARGE')
-        elif opt == 15:
-            heater = int(raw_input("Enter heater (0=Driver,1=Passenger,"
-                                   "2=Rear left,3=Rear center,4=Rear right): "))
-            level = int(raw_input("Enter level (0..3): "))
-            vehicle.command('REMOTE_SEAT_HEATER_REQUEST', heater=heater,
-                            level=level)
-        elif opt == 16:
-            vehicle.command('MEDIA_TOGGLE_PLAYBACK')
-        elif opt == 17:
-            command = raw_input("Enter command (close/vent):")
-            vehicle.command('WINDOW_CONTROL', command=command, lat=0, lon=0)
-        elif opt == 18:
-            try:
-                if vehicle['climate_state']['defrost_mode']:
-                    vehicle.command('MAX_DEFROST', on=False)
-                else:
-                    vehicle.command('MAX_DEFROST', on=True)
-            except KeyError:
-                print('Not available')
-        elif opt == 19:
-            amps = int(raw_input("Enter charging amps: "))
-            vehicle.command('CHARGING_AMPS', charging_amps=amps)
+        class VehicleController:
+    def __init__(self, vehicle):
+        self.vehicle = vehicle
+        self.actions = {
+            1: self.no_action,
+            2: self.show_history,
+            3: self.wake_up,
+            4: self.show_sites,
+            5: self.honk,
+            6: self.flash_lights,
+            7: self.toggle_lock,
+            8: self.toggle_climate,
+            9: self.set_temperature,
+            10: self.actuate_trunk,
+            11: self.remote_start,
+            12: self.set_charge_limit,
+            13: self.toggle_charge_port,
+            14: self.toggle_charging,
+            15: self.set_seat_heater,
+            16: self.toggle_media,
+            17: self.window_control,
+            18: self.max_defrost_toggle,
+            19: self.set_charging_amps,
+        }
 
-def custom_auth(url):
-    # Use pywebview if no web browser specified
-    if webview and not (webdriver and args.web is not None):
-        result = ['']
-        window = webview.create_window('Login', url)
-        def on_loaded():
-            result[0] = window.get_current_url()
-            if 'void/callback' in result[0].split('?')[0]:
-                window.destroy()
+    # ------------------ Action methods ------------------
+    def no_action(self):
+        pass
+
+    def show_history(self):
+        show_charging_history(self.vehicle.get_charge_history())
+
+    def wake_up(self):
+        print('Please wait...')
+        self.vehicle.sync_wake_up()
+        print('-' * 80)
+
+    def show_sites(self):
+        show_charging_sites(self.vehicle)
+
+    def honk(self):
+        self.vehicle.command('HONK_HORN')
+
+    def flash_lights(self):
+        self.vehicle.command('FLASH_LIGHTS')
+
+    def toggle_lock(self):
+        locked = self.vehicle['vehicle_state']['locked']
+        self.vehicle.command('UNLOCK' if locked else 'LOCK')
+
+    def toggle_climate(self):
+        is_on = self.vehicle['climate_state']['is_climate_on']
+        self.vehicle.command('CLIMATE_OFF' if is_on else 'CLIMATE_ON')
+
+    def set_temperature(self):
+        temp = float(input("Enter temperature: "))
+        self.vehicle.command('CHANGE_CLIMATE_TEMPERATURE_SETTING',
+                             driver_temp=temp, passenger_temp=temp)
+
+    def actuate_trunk(self):
+        which_trunk = input("Which trunk (front/rear): ")
+        self.vehicle.command('ACTUATE_TRUNK', which_trunk=which_trunk)
+
+    def remote_start(self):
+        self.vehicle.command('REMOTE_START')
+
+    def set_charge_limit(self):
+        limit = int(input("Enter charge limit: "))
+        self.vehicle.command('CHANGE_CHARGE_LIMIT', percent=limit)
+
+    def toggle_charge_port(self):
+        if self.vehicle['charge_state']['charge_port_door_open']:
+            self.vehicle.command('CHARGE_PORT_DOOR_CLOSE')
+        else:
+            self.vehicle.command('CHARGE_PORT_DOOR_OPEN')
+
+    def toggle_charging(self):
+        charging = self.vehicle['charge_state']['charging_state'].lower()
+        self.vehicle.command('STOP_CHARGE' if charging == 'charging' else 'START_CHARGE')
+
+    def set_seat_heater(self):
+        heater = int(input("Enter heater (0=Driver,1=Passenger,2=Rear left,3=Rear center,4=Rear right): "))
+        level = int(input("Enter level (0..3): "))
+        self.vehicle.command('REMOTE_SEAT_HEATER_REQUEST', heater=heater, level=level)
+
+    def toggle_media(self):
+        self.vehicle.command('MEDIA_TOGGLE_PLAYBACK')
+
+    def window_control(self):
+        command = input("Enter command (close/vent): ")
+        self.vehicle.command('WINDOW_CONTROL', command=command, lat=0, lon=0)
+
+    def max_defrost_toggle(self):
         try:
-            window.events.loaded += on_loaded
-        except AttributeError:
-            window.loaded += on_loaded
-        webview.start()
-        return result[0]
-    # Use selenium to control specified web browser
-    options = [webdriver.chrome, webdriver.opera,
-               webdriver.edge][args.web].options.Options()
-    options.add_argument('--disable-blink-features=AutomationControlled')
-    with [webdriver.Chrome, webdriver.Opera,
-          webdriver.Edge][args.web](options=options) as browser:
-        logging.info('Selenium opened %s', browser.capabilities['browserName'])
-        browser.get(url)
-        WebDriverWait(browser, 300).until(EC.url_contains('void/callback'))
-        return browser.current_url
+            if self.vehicle['climate_state']['defrost_mode']:
+                self.vehicle.command('MAX_DEFROST', on=False)
+            else:
+                self.vehicle.command('MAX_DEFROST', on=True)
+        except KeyError:
+            print('Not available')
+
+    def set_charging_amps(self):
+        amps = int(input("Enter charging amps: "))
+        self.vehicle.command('CHARGING_AMPS', charging_amps=amps)
+
+    # ------------------ Handler ------------------
+    def handle_option(self, opt):
+        action = self.actions.get(opt)
+        if action:
+            action()
+        else:
+            print("Invalid option.")
+
+
+# ------------------ Usage ------------------
+def main():
+    vehicle = get_vehicle_object()  # Replace with your actual vehicle object
+    controller = VehicleController(vehicle)
+
+    while True:
+        print("\n--- Vehicle Control Menu ---")
+        print("0. Exit")
+        print("1. No Action")
+        print("2. Show Charging History")
+        print("3. Wake Up Vehicle")
+        print("4. Show Charging Sites")
+        print("5. Honk Horn")
+        print("6. Flash Lights")
+        print("7. Toggle Lock")
+        print("8. Toggle Climate")
+        print("9. Set Temperature")
+        print("10. Actuate Trunk")
+        print("11. Remote Start")
+        print("12. Set Charge Limit")
+        print("13. Toggle Charge Port Door")
+        print("14. Start/Stop Charging")
+        print("15. Set Seat Heater")
+        print("16. Toggle Media Playback")
+        print("17. Window Control")
+        print("18. Max Defrost On/Off")
+        print("19. Set Charging Amps")
+
+        try:
+            opt = int(input("Enter your option: "))
+        except ValueError:
+            print("Invalid input, please enter a number.")
+            continue
+
+        if opt == 0:
+            print("Exiting...")
+            break
+
+        controller.handle_option(opt)
+
+
+# Run the program
+if __name__ == "__main__":
+    main()
 
 def main():
     default_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -349,3 +411,4 @@ if __name__ == "__main__":
     parser.add_argument('--proxy', help='proxy server URL')
     args = parser.parse_args()
     main()
+
