@@ -815,9 +815,12 @@ class Product(JsonDict):
         response = self.api(name, **kwargs)['response']
         if isinstance(response, str):
             response = json.loads(response)
-        if (response.get('code') or response.get('Code')) in (200, 201):
-            return response.get('message')
-        raise ProductError(response.get('message') or repr(response))
+        # Normalize keys to lowercase for case-insensitive lookup of items
+        r = {k.lower(): v for k, v in response.items()}
+        # Expect to receive a 200 or 201 code here, else raise error
+        if r.get('code') in (200, 201):
+            return r.get('message')
+        raise ProductError(response)
 
 class BatteryTariffPeriodCost(
         namedtuple('BatteryTariffPeriodCost', ['buy', 'sell', 'name'])):
