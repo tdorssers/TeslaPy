@@ -49,6 +49,8 @@ try:
 except NameError:
     pass
 
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
 
 class Tesla(OAuth2Session):
     """ Implements a session manager for the Tesla Motors Owner API
@@ -93,7 +95,7 @@ class Tesla(OAuth2Session):
         self.code_verifier = code_verifier
         # Set OAuth2Session properties
         self.scope = ('openid', 'email', 'offline_access')
-        self.redirect_uri = SSO_BASE_URL + 'void/callback'
+        self.redirect_uri = 'tesla://auth/callback'
         self.auto_refresh_url = 'oauth2/v3/token'
         self.auto_refresh_kwargs = {'client_id': SSO_CLIENT_ID}
         self.token_updater = self._token_updater
