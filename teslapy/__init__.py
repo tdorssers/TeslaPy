@@ -51,24 +51,23 @@ try:
 except NameError:
     pass
 
-# Adapter to force TLS 1.3 only connections by Tesla's API servers. This is
-# required since June 2026 to avoid HTTPError: 403 Client Error: forbidden for
-# url: https://owner-api.teslamotors.com/api/1/products
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
+
 class TLSAdapter(HTTPAdapter):
+    """ Adapter to force TLS 1.3 only connections by Tesla's API servers. This
+    is required since June 2026 to avoid HTTPError: 403 Client Error: forbidden
+    for url: https://owner-api.teslamotors.com/api/1/products
+    """
     def init_poolmanager(self, connections, maxsize, block=False, **kwargs):
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-
         # Enforce minimum and maximum TLS versions
         ctx.minimum_version = ssl.TLSVersion.TLSv1_3
         ctx.maximum_version = ssl.TLSVersion.TLSv1_3
-
         # Pass the custom context to the base class
-        return super().init_poolmanager(
-            connections,
-            maxsize,
-            block,
-            ssl_context=ctx
-        )
+        return super().init_poolmanager(connections, maxsize,
+                                        block, ssl_context=ctx)
+
 
 class Tesla(OAuth2Session):
     """ Implements a session manager for the Tesla Motors Owner API
@@ -113,7 +112,7 @@ class Tesla(OAuth2Session):
         self.code_verifier = code_verifier
         # Set OAuth2Session properties
         self.scope = ('openid', 'email', 'offline_access')
-        self.redirect_uri = SSO_BASE_URL + 'void/callback'
+        self.redirect_uri = 'tesla://auth/callback'
         self.auto_refresh_url = 'oauth2/v3/token'
         self.auto_refresh_kwargs = {'client_id': SSO_CLIENT_ID}
         self.token_updater = self._token_updater
