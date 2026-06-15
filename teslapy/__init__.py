@@ -30,6 +30,7 @@ from requests.adapters import HTTPAdapter
 from requests_oauthlib import OAuth2Session
 from requests.exceptions import *
 from requests.packages.urllib3.util.retry import Retry
+from urllib3.poolmanager import PoolManager
 from oauthlib.oauth2.rfc6749.errors import *
 import websocket  # websocket-client v0.49.0 up to v0.58.0 is not supported
 
@@ -59,14 +60,10 @@ class TLSAdapter(HTTPAdapter):
     is required since June 2026 to avoid HTTPError: 403 Client Error: forbidden
     for url: https://owner-api.teslamotors.com/api/1/products
     """
-    def init_poolmanager(self, connections, maxsize, block=False, **kwargs):
-        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        # Enforce minimum and maximum TLS versions
-        ctx.minimum_version = ssl.TLSVersion.TLSv1_3
-        ctx.maximum_version = ssl.TLSVersion.TLSv1_3
-        # Pass the custom context to the base class
-        return super().init_poolmanager(connections, maxsize,
-                                        block, ssl_context=ctx)
+    def init_poolmanager(self, connections, maxsize, block=False):
+        self.poolmanager = PoolManager(
+            num_pools=connections, maxsize=maxsize,
+            block=block, ssl_minimum_version=ssl.TLSVersion.TLSv1_3)
 
 
 class Tesla(OAuth2Session):
