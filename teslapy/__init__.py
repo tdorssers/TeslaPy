@@ -11,6 +11,7 @@ __version__ = '2.9.1'
 import os
 import ast
 import json
+import ssl
 import time
 import base64
 import hashlib
@@ -25,6 +26,7 @@ except ImportError:
     from urllib.parse import urljoin
 from collections import defaultdict, namedtuple
 import requests
+from requests.adapters import HTTPAdapter
 from requests_oauthlib import OAuth2Session
 from requests.exceptions import *
 from requests.packages.urllib3.util.retry import Retry
@@ -50,6 +52,21 @@ except NameError:
     pass
 
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
+
+class TLSAdapter(HTTPAdapter):
+    """ Adapter to force TLS 1.3 only connections by Tesla's API servers. This
+    is required since June 2026 to avoid HTTPError: 403 Client Error: forbidden
+    for url: https://owner-api.teslamotors.com/api/1/products
+    """
+    def init_poolmanager(self, connections, maxsize, block=False, **kwargs):
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        # Enforce minimum and maximum TLS versions
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_3
+        ctx.maximum_version = ssl.TLSVersion.TLSv1_3
+        # Pass the custom context to the base class
+        return super().init_poolmanager(connections, maxsize,
+                                        block, ssl_context=ctx)
 
 
 class Tesla(OAuth2Session):
@@ -99,7 +116,7 @@ class Tesla(OAuth2Session):
         self.auto_refresh_url = 'oauth2/v3/token'
         self.auto_refresh_kwargs = {'client_id': SSO_CLIENT_ID}
         self.token_updater = self._token_updater
-        self.mount('https://', requests.adapters.HTTPAdapter(max_retries=retry))
+        self.mount('https://', TLSAdapter(max_retries=retry))
         self.headers.update({'Content-Type': 'application/json',
                              'X-Tesla-User-Agent': app_user_agent,
                              'User-Agent': user_agent})
