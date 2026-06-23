@@ -9,7 +9,9 @@ The Owner API will [stop working](https://developer.tesla.com/docs/fleet-api#202
 
 ## Overview
 
-This module depends on Python [requests](https://pypi.org/project/requests/), [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) and [websocket-client](https://pypi.org/project/websocket-client/). It requires Python 3.10+ when using urllib3 2.0, which comes with requests 2.30.0+, or you can pin urllib3 to 1.26.x by installing `urllib3<2`.
+This module depends on Python [requests](https://pypi.org/project/requests/), [requests_oauthlib](https://pypi.org/project/requests-oauthlib/), [httpx](https://pypi.org/project/httpx/) and [websocket-client](https://pypi.org/project/websocket-client/). It requires Python 3.10+ when using urllib3 2.0, which comes with requests 2.30.0+, or you can pin urllib3 to 1.26.x by installing `urllib3<2`.
+
+As of June 2026, Tesla requires HTTP/2 for its SSO (auth.tesla.com) and Owner API endpoints; requests, which only speaks HTTP/1.1, started receiving `403 Client Error: forbidden` responses on token refresh. The `Tesla` class therefore uses `httpx` (installed with the `[http2]` extra so the `h2` package is present) to perform these requests over HTTP/2, automatically falling back to requests over HTTP/1.1 when httpx is unavailable. On Python 2, where httpx cannot be installed, the requests fallback is always used.
 
 The `Tesla` class extends `requests_oauthlib.OAuth2Session` which extends `requests.Session` and therefore inherits methods like `get()` and `post()` that can be used to perform API calls. Module characteristics:
 
@@ -814,7 +816,7 @@ TeslaPy is available on PyPI:
 
 Make sure you have [Python](https://www.python.org/) 2.7+ or 3.5+ installed on your system. Alternatively, clone the repository to your machine and run demo application [cli.py](https://github.com/tdorssers/TeslaPy/blob/master/cli.py), [menu.py](https://github.com/tdorssers/TeslaPy/blob/master/menu.py) or [gui.py](https://github.com/tdorssers/TeslaPy/blob/master/gui.py) to get started, after installing [requests_oauthlib](https://pypi.org/project/requests-oauthlib/) 0.8.0+, [geopy](https://pypi.org/project/geopy/) 1.14.0+, [pywebview](https://pypi.org/project/pywebview/) 3.0+ (optional), [selenium](https://pypi.org/project/selenium/) 3.13.0+ (optional) and [websocket-client](https://pypi.org/project/websocket-client/) 0.59+ using [PIP](https://pypi.org/project/pip/) as follows:
 
-`python -m pip install requests_oauthlib geopy pywebview selenium websocket-client`
+`python -m pip install requests_oauthlib 'httpx[http2]' geopy pywebview selenium websocket-client`
 
 and install [ChromeDriver](https://sites.google.com/chromium.org/driver/) to use Selenium or on Ubuntu as follows:
 
